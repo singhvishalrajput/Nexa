@@ -1,0 +1,107 @@
+.nexa-dashboard { width: min(calc(100% - 54px), 1160px); height: 100%; min-height: 0; margin: 0 auto; padding: 30px 0 54px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; color: #171615; transition: transform .28s cubic-bezier(.22,.8,.25,1); }
+.nexa-workspace.is-sidebar-open .nexa-dashboard { width: min(calc(100% - 364px), 1160px); margin-right: 30px; margin-left: 334px; }
+.nexa-dashboard::-webkit-scrollbar { width: 0; height: 0; }
+.nexa-dashboard button { font-family: Arial, sans-serif; }
+.nexa-dashboard-lead { padding-bottom: 27px; display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; border-bottom: 1px solid #171615; }
+.nexa-dashboard-lead > div:first-child { min-width: 0; }
+.nexa-dashboard-lead p { margin: 0 0 8px; color: #e54e2b; font-size: 9px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+.nexa-dashboard-lead h1 { margin: 0 0 8px; font: 400 clamp(38px, 4.4vw, 58px)/.95 Georgia, serif; letter-spacing: -.055em; }
+.nexa-dashboard-lead > div > span { color: #6f6961; font-size: 11px; }
+.nexa-dashboard-lead-actions { display: flex; align-items: center; gap: 12px; }
+.nexa-period-switch { padding: 3px; display: flex; border: 1px solid #c8c1b7; background: #eee8de; }
+.nexa-period-switch button { padding: 7px 10px; border: 0; background: transparent; color: #6f6961; font-size: 8px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; cursor: pointer; }
+.nexa-period-switch button.is-active { background: #171615; color: #f8f5ee; }
+.nexa-dashboard-back { padding: 10px 0; border: 0; border-bottom: 1px solid #171615; background: transparent; color: #171615; font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
+.nexa-dashboard-back:hover { color: #e54e2b; border-color: #e54e2b; }
+
+.nexa-dashboard-summary { margin: 22px 0 34px; display: grid; grid-template-columns: 1.08fr 1.92fr; border: 1px solid #171615; }
+.nexa-balance-block { padding: 26px; display: grid; align-content: center; border-right: 1px solid #171615; background: #171615; color: #f8f5ee; }
+.nexa-balance-block > span, .nexa-summary-metrics span { font-size: 8px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.nexa-balance-block strong { margin: 10px 0 8px; font: 400 clamp(38px, 4vw, 56px)/.95 Georgia, serif; letter-spacing: -.045em; }
+.nexa-balance-block small { color: #b7b0a7; font-size: 9px; }
+.nexa-summary-metrics { display: grid; grid-template-columns: repeat(3, 1fr); }
+.nexa-summary-metrics > div { padding: 26px 22px; display: grid; align-content: center; gap: 8px; border-right: 1px solid #c8c1b7; }
+.nexa-summary-metrics > div:last-child { border-right: 0; }
+.nexa-summary-metrics span { color: #777168; }
+.nexa-summary-metrics strong { font: 400 clamp(21px, 2vw, 29px)/1 Georgia, serif; letter-spacing: -.035em; }
+.nexa-summary-metrics small { color: #777168; font-size: 9px; }
+
+.nexa-dashboard-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 34px 24px; }
+.nexa-dashboard-panel { min-width: 0; padding-top: 16px; border-top: 1px solid #171615; }
+.nexa-dashboard-panel > header { margin-bottom: 19px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.nexa-dashboard-panel > header > div:first-child { display: grid; gap: 5px; }
+.nexa-dashboard-panel > header span, .nexa-dashboard-panel > header > small { color: #777168; font-size: 8px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.nexa-dashboard-panel h2 { margin: 0; font: 400 20px/1.1 Georgia, serif; letter-spacing: -.025em; }
+.nexa-dashboard-panel header button { padding: 5px 0; border: 0; border-bottom: 1px solid #a9a197; background: transparent; color: #514d47; font-size: 8px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; cursor: pointer; }
+.nexa-dashboard-panel header button:hover { color: #e54e2b; border-color: #e54e2b; }
+.nexa-cashflow-panel { grid-column: span 8; }
+.nexa-insight-panel { grid-column: span 4; padding: 20px; border-top: 0; background: #e8e2d8; }
+.nexa-accounts-panel, .nexa-spending-panel, .nexa-progress-panel, .nexa-upcoming-panel { grid-column: span 6; }
+.nexa-transactions-panel { grid-column: span 8; }
+.nexa-alert-panel { grid-column: span 4; }
+
+.nexa-chart-key { display: flex !important; grid-auto-flow: column; gap: 12px !important; }
+.nexa-chart-key span { display: flex; align-items: center; gap: 5px; }
+.nexa-chart-key i { width: 8px; height: 8px; display: block; background: #bdb5aa; }
+.nexa-chart-key i.is-income { background: #171615; }
+.nexa-cashflow-chart { height: 190px; padding-top: 12px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; border-bottom: 1px solid #c8c1b7; background: repeating-linear-gradient(to bottom, transparent 0, transparent 44px, #ded8cf 45px); }
+.nexa-cash-month { min-width: 0; display: grid; grid-template-rows: 1fr 22px; gap: 7px; }
+.nexa-cash-month > div { display: flex; align-items: flex-end; justify-content: center; gap: 4px; }
+.nexa-cash-month i { width: min(15px, 32%); min-height: 5px; display: block; background: #bdb5aa; }
+.nexa-cash-month i.is-income { background: #171615; }
+.nexa-cash-month > span { color: #777168; font-size: 8px; text-align: center; text-transform: uppercase; }
+
+.nexa-insight-panel header > b, .nexa-alert-panel header > b { width: 28px; height: 28px; display: grid; place-items: center; background: #e54e2b; color: #171615; font: 400 15px/1 Georgia, serif; }
+.nexa-insight-panel p, .nexa-alert-panel p { margin: 0 0 22px; color: #514d47; font-size: 11px; line-height: 1.65; }
+.nexa-insight-panel > button, .nexa-alert-panel > button { padding: 9px 0; display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; border-top: 1px solid #a9a197; background: transparent; color: #171615; font-size: 9px; font-weight: 700; text-align: left; cursor: pointer; }
+.nexa-insight-panel > button span, .nexa-alert-panel > button span { color: #e54e2b; }
+
+.nexa-account-row { padding: 13px 0; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 11px; align-items: center; border-bottom: 1px solid #d3ccc2; }
+.nexa-account-row > span { width: 32px; height: 32px; display: grid; place-items: center; background: #171615; color: #f8f5ee; font-size: 8px; font-weight: 700; }
+.nexa-account-row > div, .nexa-transaction-table p { min-width: 0; display: grid; gap: 4px; }
+.nexa-account-row strong, .nexa-transaction-table strong { font-size: 10px; }
+.nexa-account-row small, .nexa-transaction-table small { color: #777168; font-size: 8px; }
+.nexa-account-row > b { font: 400 16px/1 Georgia, serif; }
+
+.nexa-spend-row { margin: 0 0 15px; display: grid; gap: 7px; }
+.nexa-spend-row > div { display: flex; justify-content: space-between; gap: 12px; }
+.nexa-spend-row strong, .nexa-spend-row span { font-size: 9px; }
+.nexa-spend-row span { color: #6f6961; }
+.nexa-spend-row > i, .nexa-plan-row > i { height: 3px; display: block; overflow: hidden; background: #ded8cf; }
+.nexa-spend-row > i b, .nexa-plan-row > i b { height: 100%; display: block; background: #171615; }
+
+.nexa-plan-row { padding: 12px 0; display: grid; grid-template-columns: 1fr auto; gap: 9px 15px; border-bottom: 1px solid #d3ccc2; }
+.nexa-plan-row > div { display: grid; gap: 4px; }
+.nexa-plan-row strong { font-size: 10px; }.nexa-plan-row small { color: #777168; font-size: 8px; }.nexa-plan-row > span { color: #e54e2b; font-size: 9px; font-weight: 700; }.nexa-plan-row > i { grid-column: 1 / -1; }
+
+.nexa-upcoming-panel > div { padding: 11px 0; display: grid; grid-template-columns: 34px 1fr auto; gap: 11px; align-items: center; border-bottom: 1px solid #d3ccc2; }
+.nexa-upcoming-panel > div > span { display: grid; justify-items: center; gap: 2px; }.nexa-upcoming-panel > div > span b { font: 400 17px/1 Georgia, serif; }.nexa-upcoming-panel > div > span small { color: #777168; font-size: 7px; text-transform: uppercase; }.nexa-upcoming-panel p { margin: 0; display: grid; gap: 4px; }.nexa-upcoming-panel p strong { font-size: 10px; }.nexa-upcoming-panel p small { color: #777168; font-size: 8px; }.nexa-upcoming-panel > div > b { font-size: 10px; }
+
+.nexa-transaction-table > div { padding: 10px 0; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; border-bottom: 1px solid #d3ccc2; }
+.nexa-transaction-table > div > span { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #c8c1b7; font: 400 12px/1 Georgia, serif; }
+.nexa-transaction-table p { margin: 0; }
+.nexa-transaction-table > div > b { font-size: 10px; }.nexa-transaction-table > div > b.is-positive { color: #42734f; }
+.nexa-alert-panel { padding: 20px; border-top: 0; background: #f0e6d9; }
+
+.nexa-dashboard-quick { margin-top: 38px; padding-top: 17px; display: grid; grid-template-columns: 145px 1fr; gap: 20px; border-top: 1px solid #171615; }
+.nexa-dashboard-quick > span { color: #777168; font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.nexa-dashboard-quick > div { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.nexa-dashboard-quick button { padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #c8c1b7; background: transparent; color: #171615; font-size: 9px; font-weight: 700; text-align: left; cursor: pointer; }
+.nexa-dashboard-quick button b { color: #e54e2b; }.nexa-dashboard-quick button:hover { border-color: #171615; background: #eee8de; }
+
+.nexa-message-content { min-width: 0; max-width: 100%; }
+.nexa-chat-action { width: min(100%, 390px); min-height: 72px; margin: 14px 0 5px; padding: 9px 10px; display: grid; grid-template-columns: 48px minmax(0, 1fr) 34px; gap: 13px; align-items: center; border: 1px solid #171615; background: #171615; box-shadow: 5px 5px 0 #e54e2b; color: #f8f5ee; text-align: left; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+.nexa-chat-action > i { width: 46px; height: 46px; display: grid; place-items: center; border: 1px solid #57524c; background: #282623; color: #e54e2b; font-style: normal; }
+.nexa-chat-action > i svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
+.nexa-chat-action > span { min-width: 0; display: grid; gap: 5px; }
+.nexa-chat-action small { color: #aaa39a; font-size: 8px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
+.nexa-chat-action strong { overflow: hidden; color: #f8f5ee; font: 400 17px/1 Georgia, serif; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.nexa-chat-action > b { width: 32px; height: 32px; display: grid; place-items: center; background: #e54e2b; color: #171615; font-size: 15px; font-weight: 400; transition: transform .2s ease, background .2s ease; }
+.nexa-chat-action:hover { background: #24221f; box-shadow: 8px 8px 0 #e54e2b; transform: translate(-2px, -2px); }
+.nexa-chat-action:hover > b { background: #f8f5ee; transform: translate(2px, -2px); }
+.nexa-chat-action:focus-visible { outline: 2px solid #e54e2b; outline-offset: 4px; }
+@media (max-width: 520px) { .nexa-chat-action { min-height: 66px; grid-template-columns: 42px minmax(0, 1fr) 30px; gap: 10px; }.nexa-chat-action > i { width: 40px; height: 40px; }.nexa-chat-action strong { font-size: 15px; }.nexa-chat-action > b { width: 28px; height: 28px; } }
+
+@media (max-width: 1080px) { .nexa-workspace.is-sidebar-open .nexa-dashboard { width: min(calc(100% - 54px), 1160px); margin-right: auto; margin-left: auto; }.nexa-cashflow-panel, .nexa-insight-panel, .nexa-transactions-panel, .nexa-alert-panel { grid-column: span 6; }.nexa-dashboard-quick { grid-template-columns: 1fr; }.nexa-dashboard-quick > div { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 760px) { .nexa-dashboard { width: calc(100% - 34px); padding-top: 24px; }.nexa-dashboard-lead { align-items: flex-start; flex-direction: column; }.nexa-dashboard-lead-actions { width: 100%; justify-content: space-between; }.nexa-dashboard-summary { grid-template-columns: 1fr; }.nexa-balance-block { border-right: 0; }.nexa-summary-metrics { border-top: 1px solid #171615; }.nexa-summary-metrics > div { padding: 18px 12px; }.nexa-dashboard-grid { display: block; }.nexa-dashboard-panel { margin-bottom: 30px; }.nexa-cashflow-chart { height: 170px; gap: 8px; }.nexa-dashboard-quick > div { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 440px) { .nexa-summary-metrics { grid-template-columns: 1fr; }.nexa-summary-metrics > div { border-right: 0; border-bottom: 1px solid #c8c1b7; }.nexa-summary-metrics > div:last-child { border-bottom: 0; }.nexa-dashboard-lead-actions { align-items: flex-start; flex-direction: column; }.nexa-dashboard-quick > div { grid-template-columns: 1fr; } }

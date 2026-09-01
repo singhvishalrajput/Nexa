@@ -1,0 +1,206 @@
+.nexa-bills-view button, .nexa-bills-view input { font-family: Arial,sans-serif; }
+.nexa-bill-notice { margin: 18px 0 0; padding: 10px 12px; display: grid; grid-template-columns: 24px 1fr 24px; gap: 9px; align-items: center; border: 1px solid #9ab0a0; background: #e9f0e9; color: #315e3c; }
+.nexa-bill-notice > span { width: 22px; height: 22px; display: grid; place-items: center; background: #315e3c; color: #f8f5ee; font-size: 9px; }
+.nexa-bill-notice p { margin: 0; font-size: 9px; font-weight: 700; }
+.nexa-bill-notice button { border: 0; background: transparent; color: #315e3c; font-size: 16px; cursor: pointer; }
+.nexa-bill-summary { margin: 23px 0 32px; display: grid; grid-template-columns: 1.2fr 1fr 1fr; border: 1px solid #171615; }
+.nexa-bill-summary > div { padding: 23px; display: grid; gap: 7px; border-right: 1px solid #c8c1b7; }
+.nexa-bill-summary > div:first-child { background: #171615; color: #f8f5ee; }
+.nexa-bill-summary > div:last-child { border-right: 0; }
+.nexa-bill-summary span { color: #777168; font-size: 8px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.nexa-bill-summary > div:first-child span, .nexa-bill-summary > div:first-child small { color: #aaa39a; }
+.nexa-bill-summary strong { font: 400 clamp(27px,3vw,38px)/1 Georgia,serif; letter-spacing: -.04em; }
+.nexa-bill-summary small { color: #777168; font-size: 8px; }
+.nexa-bill-insight { margin-bottom: 34px; padding: 23px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 30px; align-items: end; border-left: 4px solid #e54e2b; background: #f0e2d8; }
+.nexa-bill-insight > div > span, .nexa-bill-change > span { color: #b33320; font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.nexa-bill-insight h2 { margin: 8px 0; font: 400 25px/1.05 Georgia,serif; letter-spacing: -.035em; }
+.nexa-bill-insight p { margin: 0; color: #6f6961; font-size: 9px; line-height: 1.6; }
+.nexa-bill-insight button, .nexa-bill-change button { padding: 9px 0; display: flex; gap: 24px; border: 0; border-bottom: 1px solid #171615; background: transparent; color: #171615; font-size: 8px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+.nexa-bills-layout { margin-bottom: 45px; display: grid; grid-template-columns: minmax(0,1.55fr) minmax(260px,.62fr); gap: 34px; align-items: start; }
+.nexa-bills-list { padding-top: 17px; border-top: 1px solid #171615; }
+.nexa-bills-list > header { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: end; gap: 20px; }
+.nexa-bills-list > header > div:first-child { display: grid; gap: 5px; }
+.nexa-bills-list > header span { color: #777168; font-size: 8px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.nexa-bills-list > header h2 { margin: 0; font: 400 22px/1 Georgia,serif; }
+.nexa-bills-list-actions { display: flex; align-items: center; gap: 10px; }
+.nexa-bills-list-actions > div { display: flex; gap: 4px; }
+.nexa-bills-list-actions > div button { padding: 6px 8px; border: 1px solid #c8c1b7; background: transparent; color: #6f6961; font-size: 7px; font-weight: 700; cursor: pointer; }
+.nexa-bills-list-actions > div button.is-active { border-color: #171615; background: #171615; color: #f8f5ee; }
+.nexa-bills-list-actions .nexa-add-bill-action { padding: 5px 10px 5px 5px; display: flex; align-items: center; gap: 8px; border: 1px solid #b8b0a5; background: #f2ede5; color: #26231f; font-size: 8px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; cursor: pointer; transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
+.nexa-add-bill-action > b { width: 20px; height: 20px; display: grid; place-items: center; background: #171615; color: #f8f5ee; font-size: 13px; font-weight: 400; line-height: 1; transition: background-color .18s ease; }
+.nexa-add-bill-action:hover { border-color: #171615; background: #fffaf2; transform: translateY(-1px); }
+.nexa-add-bill-action:hover > b { background: #e54e2b; }
+.nexa-add-bill-action:focus-visible { outline: 2px solid #e54e2b; outline-offset: 2px; }
+.nexa-bills-list article { padding: 13px 0; display: grid; grid-template-columns: 36px minmax(0,1fr) 105px 60px 68px; gap: 12px; align-items: center; border-bottom: 1px solid #d3ccc2; }
+.nexa-bills-list article > span { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #c8c1b7; font: 400 14px/1 Georgia,serif; }
+.nexa-bills-list article > div, .nexa-bills-list article > p { display: grid; gap: 4px; }
+.nexa-bills-list article > p { margin: 0; text-align: right; }
+.nexa-bills-list article strong { font-size: 9px; }
+.nexa-bills-list article small { color: #777168; font-size: 7px; }
+.nexa-bills-list article > em { color: #b46a2c; font-size: 7px; font-style: normal; font-weight: 700; text-align: right; text-transform: uppercase; }
+.nexa-bills-list article > em.is-scheduled { color: #315e3c; }
+.nexa-bills-list article > em.is-paid { color: #42734f; }
+.nexa-bills-list article > em.is-overdue { color: #b33320; }
+.nexa-bills-list article > button { padding: 8px; border: 1px solid #a9a197; background: transparent; color: #171615; font-size: 7px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+.nexa-bills-list article > button:hover { border-color: #171615; background: #eee8de; }
+.nexa-obligation-calendar { padding: 23px; background: #171615; color: #f8f5ee; }
+.nexa-obligation-calendar > span { color: #e54e2b; font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.nexa-obligation-calendar > h2 { margin: 8px 0 20px; color: #f8f5ee; font: 400 27px/1 Georgia,serif; }
+.nexa-obligation-calendar > div { border-block: 1px solid #4c4945; }
+.nexa-obligation-calendar > div p { margin: 0; padding: 11px 0; display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: center; border-bottom: 1px solid #363431; }
+.nexa-obligation-calendar > div p:last-child { border-bottom: 0; }
+.nexa-obligation-calendar > div p > b { color: #e54e2b; font: 400 17px/1 Georgia,serif; }
+.nexa-obligation-calendar > div p > span { display: grid; gap: 3px; font-size: 8px; }
+.nexa-obligation-calendar > div p small { color: #aaa39a; font-size: 6px; text-transform: uppercase; }
+.nexa-obligation-calendar > div p > strong { font-size: 8px; }
+.nexa-obligation-calendar footer { margin-top: 20px; display: grid; gap: 6px; }
+.nexa-obligation-calendar footer span { color: #aaa39a; font-size: 8px; }
+.nexa-obligation-calendar footer strong { font: 400 24px/1 Georgia,serif; }
+.nexa-obligation-calendar footer small { color: #8fb398; font-size: 7px; }
+
+.nexa-bill-detail-lead { margin: 24px 0 27px; padding: 23px 0; display: flex; justify-content: space-between; gap: 30px; align-items: center; border-bottom: 1px solid #c8c1b7; }
+.nexa-bill-detail-lead > div:first-child { display: grid; grid-template-columns: 48px 1fr; gap: 15px; align-items: center; }
+.nexa-bill-detail-lead > div:first-child > span { width: 46px; height: 46px; display: grid; place-items: center; background: #171615; color: #f8f5ee; font: 400 18px/1 Georgia,serif; }
+.nexa-bill-detail-lead p { margin: 0 0 5px; color: #e54e2b; font-size: 8px; font-weight: 700; text-transform: uppercase; }
+.nexa-bill-detail-lead h2 { margin: 0 0 5px; font: 400 25px/1 Georgia,serif; }
+.nexa-bill-detail-lead small { color: #777168; font-size: 8px; }
+.nexa-bill-detail-lead > div:last-child { display: grid; gap: 5px; text-align: right; }
+.nexa-bill-detail-lead > div:last-child span { color: #777168; font-size: 8px; text-transform: uppercase; }
+.nexa-bill-detail-lead > div:last-child strong { font: 400 31px/1 Georgia,serif; }
+.nexa-bill-change { margin-bottom: 28px; padding: 20px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 30px; align-items: end; background: #f0e2d8; }
+.nexa-bill-change h2 { margin: 0; font: 400 21px/1.1 Georgia,serif; }
+.nexa-bill-change p { margin: 0; color: #6f6961; font-size: 8px; }
+.nexa-bill-change button { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+.nexa-bill-payment { margin-bottom: 45px; display: grid; grid-template-columns: minmax(0,1.45fr) minmax(280px,.62fr); gap: 46px; align-items: start; }
+.nexa-bill-payment > div > section { margin-bottom: 28px; padding-top: 17px; border-top: 1px solid #171615; }
+.nexa-bill-payment section > span, .nexa-bill-payment > aside > span { color: #e54e2b; font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.nexa-bill-payment section h2 { margin: 7px 0 15px; font: 400 24px/1.05 Georgia,serif; }
+.nexa-payment-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nexa-payment-mode button { padding: 14px; display: grid; gap: 5px; border: 1px solid #c8c1b7; background: transparent; color: #171615; text-align: left; cursor: pointer; }
+.nexa-payment-mode button.is-selected { border-color: #171615; background: #171615; color: #f8f5ee; }
+.nexa-payment-mode button strong { font-size: 9px; }
+.nexa-payment-mode button small { color: #777168; font-size: 7px; }
+.nexa-payment-mode button.is-selected small { color: #aaa39a; }
+.nexa-bill-payment section > label { margin-top: 14px; display: grid; gap: 6px; color: #6f6961; font-size: 8px; font-weight: 700; text-transform: uppercase; }
+.nexa-bill-payment section > label input { padding: 10px 0; border: 0; border-bottom: 1px solid #a9a197; outline: 0; background: transparent; color: #171615; }
+.nexa-bill-source { width: 100%; padding: 12px; display: grid; grid-template-columns: 38px 1fr auto; gap: 12px; align-items: center; border: 1px solid #171615; background: transparent; color: #171615; text-align: left; }
+.nexa-bill-source > i { width: 36px; height: 36px; display: grid; place-items: center; background: #171615; color: #f8f5ee; font-size: 8px; font-style: normal; }
+.nexa-bill-source > span { display: grid; gap: 4px; }
+.nexa-bill-source strong { font-size: 9px; }
+.nexa-bill-source small { color: #777168; font-size: 7px; }
+.nexa-bill-source > b { font: 400 15px/1 Georgia,serif; }
+.nexa-bill-setting { width: 100%; padding: 13px 0; display: grid; grid-template-columns: 1fr 40px; gap: 18px; align-items: center; border: 0; border-bottom: 1px solid #d3ccc2; background: transparent; color: #171615; text-align: left; cursor: pointer; }
+.nexa-bill-setting > span { display: grid; gap: 4px; }
+.nexa-bill-setting strong { font-size: 9px; }
+.nexa-bill-setting small { color: #777168; font-size: 7px; }
+.nexa-bill-setting > i { position: relative; width: 40px; height: 22px; border: 1px solid #a9a197; background: #d8d1c7; }
+.nexa-bill-setting > i::after { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; background: #777168; transition: transform .18s; }
+.nexa-bill-setting[aria-checked="true"] > i { border-color: #171615; background: #171615; }
+.nexa-bill-setting[aria-checked="true"] > i::after { background: #e54e2b; transform: translateX(18px); }
+.nexa-bill-payment > aside { position: sticky; top: 18px; padding: 24px; background: #171615; color: #f8f5ee; }
+.nexa-bill-payment > aside h2 { margin: 9px 0 5px; color: #f8f5ee; font: 400 32px/1 Georgia,serif; }
+.nexa-bill-payment > aside > p { margin: 0; color: #aaa39a; font-size: 8px; }
+.nexa-bill-payment > aside dl { margin: 21px 0 14px; border-block: 1px solid #4c4945; }
+.nexa-bill-payment > aside dl div { padding: 11px 0; display: flex; justify-content: space-between; gap: 14px; border-bottom: 1px solid #363431; }
+.nexa-bill-payment > aside dl div:last-child { border-bottom: 0; }
+.nexa-bill-payment > aside dt { color: #aaa39a; font-size: 8px; }
+.nexa-bill-payment > aside dd { margin: 0; font-size: 8px; font-weight: 700; }
+.nexa-bill-payment > aside > small { display: block; margin-bottom: 16px; color: #8fb398; font-size: 7px; line-height: 1.5; }
+.nexa-bill-payment > aside > button { width: 100%; padding: 12px; border: 1px solid #e54e2b; background: #e54e2b; color: #171615; font-size: 8px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+
+.nexa-bill-dialog-backdrop { position: fixed; z-index: 90; inset: 0; padding: 24px; display: grid; place-items: center; background: rgba(23,22,21,.56); backdrop-filter: blur(4px); }
+.nexa-workspace:has(.nexa-bill-dialog-backdrop) .nexa-workspace-sidebar { z-index: 0; pointer-events: none; }
+.nexa-bill-dialog-backdrop > section { width: min(100%,490px); padding: 30px; border: 1px solid #171615; background: #f8f5ee; }
+.nexa-bill-dialog-backdrop section > span { color: #e54e2b; font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.nexa-bill-dialog-backdrop h2 { margin: 9px 0 11px; font: 400 31px/1 Georgia,serif; letter-spacing: -.04em; }
+.nexa-bill-dialog-backdrop p { margin: 0; color: #6f6961; font-size: 9px; line-height: 1.6; }
+.nexa-bill-dialog-backdrop footer { margin-top: 24px; display: flex; justify-content: flex-end; gap: 8px; }
+.nexa-bill-dialog-backdrop footer button { padding: 10px 12px; border: 1px solid #171615; background: transparent; color: #171615; font-size: 7px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+.nexa-bill-dialog-backdrop footer button.is-primary { background: #171615; color: #f8f5ee; }
+.nexa-bill-sheet-backdrop { position: fixed; z-index: 95; inset: 0; padding: 22px; display: grid; place-items: center; background: rgba(23,22,21,.58); backdrop-filter: blur(4px); }
+.nexa-workspace:has(.nexa-bill-sheet-backdrop) .nexa-workspace-sidebar { z-index: 0; pointer-events: none; }
+.nexa-bill-sheet { width: min(100%,700px); max-height: calc(100vh - 44px); overflow-y: auto; padding: 30px; border: 1px solid #171615; background: #f8f5ee; scrollbar-width: none; }
+.nexa-bill-sheet::-webkit-scrollbar { display: none; }
+.nexa-bill-sheet > header { padding-bottom: 20px; display: flex; justify-content: space-between; gap: 22px; border-bottom: 1px solid #171615; }
+.nexa-bill-sheet > header span, .nexa-add-bill-form section > span, .nexa-add-bill-review > span { color: #e54e2b; font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.nexa-bill-sheet > header h2 { margin: 8px 0; font: 400 34px/1 Georgia,serif; letter-spacing: -.045em; }
+.nexa-bill-sheet > header p { margin: 0; color: #6f6961; font-size: 9px; }
+.nexa-bill-sheet > header button { width: 30px; height: 30px; flex: 0 0 auto; border: 1px solid #c8c1b7; background: transparent; color: #171615; font-size: 17px; cursor: pointer; }
+.nexa-add-bill-form { padding-top: 20px; }
+.nexa-add-bill-form > section { margin-bottom: 22px; padding-bottom: 21px; border-bottom: 1px solid #d3ccc2; }
+.nexa-add-bill-form section h3, .nexa-add-bill-review h3 { margin: 7px 0 15px; font: 400 22px/1.05 Georgia,serif; letter-spacing: -.03em; }
+.nexa-add-bill-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 18px; }
+.nexa-add-bill-fields label:last-child { grid-column: 1 / -1; }
+.nexa-add-bill-fields.is-three { grid-template-columns: 1fr 1fr 1fr; }
+.nexa-add-bill-fields.is-three label:last-child { grid-column: auto; }
+.nexa-add-bill-fields label, .nexa-new-bill-controls > label { display: grid; gap: 7px; color: #6f6961; font-size: 8px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.nexa-add-bill-fields input, .nexa-add-bill-fields select, .nexa-new-bill-controls label input { width: 100%; min-width: 0; padding: 10px 0; border: 0; border-bottom: 1px solid #a9a197; border-radius: 0; outline: 0; background: transparent; color: #171615; font-size: 11px; }
+.nexa-add-bill-fields label > div, .nexa-new-bill-controls label > div { display: grid; grid-template-columns: 18px 1fr; align-items: center; border-bottom: 1px solid #a9a197; }
+.nexa-add-bill-fields label > div input, .nexa-new-bill-controls label > div input { border-bottom: 0; }
+.nexa-verify-biller { width: 100%; margin-top: 14px; padding: 10px; border: 1px solid #171615; background: transparent; color: #171615; font-size: 8px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+.nexa-verify-biller:disabled { opacity: .4; cursor: not-allowed; }
+.nexa-verify-biller.is-verified { border-color: #9ab0a0; background: #e9f0e9; color: #315e3c; }
+.nexa-new-bill-controls { border-top: 1px solid #d3ccc2; }
+.nexa-new-bill-controls > button { width: 100%; padding: 12px 0; display: grid; grid-template-columns: 1fr 40px; gap: 18px; align-items: center; border: 0; border-bottom: 1px solid #d3ccc2; background: transparent; color: #171615; text-align: left; cursor: pointer; }
+.nexa-new-bill-controls button > span { display: grid; gap: 4px; }
+.nexa-new-bill-controls button strong { font-size: 9px; }
+.nexa-new-bill-controls button small { color: #777168; font-size: 7px; }
+.nexa-new-bill-controls button > i { position: relative; width: 40px; height: 22px; border: 1px solid #a9a197; background: #d8d1c7; }
+.nexa-new-bill-controls button > i::after { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; background: #777168; transition: transform .18s; }
+.nexa-new-bill-controls button[aria-checked="true"] > i { border-color: #171615; background: #171615; }
+.nexa-new-bill-controls button[aria-checked="true"] > i::after { background: #e54e2b; transform: translateX(18px); }
+.nexa-new-bill-controls > label { margin-top: 13px; }
+.nexa-add-bill-submit { width: 100%; padding: 12px; border: 1px solid #171615; background: #171615; color: #f8f5ee; font-size: 8px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+.nexa-add-bill-submit:disabled { opacity: .4; cursor: not-allowed; }
+.nexa-add-bill-review { padding-top: 23px; }
+.nexa-add-bill-review > p { margin: 0; color: #6f6961; font-size: 9px; line-height: 1.6; }
+.nexa-add-bill-review dl { margin: 20px 0 13px; border-block: 1px solid #c8c1b7; }
+.nexa-add-bill-review dl div { padding: 10px 0; display: flex; justify-content: space-between; gap: 18px; border-bottom: 1px solid #d3ccc2; }
+.nexa-add-bill-review dl div:last-child { border-bottom: 0; }
+.nexa-add-bill-review dt { color: #777168; font-size: 8px; }
+.nexa-add-bill-review dd { margin: 0; font-size: 8px; font-weight: 700; text-align: right; }
+.nexa-add-bill-review > small { color: #b33320; font-size: 8px; line-height: 1.5; }
+.nexa-add-bill-review footer { margin-top: 23px; display: flex; justify-content: flex-end; gap: 8px; }
+.nexa-add-bill-review footer button { padding: 10px 12px; border: 1px solid #171615; background: transparent; color: #171615; font-size: 7px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+.nexa-add-bill-review footer button.is-primary { background: #171615; color: #f8f5ee; }
+.nexa-bill-receipt { display: grid; place-items: center; }
+.nexa-bill-receipt > div { width: min(100%,600px); padding: 42px; border: 1px solid #171615; text-align: center; }
+.nexa-bill-receipt > div > span { color: #e54e2b; font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.nexa-bill-receipt > div > b { width: 46px; height: 46px; margin: 20px auto; display: grid; place-items: center; background: #315e3c; color: #f8f5ee; font-size: 18px; }
+.nexa-bill-receipt h1 { margin: 0 0 10px; font: 400 clamp(32px,5vw,50px)/1 Georgia,serif; letter-spacing: -.05em; }
+.nexa-bill-receipt > div > p { color: #777168; font-size: 9px; }
+.nexa-bill-receipt dl { margin: 27px 0; border-block: 1px solid #c8c1b7; }
+.nexa-bill-receipt dl div { padding: 11px 0; display: flex; justify-content: space-between; border-bottom: 1px solid #d3ccc2; }
+.nexa-bill-receipt dl div:last-child { border-bottom: 0; }
+.nexa-bill-receipt dt { color: #777168; font-size: 8px; }
+.nexa-bill-receipt dd { margin: 0; font-size: 8px; font-weight: 700; }
+.nexa-bill-receipt > div > div { display: flex; justify-content: center; gap: 8px; }
+.nexa-bill-receipt button { padding: 11px 16px; border: 1px solid #171615; background: transparent; color: #171615; font-size: 8px; font-weight: 700; text-transform: uppercase; cursor: pointer; }
+.nexa-bill-receipt button:first-child { background: #171615; color: #f8f5ee; }
+
+@media (max-width: 900px) {
+  .nexa-bills-layout, .nexa-bill-payment { grid-template-columns: 1fr; }
+  .nexa-bill-payment > aside { position: static; }
+}
+@media (max-width: 700px) {
+  .nexa-bill-summary { grid-template-columns: 1fr; }
+  .nexa-bill-summary > div { border-right: 0; border-bottom: 1px solid #c8c1b7; }
+  .nexa-bill-insight, .nexa-bill-change { grid-template-columns: 1fr; }
+  .nexa-bill-change button { grid-column: 1; grid-row: auto; justify-self: start; }
+  .nexa-bills-list > header { align-items: flex-start; flex-direction: column; }
+  .nexa-bills-list-actions { width: 100%; align-items: stretch; flex-direction: column; }
+  .nexa-bills-list-actions .nexa-add-bill-action { justify-content: center; }
+  .nexa-bills-list-actions > div { width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .nexa-bills-list article { grid-template-columns: 34px minmax(0,1fr) auto; }
+  .nexa-bills-list article > em { display: none; }
+  .nexa-bills-list article > button { grid-column: 2 / -1; }
+  .nexa-bill-detail-lead { align-items: flex-start; flex-direction: column; }
+  .nexa-bill-detail-lead > div:last-child { text-align: left; }
+  .nexa-bill-dialog-backdrop footer, .nexa-bill-receipt > div > div { flex-direction: column-reverse; }
+  .nexa-bill-dialog-backdrop footer button, .nexa-bill-receipt button { width: 100%; }
+  .nexa-add-bill-fields, .nexa-add-bill-fields.is-three { grid-template-columns: 1fr; }
+  .nexa-add-bill-fields label:last-child, .nexa-add-bill-fields.is-three label:last-child { grid-column: auto; }
+  .nexa-bill-sheet { padding: 22px; }
+  .nexa-add-bill-review footer { flex-direction: column-reverse; }
+  .nexa-add-bill-review footer button { width: 100%; }
+}

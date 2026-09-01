@@ -1,0 +1,37 @@
+/* Synchronized intelligence-section demo. */
+.nexa-prompts__list { gap: 0; }
+.nexa-prompt-card { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr) 20px; gap: 12px; align-items: center; overflow: hidden; color: #8f8a82; transition: color .25s ease, padding-left .25s ease; }
+.nexa-prompt-card::after { content: ''; position: absolute; left: 0; bottom: -1px; width: 0; height: 2px; background: #e54e2b; }
+.nexa-prompt-card.is-active { padding-left: 12px; color: #f3f0e8; border-bottom-color: #f3f0e8; }
+.nexa-prompt-card.is-active::after { animation: nexaQuestionProgress 3.8s linear forwards; }
+.nexa-prompt-number { color: #716d66 !important; font-size: 9px; font-weight: 700; letter-spacing: .12em; }
+.nexa-prompt-card.is-active .nexa-prompt-number, .nexa-prompt-arrow { color: #e54e2b !important; }
+.nexa-prompt-copy { min-width: 0; color: inherit !important; }
+.nexa-prompt-arrow { justify-self: end; opacity: .35; transform: translate(-5px, 5px); transition: opacity .25s ease, transform .25s ease; }
+.nexa-prompt-card.is-active .nexa-prompt-arrow { opacity: 1; transform: none; }
+
+.nexa-status-card { min-height: 370px; display: flex; flex-direction: column; animation: nexaAnswerIn .4s ease both; }
+.nexa-answer-view { flex: 1; display: flex; flex-direction: column; }
+.nexa-answer-view > p { margin-top: 34px; }
+.nexa-answer-view > small { margin-top: 8px; color: #777168; font-size: 10px; }
+.nexa-card-answer { padding-top: 25px; }
+.nexa-debit-card { min-height: 132px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; background: #171615; color: #f3f0e8; }
+.nexa-debit-card span { color: #e54e2b; font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.nexa-debit-card b { color: #f3f0e8; font: 400 24px/1 Georgia, serif; letter-spacing: .08em; }
+.nexa-debit-card small { color: #aaa59c; font-size: 8px; letter-spacing: .16em; }
+.nexa-card-state { margin-top: 17px; padding-bottom: 14px; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: center; border-bottom: 1px solid #c8c1b7; }
+.nexa-lock-mark { width: 32px; height: 32px; display: grid; place-items: center; background: #e54e2b; color: #171615; font-size: 17px; }
+.nexa-card-state p { margin: 0 0 3px; color: #171615; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.nexa-card-state strong { color: #171615; font: 600 13px Arial, sans-serif; }
+.nexa-spend-answer > strong { font-size: 40px; }
+.nexa-spend-breakdown { margin-top: 24px; display: grid; gap: 13px; }
+.nexa-spend-breakdown > div { display: grid; gap: 6px; }
+.nexa-spend-breakdown span { display: flex; justify-content: space-between; }
+.nexa-spend-breakdown span b { color: #35322e; font-size: 10px; font-weight: 600; }
+.nexa-spend-breakdown span small { color: #777168; font-size: 9px; }
+.nexa-spend-breakdown i { height: 3px; background: #d7d0c6; }
+.nexa-spend-breakdown i b { display: block; height: 100%; background: #e54e2b; }
+@keyframes nexaQuestionProgress { to { width: 100%; } }
+@keyframes nexaAnswerIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) { .nexa-prompt-card { grid-template-columns: 26px minmax(0, 1fr) 18px; padding-block: 17px; font-size: 16px; }.nexa-status-card { min-height: 360px; }.nexa-debit-card { min-height: 122px; } }
+@media (prefers-reduced-motion: reduce) { .nexa-prompt-card.is-active::after { animation: none; width: 100%; }.nexa-status-card { animation: none; } }
