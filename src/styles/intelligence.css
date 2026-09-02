@@ -10,28 +10,131 @@
 .nexa-prompt-arrow { justify-self: end; opacity: .35; transform: translate(-5px, 5px); transition: opacity .25s ease, transform .25s ease; }
 .nexa-prompt-card.is-active .nexa-prompt-arrow { opacity: 1; transform: none; }
 
-.nexa-status-card { min-height: 370px; display: flex; flex-direction: column; animation: nexaAnswerIn .4s ease both; }
-.nexa-answer-view { flex: 1; display: flex; flex-direction: column; }
-.nexa-answer-view > p { margin-top: 34px; }
-.nexa-answer-view > small { margin-top: 8px; color: #777168; font-size: 10px; }
-.nexa-card-answer { padding-top: 25px; }
-.nexa-debit-card { min-height: 132px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; background: #171615; color: #f3f0e8; }
-.nexa-debit-card span { color: #e54e2b; font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-.nexa-debit-card b { color: #f3f0e8; font: 400 24px/1 Georgia, serif; letter-spacing: .08em; }
-.nexa-debit-card small { color: #aaa59c; font-size: 8px; letter-spacing: .16em; }
-.nexa-card-state { margin-top: 17px; padding-bottom: 14px; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: center; border-bottom: 1px solid #c8c1b7; }
-.nexa-lock-mark { width: 32px; height: 32px; display: grid; place-items: center; background: #e54e2b; color: #171615; font-size: 17px; }
-.nexa-card-state p { margin: 0 0 3px; color: #171615; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
-.nexa-card-state strong { color: #171615; font: 600 13px Arial, sans-serif; }
-.nexa-spend-answer > strong { font-size: 40px; }
-.nexa-spend-breakdown { margin-top: 24px; display: grid; gap: 13px; }
+.nexa-status-stage { min-height: 410px; align-items: stretch; }
+.nexa-status-stage .nexa-orb { display: none; }
+.nexa-status-card { width: 100%; min-height: 410px; padding: 0; display: grid; grid-template-rows: 60px 1fr 38px; border: 1px solid #f3f0e8; background: #f3f0e8; box-shadow: none; color: #171615; }
+.nexa-response-header { padding: 0 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #c8c1b7; }
+.nexa-response-header > div { display: grid; gap: 4px; }
+.nexa-response-header span, .nexa-response-lead > span, .nexa-freeze-state span, .nexa-control-note span, .nexa-cashflow > span { color: #777168; font-size: 8px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.nexa-response-header strong { color: #171615; font: 600 10px/1 Arial, sans-serif; letter-spacing: .04em; }
+.nexa-response-header > b { color: #e54e2b; font: 700 9px/1 monospace; letter-spacing: .06em; }
+.nexa-response-body { min-width: 0; padding: 25px 24px 20px; overflow: hidden; animation: nexaResponseIn .34s cubic-bezier(.22,.65,.3,1) both; }
+.nexa-answer-view { height: 100%; display: flex; flex-direction: column; }
+.nexa-response-lead { display: grid; gap: 7px; }
+.nexa-response-lead > strong { color: #171615; font: 400 clamp(35px,3.4vw,50px)/.95 Georgia, serif; letter-spacing: -.055em; }
+.nexa-response-lead > strong small { color: #777168; font-size: .52em; }
+.nexa-response-lead p { margin: 0; color: #777168; font-size: 9px; }
+.nexa-response-lead p b { color: #171615; }
+.nexa-response-lead p.is-positive { width: fit-content; padding: 5px 7px; background: #dfe6d4; color: #354229; }
+.nexa-balance-metrics { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; border-block: 1px solid #c8c1b7; }
+.nexa-balance-metrics > div { padding: 13px 0; display: grid; gap: 4px; }
+.nexa-balance-metrics > div + div { padding-left: 18px; border-left: 1px solid #c8c1b7; }
+.nexa-balance-metrics span { color: #777168; font-size: 8px; text-transform: uppercase; }
+.nexa-balance-metrics strong { color: #171615; font: 400 18px/1 Georgia, serif; }
+.nexa-balance-metrics small { color: #918a81; font-size: 7px; }
+.nexa-cashflow { margin-top: auto; padding-top: 16px; display: grid; gap: 10px; }
+.nexa-cashflow > div { height: 34px; display: flex; align-items: end; gap: 6px; }
+.nexa-cashflow i { flex: 1; background: #d4cdc2; }
+.nexa-cashflow i:nth-child(1) { height: 35%; }.nexa-cashflow i:nth-child(2) { height: 52%; }.nexa-cashflow i:nth-child(3) { height: 74%; }.nexa-cashflow i:nth-child(4) { height: 61%; }.nexa-cashflow i:nth-child(5) { height: 78%; }.nexa-cashflow i:nth-child(6) { height: 100%; background: #e54e2b; }
+.nexa-card-reference { padding: 13px 15px; display: flex; justify-content: space-between; align-items: end; border: 1px solid #c8c1b7; }
+.nexa-card-reference > div { display: grid; gap: 6px; }
+.nexa-card-reference span, .nexa-card-reference small { color: #777168; font-size: 8px; letter-spacing: .08em; text-transform: uppercase; }
+.nexa-card-reference strong { color: #171615; font: 400 18px/1 Georgia, serif; letter-spacing: .08em; }
+.nexa-freeze-state { flex: 1; display: grid; grid-template-columns: 54px 1fr; gap: 17px; align-items: center; }
+.nexa-lock-graphic { position: relative; width: 48px; height: 42px; display: block; border: 1px solid #171615; background: #e54e2b; }
+.nexa-lock-graphic::before { content: ''; position: absolute; left: 12px; top: -15px; width: 22px; height: 20px; border: 1px solid #171615; border-bottom: 0; border-radius: 14px 14px 0 0; }
+.nexa-lock-graphic::after { content: ''; position: absolute; left: 22px; top: 16px; width: 4px; height: 10px; background: #171615; }
+.nexa-freeze-state > div { display: grid; gap: 7px; }
+.nexa-freeze-state strong { color: #171615; font: 400 40px/.95 Georgia, serif; letter-spacing: -.04em; }
+.nexa-freeze-state p { max-width: 300px; margin: 0; color: #625e57; font-size: 10px; line-height: 1.45; }
+.nexa-control-note { padding: 12px 0 0; display: flex; justify-content: space-between; border-top: 1px solid #c8c1b7; }
+.nexa-control-note strong { color: #315e3c; font: 700 8px/1 Arial, sans-serif; text-transform: uppercase; }
+.nexa-spend-breakdown { margin-top: 25px; display: grid; gap: 14px; }
 .nexa-spend-breakdown > div { display: grid; gap: 6px; }
 .nexa-spend-breakdown span { display: flex; justify-content: space-between; }
 .nexa-spend-breakdown span b { color: #35322e; font-size: 10px; font-weight: 600; }
 .nexa-spend-breakdown span small { color: #777168; font-size: 9px; }
 .nexa-spend-breakdown i { height: 3px; background: #d7d0c6; }
 .nexa-spend-breakdown i b { display: block; height: 100%; background: #e54e2b; }
+.nexa-response-footer { padding: 0 24px; display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: center; border-top: 1px solid #c8c1b7; }
+.nexa-response-footer > span { color: #8f887f; font-size: 7px; letter-spacing: .1em; text-transform: uppercase; }
+.nexa-response-footer > div { display: flex; gap: 4px; }
+.nexa-response-footer i { height: 2px; flex: 1; background: #d4cdc2; }
+.nexa-response-footer i.is-active { background: #e54e2b; animation: nexaResponseProgress 3.8s linear both; }
 @keyframes nexaQuestionProgress { to { width: 100%; } }
-@keyframes nexaAnswerIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-@media (max-width: 760px) { .nexa-prompt-card { grid-template-columns: 26px minmax(0, 1fr) 18px; padding-block: 17px; font-size: 16px; }.nexa-status-card { min-height: 360px; }.nexa-debit-card { min-height: 122px; } }
-@media (prefers-reduced-motion: reduce) { .nexa-prompt-card.is-active::after { animation: none; width: 100%; }.nexa-status-card { animation: none; } }
+@keyframes nexaResponseProgress { from { transform: scaleX(0); transform-origin: left; } to { transform: scaleX(1); transform-origin: left; } }
+@keyframes nexaResponseIn { from { opacity: 0; transform: translateX(13px); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) { .nexa-prompt-card { grid-template-columns: 26px minmax(0, 1fr) 18px; padding-block: 17px; font-size: 16px; }.nexa-status-stage, .nexa-status-card { min-height: 390px; }.nexa-response-header, .nexa-response-footer { padding-inline: 19px; }.nexa-response-body { padding: 22px 19px 17px; }.nexa-response-lead > strong { font-size: 37px; } }
+@media (prefers-reduced-motion: reduce) { .nexa-prompt-card.is-active::after { animation: none; width: 100%; }.nexa-response-body, .nexa-response-footer i.is-active { animation: none; } }
+
+/* Editorial intelligence canvas: deliberately distinct from the hero demo. */
+.nexa-status-stage { min-height: 430px; display: block; }
+.nexa-intelligence-canvas { position: relative; width: 100%; min-height: 430px; padding: 0; overflow: hidden; color: #f3f0e8; background: transparent; }
+.nexa-intelligence-head { height: 54px; padding: 0 0 15px; display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid #4c4842; }
+.nexa-intelligence-head > div { display: grid; gap: 5px; }
+.nexa-intelligence-head span, .nexa-balance-figure > span, .nexa-balance-path header span, .nexa-balance-ledger span, .nexa-freeze-copy > span, .nexa-spending-lead > span, .nexa-spending-note > span { color: #8c867d; font-size: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.nexa-intelligence-head > strong { color: #f3f0e8; font: 400 20px/1 Georgia, 'Times New Roman', serif; letter-spacing: -.025em; }
+.nexa-intelligence-scene { position: relative; min-height: 376px; padding: 25px 0 0; animation: nexaSceneReveal .28s ease both; }
+.nexa-balance-scene { min-height: 350px; display: grid; grid-template-columns: .9fr 1.1fr; grid-template-rows: 1fr auto; gap: 20px 34px; }
+.nexa-balance-figure { grid-column: 1; grid-row: 1; align-self: stretch; padding: 20px; display: grid; align-content: center; gap: 9px; border: 1px solid #4c4842; }
+.nexa-balance-figure > strong { color: #f3f0e8; font: 400 clamp(38px,4.3vw,64px)/.9 Georgia, serif; letter-spacing: -.06em; white-space: nowrap; }
+.nexa-balance-figure > strong small { margin-left: 2px; color: #b4aea5; font-size: .58em; letter-spacing: -.035em; }
+.nexa-balance-figure p { margin: 0; color: #8c867d; font-size: 9px; }.nexa-balance-figure p b { color: #d2cdc4; }
+.nexa-balance-path { grid-column: 2; grid-row: 1 / -1; align-self: stretch; padding: 20px; display: flex; flex-direction: column; justify-content: center; border: 1px solid #4c4842; }.nexa-balance-path header { display: flex; justify-content: space-between; }.nexa-balance-path header b { color: #89a079; font-size: 9px; }
+.nexa-balance-path svg { width: 100%; height: 112px; margin-top: 9px; overflow: visible; }.nexa-balance-path .is-grid { fill: none; stroke: #35322f; stroke-width: 1; }.nexa-balance-path .is-line { fill: none; stroke: #e54e2b; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 510; animation: nexaLineDraw .8s .18s ease both; }.nexa-balance-path circle { fill: #e54e2b; }
+.nexa-balance-path footer { margin-top: -5px; display: flex; justify-content: space-between; color: #6f6a63; font-size: 7px; }
+.nexa-balance-ledger { grid-column: 1; grid-row: 2; align-self: end; display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #4c4842; }
+.nexa-balance-ledger > div { padding: 13px 14px; display: grid; gap: 6px; }.nexa-balance-ledger > div + div { border-left: 1px solid #4c4842; }.nexa-balance-ledger strong { color: #f3f0e8; font: 400 19px/1 Georgia, serif; }.nexa-balance-ledger p { grid-column: 1 / -1; margin: 0; padding: 12px 14px; display: flex; align-items: center; border-top: 1px solid #4c4842; color: #9a958c; font-size: 9px; line-height: 1.45; }
+.nexa-freeze-scene { min-height: 350px; display: grid; grid-template-columns: minmax(190px,.9fr) minmax(220px,1.1fr); grid-template-rows: 1fr auto; gap: 22px 42px; align-items: center; }
+.nexa-card-object { position: relative; aspect-ratio: 1.58; padding: 19px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #6e6961; background: repeating-linear-gradient(135deg,transparent 0 18px,#1e1d1b 18px 19px); transform: rotate(-3deg); }
+.nexa-card-object header, .nexa-card-object footer { display: flex; align-items: center; justify-content: space-between; }.nexa-card-object header strong { color: #f3f0e8; font: 700 17px/1 Arial, sans-serif; letter-spacing: -.06em; }.nexa-card-object header span, .nexa-card-object footer { color: #8c867d; font-size: 7px; letter-spacing: .12em; text-transform: uppercase; }.nexa-card-object > b { color: #f3f0e8; font: 400 22px/1 Georgia, serif; letter-spacing: .1em; }
+.nexa-card-object em { position: absolute; left: -1px; right: -1px; top: 50%; padding: 9px 18px; background: #e54e2b; color: #171615; font-size: 9px; font-style: normal; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; transform: translateY(-50%); }
+.nexa-freeze-copy { padding: 20px; display: flex; flex-direction: column; border: 1px solid #4c4842; }.nexa-freeze-copy h3 { margin: 9px 0 13px; color: #f3f0e8; font: 400 clamp(38px,4vw,58px)/.88 Georgia, serif; letter-spacing: -.055em; }.nexa-freeze-copy > p { max-width: 320px; margin: 0 0 24px; color: #99938a; font-size: 10px; line-height: 1.55; }
+.nexa-freeze-controls { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3,1fr); border-block: 1px solid #5f5a54; }
+.nexa-freeze-controls > div { padding: 13px 14px; display: grid; gap: 7px; color: #b5afa6; font-size: 8px; text-transform: uppercase; }
+.nexa-freeze-controls > div + div { border-left: 1px solid #5f5a54; }
+.nexa-freeze-controls span { display: flex; align-items: center; gap: 8px; }
+.nexa-freeze-controls i { width: 5px; height: 5px; background: #e54e2b; }
+.nexa-freeze-controls i.is-safe { background: #8da27d; }
+.nexa-freeze-controls b { color: #e54e2b; font-size: 8px; }.nexa-freeze-controls b.is-safe { color: #9db18e; }
+.nexa-spending-scene { min-height: 350px; display: grid; grid-template-columns: .8fr 1.2fr; grid-template-rows: 1fr auto; gap: 18px; }.nexa-spending-lead { padding: 20px; display: flex; flex-direction: column; justify-content: center; border: 1px solid #4c4842; }.nexa-spending-lead strong { margin: 8px 0; color: #f3f0e8; font: 400 clamp(45px,5vw,70px)/.9 Georgia, serif; letter-spacing: -.06em; }.nexa-spending-lead p { width: fit-content; margin: 0; padding: 5px 7px; background: #273126; color: #a8c094; font-size: 8px; }
+.nexa-spending-composition { min-height: 210px; padding: 8px; display: flex; align-items: stretch; gap: 3px; border: 1px solid #4c4842; }.nexa-spending-composition i { min-width: 0; padding: 12px 9px; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; background: #e54e2b; color: #171615; font-style: normal; }.nexa-spending-composition i:nth-child(2) { background: #d9d2c8; }.nexa-spending-composition i:nth-child(3) { background: #a39d94; }.nexa-spending-composition i.is-rest { background: #34312e; color: #f3f0e8; }.nexa-spending-composition span { font-size: 7px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }.nexa-spending-composition b { margin-top: 5px; font: 400 13px/1 Georgia, serif; white-space: nowrap; }
+.nexa-spending-note { grid-column: 1 / -1; padding: 14px 16px; display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center; border: 1px solid #4c4842; }.nexa-spending-note p { margin: 0; color: #a8a198; font-size: 9px; }.nexa-spending-note > b { color: #f3f0e8; font-size: 8px; text-transform: uppercase; }
+@keyframes nexaSceneReveal { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes nexaLineDraw { from { stroke-dashoffset: 510; } to { stroke-dashoffset: 0; } }
+@media (max-width: 760px) { .nexa-intelligence-canvas, .nexa-status-stage { min-height: 440px; }.nexa-balance-scene, .nexa-freeze-scene, .nexa-spending-scene { grid-template-columns: 1fr; gap: 20px; }.nexa-balance-path { display: none; }.nexa-balance-ledger { grid-column: 1; grid-template-columns: 1fr 1fr; }.nexa-balance-ledger p { grid-column: 1 / -1; padding: 12px 0; border-left: 0; border-top: 1px solid #4c4842; }.nexa-freeze-scene { padding-top: 10px; }.nexa-card-object { width: min(100%,280px); }.nexa-freeze-copy h3 { font-size: 39px; }.nexa-spending-scene { grid-template-rows: auto auto auto; }.nexa-spending-composition { min-height: 130px; }.nexa-spending-note { grid-column: 1; grid-template-columns: 1fr; gap: 7px; } }
+@media (prefers-reduced-motion: reduce) { .nexa-intelligence-scene, .nexa-balance-path .is-line { animation: none; } }
+
+/* One clear frame around each complete response, with quiet internal structure. */
+.nexa-intelligence-canvas { border: 1px solid #817a71; }
+.nexa-intelligence-head { height: 63px; padding: 0 22px 15px; border-bottom-color: #5f5a54; }
+.nexa-intelligence-scene { padding: 25px 22px 22px; }
+.nexa-balance-figure,
+.nexa-balance-path,
+.nexa-freeze-copy,
+.nexa-spending-lead,
+.nexa-spending-composition,
+.nexa-spending-note { padding-left: 0; padding-right: 0; border: 0; background: transparent; }
+.nexa-balance-figure { padding-top: 0; padding-bottom: 0; }
+.nexa-balance-path { padding-top: 4px; padding-bottom: 0; }
+.nexa-balance-ledger { border: 0; border-top: 1px solid #5f5a54; border-bottom: 1px solid #5f5a54; }
+.nexa-balance-ledger > div + div,
+.nexa-balance-ledger p { border-left-color: #5f5a54; }
+.nexa-freeze-copy { padding-top: 0; padding-bottom: 0; }
+.nexa-freeze-copy > div { border-top-color: #5f5a54; }
+.nexa-card-object { border-color: #817a71; }
+.nexa-spending-lead { padding-top: 0; padding-bottom: 0; }
+.nexa-spending-composition { padding-top: 0; padding-bottom: 0; }
+.nexa-spending-note { padding-top: 14px; padding-bottom: 14px; border-top: 1px solid #5f5a54; border-bottom: 1px solid #5f5a54; }
+
+/* Balance response: one continuous, readable composition. */
+.nexa-balance-scene { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; gap: 0; }
+.nexa-balance-figure { grid-column: 1; grid-row: 1; padding: 3px 0 18px; align-content: end; border: 0; border-bottom: 1px solid #5f5a54; }
+.nexa-balance-figure > strong { font-size: clamp(42px,4.8vw,68px); }
+.nexa-balance-path { grid-column: 1; grid-row: 2; padding: 17px 0 14px; border: 0; }
+.nexa-balance-path svg { height: 105px; margin-top: 7px; }
+.nexa-balance-ledger { grid-column: 1; grid-row: 3; grid-template-columns: 1fr 1fr 1.3fr; border: 0; border-top: 1px solid #5f5a54; border-bottom: 0; }
+.nexa-balance-ledger > div { padding: 13px 16px 0 0; }
+.nexa-balance-ledger > div + div { padding-left: 16px; border-left: 1px solid #5f5a54; }
+.nexa-balance-ledger p { grid-column: auto; padding: 13px 0 0 16px; border-top: 0; border-left: 1px solid #5f5a54; }
+@media (max-width: 760px) { .nexa-balance-scene { grid-template-rows: auto auto; }.nexa-balance-figure { grid-row: 1; }.nexa-balance-ledger { grid-row: 2; grid-template-columns: 1fr 1fr; }.nexa-balance-ledger p { grid-column: 1 / -1; padding: 12px 0 0; border-left: 0; border-top: 1px solid #5f5a54; } }
