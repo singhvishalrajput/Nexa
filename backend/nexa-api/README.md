@@ -14,6 +14,19 @@ Spring Boot backend for the Nexa conversational-banking prototype.
 - BCrypt password hashing and stateless JWT authentication
 - Rotating, server-side revocable refresh tokens
 - Customer ownership checks for accounts and transactions
+- Payment-service entities for beneficiaries, transfers, strong approvals, and idempotency
+- An audit and transactional-outbox boundary for service-to-service events
+
+## Service boundaries
+
+The application is prepared for independently deployable Identity, Accounts and
+Ledger, Payments, Platform Events, and API Gateway services. Their ownership
+rules and the transfer event contract are documented in
+[docs/microservice-architecture.md](docs/microservice-architecture.md).
+
+The current `nexa-api` remains the composition runtime while those services are
+extracted. This avoids sharing financial tables or introducing distributed
+transactions before the payment workflow is implemented end to end.
 
 ## Run locally
 

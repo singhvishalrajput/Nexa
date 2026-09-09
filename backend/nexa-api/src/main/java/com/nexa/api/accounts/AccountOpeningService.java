@@ -52,10 +52,6 @@ public class AccountOpeningService {
         if (!"CUSTOMER".equals(user.role())) {
             throw new ConflictException("Only customers can open a Nexa bank account.");
         }
-        if (bankAccountRepository.existsByUserId(userId)) {
-            throw new ConflictException("This customer already has a Nexa bank account.");
-        }
-
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         String accountId = secureId("acc_");
         String accountNumber = uniqueAccountNumber();
@@ -92,7 +88,7 @@ public class AccountOpeningService {
                     request.currencyCode(),
                     now);
         } catch (DataIntegrityViolationException exception) {
-            throw new ConflictException("A Nexa bank account could not be opened because one already exists.");
+            throw new ConflictException("A Nexa bank account could not be opened because its account details already exist.");
         }
         return toResponse(account);
     }

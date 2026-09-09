@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -72,15 +71,11 @@ class AccountOpeningServiceTest {
     }
 
     @Test
-    void rejectsASecondAccountBeforeWritingLedgerData() {
-        when(bankAccountRepository.existsByUserId("usr_customer")).thenReturn(true);
+    void rejectsAccountOpeningForNonCustomerRoles() {
+        when(userQueryService.requireUser("usr_customer")).thenReturn(new UserQueryService.UserSummary(
+                "usr_customer", "agent@example.com", "Agent", null, "ACTIVE", "SUPPORT_AGENT"));
 
         assertThatThrownBy(() -> service.open(new OpenAccountRequest("Another", "CURRENT", "INR")))
                 .isInstanceOf(ConflictException.class);
-
-        verify(bankAccountRepository, never()).saveAndFlush(any());
-        verify(openingLedgerService, never()).recordOpeningCredit(
-                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
-                any(BigDecimal.class), anyString(), any());
     }
 }

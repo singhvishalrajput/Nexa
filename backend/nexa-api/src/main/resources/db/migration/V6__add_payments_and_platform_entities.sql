@@ -5,6 +5,12 @@
 
 ALTER TABLE bank_accounts DROP CONSTRAINT uk_bank_accounts_user;
 
+-- Roles are coarse-grained entry permissions; banking ownership checks remain
+-- mandatory even for privileged operational roles.
+ALTER TABLE users DROP CONSTRAINT ck_users_role;
+ALTER TABLE users ADD CONSTRAINT ck_users_role
+    CHECK (role IN ('CUSTOMER', 'SUPPORT_AGENT', 'FRAUD_ANALYST', 'ADMIN'));
+
 CREATE TABLE beneficiaries (
     id VARCHAR2(26) PRIMARY KEY,
     user_id VARCHAR2(26) NOT NULL,
