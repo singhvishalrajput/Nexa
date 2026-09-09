@@ -39,7 +39,7 @@ The product is not intended to be a generic chatbot. The conversation is the nav
 
 ### Location and stack
 
-- Frontend: `C:\Users\Vishal Singh\ojet\Frontend\nexa`
+- Frontend: `D:\Nexa\apps\web`
 - Framework: Oracle JET 20.1 with Preact and TypeScript
 - Local application: `http://localhost:8000/`
 - Current data: component state and browser `localStorage`
@@ -138,14 +138,14 @@ Create one Spring Boot application named `nexa-api`, organized into strict busin
 Suggested location:
 
 ```text
-C:\Users\Vishal Singh\ojet\
-├── Frontend\
-│   └── nexa\
-└── Backend\
-    └── nexa-api\
+C:\Nexa\
+├── apps\
+│   ├── api\
+│   └── web\
+└── docs\
 ```
 
-If possible, save `C:\Users\Vishal Singh\ojet` as the common Codex project so future frontend and backend tasks can see both applications and this document.
+Save `D:\Nexa` as the common project so future frontend and backend tasks can see both applications and the shared documentation.
 
 ### Initial runtime topology
 
@@ -722,11 +722,11 @@ The first milestone is complete only when:
 Copy this into the dedicated backend task after opening the common `ojet` project:
 
 ```text
-We are starting the Nexa backend. Nexa is a conversational banking application whose Oracle JET/Preact frontend is located at C:\Users\Vishal Singh\ojet\Frontend\nexa.
+We are starting the Nexa backend. Nexa is a conversational banking application whose Oracle JET/Preact frontend is located at D:\Nexa\apps\web.
 
-Read Frontend\nexa\docs\BACKEND_HANDOFF.md completely before making changes. Treat the existing frontend as the visual and interaction reference, but remember that all current banking data and outcomes are mocked.
+Read docs\BACKEND_HANDOFF.md completely before making changes. Treat the existing frontend as the visual and interaction reference, but remember that all current banking data and outcomes are mocked.
 
-Create the backend at C:\Users\Vishal Singh\ojet\Backend\nexa-api as a Java 21 Maven Spring Boot modular monolith. Begin only with the foundation and first secure vertical slice defined in the handoff. Use Oracle, Flyway, Spring Security, explicit module boundaries, BigDecimal money values, an append-only double-entry ledger, idempotent transfer execution, and an auditable transfer lifecycle.
+Create the backend at D:\Nexa\apps\api as a Java 21 Maven Spring Boot modular monolith. Begin only with the foundation and first secure vertical slice defined in the handoff. Use Oracle, Flyway, Spring Security, explicit module boundaries, BigDecimal money values, an append-only double-entry ledger, idempotent transfer execution, and an auditable transfer lifecycle.
 
 Do not add Kafka yet; design domain events and a transactional-outbox boundary so it can be introduced after the core journey works. Do not add AI before the deterministic banking APIs are reliable. Use WebAuthn/passkeys for eventual face/fingerprint-backed approvals and never store biometric data.
 

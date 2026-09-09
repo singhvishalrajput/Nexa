@@ -1,4 +1,0 @@
-import { h } from "preact";
-const examples = ["What's my available balance?", "Freeze my debit card.", "Analyze my spending last month."];
-type PromptExamplesProps = { activeIndex: number; onSelect: (index: number) => void };
-export function PromptExamples({ activeIndex, onSelect }: PromptExamplesProps) { return <div class="nexa-prompts"><p class="nexa-kicker">Conversational control</p><h2>Say it once.<br />It gets done.</h2><div class="nexa-prompts__list">{examples.map((example, index) => <button type="button" class={`nexa-prompt-card ${activeIndex === index ? "is-active" : ""}`} onClick={() => onSelect(index)} aria-pressed={activeIndex === index} key={example}><span class="nexa-prompt-number">0{index + 1}</span><span class="nexa-prompt-copy">“{example}”</span><span class="nexa-prompt-arrow" aria-hidden="true">↗</span></button>)}</div></div>; }
