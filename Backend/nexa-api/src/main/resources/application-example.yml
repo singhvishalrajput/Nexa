@@ -1,0 +1,20 @@
+# Copy values into a non-committed environment-specific configuration source.
+# Comma-separated origins are supported.
+nexa:
+  cors:
+    allowed-origins: https://app.example.com
+  security:
+    jwt:
+      secret: set-through-NEXA_JWT_SECRET-with-at-least-32-random-bytes
+
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
+    username: NEXA_APP
+    password: set-through-NEXA_DB_PASSWORD
+    driver-class-name: oracle.jdbc.OracleDriver
+  flyway:
+    locations: classpath:db/migration
+
+server:
+  port: 8080
