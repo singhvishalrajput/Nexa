@@ -1,0 +1,56 @@
+/* Nexa editorial redesign: quiet surfaces, strong type, one intentional accent. */
+:root { background: #f3f0e8; color: #171615; }
+body { background: #f3f0e8; }
+.nexa-landing { color: #171615; background: #f3f0e8; }
+.nexa-navbar { top: 0; width: 100%; min-height: 76px; padding: 0 5vw; border: 0; border-bottom: 1px solid #171615; border-radius: 0; background: #f3f0e8; box-shadow: none; backdrop-filter: none; }
+.nexa-logo, .nexa-footer strong { color: #171615; font-size: 25px; letter-spacing: -.09em; }
+.nexa-nav-links { gap: 28px; }
+.nexa-nav-links a, .nexa-footer a { color: #4c4944; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.nexa-nav-links a:first-child, .nexa-nav-links a:hover, .nexa-footer a:hover { color: #e54e2b; }
+.nexa-primary-button, .nexa-enter-button { border: 1px solid #171615; border-radius: 0; padding: 11px 17px; background: #171615; box-shadow: none; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; }
+.nexa-primary-button:hover, .nexa-enter-button:hover { color: #171615; background: #e54e2b; border-color: #e54e2b; box-shadow: none; transform: none; }
+.nexa-hero { min-height: auto; padding: 174px 5vw 70px; display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(360px, .88fr); gap: 7vw; align-items: end; text-align: left; }
+.nexa-hero__intro { max-width: 780px; animation: rise .65s ease both; }
+.nexa-kicker { margin: 0 0 22px !important; color: #e54e2b !important; font-size: 11px !important; font-weight: 700; letter-spacing: .14em; line-height: 1.2 !important; text-transform: uppercase; }
+.nexa-hero__intro h1, .nexa-prompts h2, .nexa-final-cta h2 { color: #171615; background: none; -webkit-text-fill-color: initial; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; letter-spacing: -.065em; }
+.nexa-hero__intro h1 { max-width: 750px; font-size: clamp(64px, 8.5vw, 126px); line-height: .86; }
+.nexa-hero__intro p:not(.nexa-kicker) { max-width: 465px; margin: 34px 0 0; color: #4c4944; font-size: 17px; line-height: 1.55; }
+.nexa-command-panel { width: 100%; padding: 0; border: 1px solid #171615; border-radius: 0; background: #f9f7f1; box-shadow: none; color: #171615; animation: rise .8s .15s ease both; }
+.nexa-command-panel__prompt { min-height: 104px; padding: 0 23px; border-bottom: 1px solid #171615; font-size: 19px; }
+.nexa-microphone { width: 23px; color: #e54e2b; font-size: 29px; font-weight: 800; transform: none; }
+.nexa-typewriter:after { color: #e54e2b; }
+.nexa-transactions { padding: 0 23px 11px; }
+.nexa-eyebrow { margin: 18px 0 4px; color: #79736a; font-size: 10px; letter-spacing: .12em; }
+.nexa-transaction { min-height: 76px; border-bottom: 1px solid #d8d2c8; color: #171615; }
+.nexa-command-panel strong { color: #171615; }
+.nexa-transaction span { color: #716b63; font-size: 10px; }
+.nexa-transaction__icon { width: 34px; height: 34px; border-radius: 0; color: #171615; background: #e8e1d6; }
+.nexa-transaction__icon--primary { color: #fff; background: #e54e2b; }
+.nexa-positive { color: #e54e2b !important; }
+.nexa-experience { padding: 116px 5vw; border-block: 1px solid #171615; background: #171615; }
+.nexa-experience__content { width: 100%; max-width: 1400px; grid-template-columns: .95fr 1.05fr; gap: 9vw; }
+.nexa-prompts h2 { color: #f3f0e8; font-size: clamp(48px, 5vw, 76px); line-height: .91; }
+.nexa-experience .nexa-kicker { color: #f0a694 !important; }
+.nexa-prompts__list { border-top: 1px solid #6f6b64; }
+.nexa-prompt-card { width: 100%; display: flex; justify-content: space-between; padding: 20px 0; border: 0; border-bottom: 1px solid #6f6b64; border-radius: 0; background: transparent; color: #d4d0c8; font-size: clamp(16px, 1.5vw, 21px); }
+.nexa-prompt-card:hover { color: #f3f0e8; background: transparent; border-color: #e54e2b; transform: none; }
+.nexa-prompt-card span { color: #e54e2b; }
+.nexa-status-stage { min-height: 430px; justify-items: end; }
+.nexa-orb { width: 350px; height: 350px; border: 1px solid #e54e2b; border-radius: 0; box-shadow: none; transform: rotate(45deg); animation: pulse 4s ease-in-out infinite; }
+.nexa-orb::before, .nexa-orb::after, .nexa-orb i { border-color: #e54e2b; border-radius: 0; }
+.nexa-orb i:nth-child(2) { background: #e54e2b; box-shadow: none; }
+.nexa-status-card { width: min(100%, 420px); padding: 28px; border: 1px solid #f3f0e8; border-radius: 0; background: #f3f0e8; box-shadow: 14px 14px 0 #e54e2b; color: #171615; backdrop-filter: none; }
+.nexa-status-card__header { color: #625e57; }.nexa-active { border: 1px solid #171615; border-radius: 0; color: #171615; }.nexa-active i { background: #e54e2b; box-shadow: none; }.nexa-status-card p { color: #625e57; }.nexa-status-card strong { color: #171615; font-family: Georgia, serif; font-size: 35px; }.nexa-chart { border-top-color: #171615; }.nexa-chart i { background: #d7d0c6; }.nexa-chart i:nth-child(6) { background: #e54e2b; box-shadow: none; }
+.nexa-final-cta { padding: 145px 5vw; text-align: left; background: #e54e2b; }.nexa-final-cta .nexa-kicker { color: #171615 !important; }.nexa-final-cta h2 { max-width: 920px; color: #171615; font-size: clamp(60px, 8vw, 122px); line-height: .84; }.nexa-enter-button { color: #f3f0e8; }
+.nexa-footer { min-height: 300px; padding: 56px 5vw 52px; display: block; border: 0; background: #171615; color: #aaa49a; font-family: Arial, sans-serif; }
+.nexa-footer__main { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(450px, .9fr); gap: 7vw; align-items: start; }
+.nexa-footer__brand > a { display: inline-block; color: #f3f0e8; font-size: 32px; font-weight: 800; letter-spacing: -.09em; text-decoration: none; }
+.nexa-footer__brand p { max-width: 580px; margin: 29px 0 0; color: #f3f0e8; font: 400 clamp(26px, 3vw, 42px)/1.08 Georgia, 'Times New Roman', serif; letter-spacing: -.045em; }
+.nexa-footer__links { display: grid; grid-template-columns: repeat(3, minmax(100px, 1fr)); gap: 32px; }
+.nexa-footer__links > div > span { display: block; padding-bottom: 11px; border-bottom: 1px solid #4a4742; color: #77726b; font-size: 8px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+.nexa-footer__links nav { margin-top: 15px; display: grid; gap: 12px; }
+.nexa-footer__links a { width: fit-content; color: #d2cdc4; font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+.nexa-footer__links a b { margin-left: 4px; color: #77726b; font-weight: 400; transition: color .18s ease, transform .18s ease; }
+.nexa-footer__links a:hover b { color: #e54e2b; }
+@keyframes pulse { 50% { transform: rotate(45deg) scale(.94); } }
+@media (max-width: 760px) { .nexa-navbar { padding: 0 22px; }.nexa-nav-links { display: none; }.nexa-hero { padding: 132px 22px 48px; display: block; }.nexa-hero__intro h1 { font-size: clamp(61px, 18vw, 92px); }.nexa-hero__intro p:not(.nexa-kicker) { margin-bottom: 50px; }.nexa-command-panel__prompt { min-height: 86px; font-size: 16px; }.nexa-experience { padding: 76px 22px; }.nexa-experience__content { grid-template-columns: 1fr; gap: 62px; }.nexa-status-stage { min-height: 350px; justify-items: center; }.nexa-orb { width: 260px; height: 260px; }.nexa-status-card { padding: 22px; box-shadow: 9px 9px 0 #e54e2b; }.nexa-final-cta { padding: 94px 22px; }.nexa-final-cta h2 { font-size: clamp(59px, 17vw, 86px); }.nexa-footer { min-height: 0; padding: 45px 22px 40px; text-align: left; }.nexa-footer__main { grid-template-columns: 1fr; gap: 50px; }.nexa-footer__brand p { margin-top: 22px; font-size: 30px; }.nexa-footer__links { grid-template-columns: repeat(2, minmax(110px, 1fr)); gap: 38px 28px; }.nexa-footer__links nav { justify-content: flex-start; }.nexa-footer__legal { grid-column: 1 / -1; } }

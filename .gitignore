@@ -1,0 +1,61 @@
+# Frontend dependencies and Oracle JET generated output
+**/node_modules/
+/Frontend/nexa/jet_components/
+/Frontend/nexa/exchange_components/
+/Frontend/nexa/bower_components/
+/Frontend/nexa/dist/
+/Frontend/nexa/web/
+/Frontend/nexa/staged-themes/
+/Frontend/nexa/themes/
+/Frontend/nexa/jaftmp@/
+/Frontend/nexa/hybrid/node_modules/
+/Frontend/nexa/hybrid/platforms/
+/Frontend/nexa/hybrid/www/
+
+# Frontend test and tooling output
+**/coverage/
+**/.cache/
+*.tsbuildinfo
+
+# Spring Boot / Maven generated output
+**/target/
+
+# Local environment variables and secrets
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.template
+**/application-secrets.yml
+**/application-secrets.yaml
+**/application-private.yml
+**/application-private.yaml
+
+# Oracle credentials and wallet files
+**/Wallet_*/
+**/wallet/
+**/*.jks
+**/*.p12
+**/*.pfx
+**/*.pem
+**/*.key
+**/ojdbc.properties
+
+# IDE metadata
+**/.idea/
+**/.vscode/
+**/.settings/
+**/*.iml
+**/.classpath
+**/.project
+**/.factorypath
+
+# Logs and temporary files
+**/*.log
+**/*.tmp
+**/*.swp
+**/*~
+
+# Operating-system files
+**/.DS_Store
+**/Thumbs.db
+**/desktop.ini
