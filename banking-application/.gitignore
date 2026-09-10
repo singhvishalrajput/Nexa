@@ -1,0 +1,25 @@
+# Maven output
+target/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+application-local.properties
+
+# Eclipse / Spring Tool Suite
+.settings/
+.classpath
+.project
+.factorypath
+
+# IntelliJ IDEA and VS Code
+.idea/
+.vscode/
+*.iml
+
+# Logs and operating-system files
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
