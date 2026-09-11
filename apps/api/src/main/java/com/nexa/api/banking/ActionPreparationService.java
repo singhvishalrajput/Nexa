@@ -75,7 +75,10 @@ public class ActionPreparationService {
       }
       default -> throw new InvalidRequestException("Unsupported action.");
     }
-    if (amount == null || amount.signum() <= 0 || amount.scale() > 2 || amount.precision() > 15)
+    if (amount == null
+        || amount.signum() <= 0
+        || amount.scale() > 2
+        || amount.precision() - amount.scale() > 13)
       throw new InvalidRequestException(
           "Provide a positive amount with at most two decimal places.");
     if (amount.compareTo(account.availableBalance()) > 0)

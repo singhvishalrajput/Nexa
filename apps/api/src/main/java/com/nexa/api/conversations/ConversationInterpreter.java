@@ -19,6 +19,18 @@ public class ConversationInterpreter {
   private final EntityExtractor extractor;
   private final DomainRouter router;
   private final boolean debug;
+  private ConversationInsights insights;
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public ConversationInterpreter(
+      IntentClassifier classifier,
+      EntityExtractor extractor,
+      DomainRouter router,
+      @Value("${NLP_DEBUG_METADATA:false}") boolean debug,
+      ConversationInsights insights) {
+    this(classifier, extractor, router, debug);
+    this.insights = insights;
+  }
 
   public ConversationInterpreter(
       IntentClassifier classifier,
@@ -32,6 +44,10 @@ public class ConversationInterpreter {
   }
 
   public Interpretation interpret(String text) {
+    if (insights != null) {
+      var result = insights.interpret(text);
+      if (result != null) return result;
+    }
     var match = classifier.classify(text);
     var entities = extractor.extract(text, match.intent());
     var reply = router.route(match.intent(), entities);

@@ -50,8 +50,3 @@ export function openAccount(
     body: JSON.stringify({ ...account, currencyCode: "INR" })
   });
 }
-
-export async function getTransactions(accessToken: string, accountId: string): Promise<BankTransaction[]> {
-  const page = await authenticatedRequest<TransactionPage>(`/accounts/${encodeURIComponent(accountId)}/transactions?size=100`, accessToken);
-  return page.content;
-}

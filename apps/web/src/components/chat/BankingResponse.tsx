@@ -1,14 +1,12 @@
 import { h, ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { AccountSnapshot, BankingContent, Money, TransactionSnapshot, dayLabel, dueLabel, formatDate, formatMoney, humanize, safeMask, transactionDirection } from "../../services/banking-content";
+import { AccountSnapshot, BankingContent, Money, TransactionSnapshot, dayLabel, dueLabel, formatDate, formatMoney, humanize, safeMask, transactionDirection, statusPresentation, completedStatuses } from "../../services/banking-content";
 import { BankingCollection, collectionNotice } from "./BankingCollection";
 import { getTransactionPage } from "../../services/banking";
 
-const statusNames: Record<string, string> = { POSTED: "Completed", COMPLETED: "Completed", PENDING: "Pending", PROCESSING: "Processing", FAILED: "Failed", SCHEDULED: "Scheduled", ACTIVE: "Active", PAUSED: "Paused", CANCELLED: "Cancelled", EXPIRED: "Expired", ACTION_REQUIRED: "Action required", PENDING_VERIFICATION: "Awaiting verification" };
 export function StatusBadge({ status }: { status: string }) {
-  const positive = ["POSTED", "COMPLETED", "ACTIVE"].includes(status);
-  const attention = ["FAILED", "ACTION_REQUIRED"].includes(status);
-  return <span class={`bank-status ${positive ? "is-positive" : attention ? "needs-attention" : ""}`}>{statusNames[status] || humanize(status)}</span>;
+  const {tone, label} = statusPresentation(status);
+  return <span class={`bank-status ${tone === "good" ? "is-positive" : tone === "bad" ? "needs-attention" : tone}`}>{label}</span>;
 }
 export function MoneyAmount({ amount, currency, signed = false }: { amount: Money; currency: string; signed?: boolean }) {
   return <strong class="bank-money">{formatMoney(amount, currency, signed)}</strong>;
@@ -47,7 +45,7 @@ export function TransactionDetails({ transaction, account, onBack }: { transacti
     <MoneyAmount amount={transaction.amount} currency={transaction.currencyCode} signed />
     <StatusBadge status={transaction.status} />
     <dl>
-      <DetailRow label={["POSTED", "COMPLETED"].includes(transaction.status) ? incoming ? "Received in" : "Paid from" : "Account"}><AccountLabel account={account} /></DetailRow>
+      <DetailRow label={completedStatuses.includes(transaction.status) ? incoming ? "Received in" : "Paid from" : "Account"}><AccountLabel account={account} /></DetailRow>
       <DetailRow label="Date & time">{formatDate(transaction.occurredAt, true)}</DetailRow>
       <DetailRow label="Transaction type">{humanize(transaction.type)}</DetailRow>
       {transaction.category && <DetailRow label="Category">{humanize(transaction.category)}</DetailRow>}
@@ -73,7 +71,7 @@ export function TransactionList({ items, onSelect }: { items: TransactionSnapsho
     <ul>{rows.map((item) => {
       const direction = transactionDirection(item);
       const merchant = item.merchantName || humanize(item.type);
-      return <li key={item.id}><button type="button" class="bank-transaction-row" onClick={() => onSelect(item)} aria-label={`${merchant}, ${direction.toLowerCase()}, ${formatMoney(item.amount, item.currencyCode)}, ${formatDate(item.occurredAt, true)}, ${statusNames[item.status] || humanize(item.status)}. View details`}>
+      return <li key={item.id}><button type="button" class="bank-transaction-row" onClick={() => onSelect(item)} aria-label={`${merchant}, ${direction.toLowerCase()}, ${formatMoney(item.amount, item.currencyCode)}, ${formatDate(item.occurredAt, true)}, ${statusPresentation(item.status).label}. View details`}>
         <span class="bank-transaction-name"><strong dir="auto">{merchant}</strong><small>{item.category ? humanize(item.category) : humanize(item.type)}</small><StatusBadge status={item.status} /></span>
         <span class="bank-transaction-amount"><MoneyAmount amount={item.amount} currency={item.currencyCode} signed /><small>{direction} · {new Date(item.occurredAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</small></span>
       </button></li>;
@@ -177,6 +175,7 @@ function BalancesResponse({ content, accessToken }: RendererProps<"ACCOUNTS">) {
 type RendererProps<K extends BankingContent["type"]> = { content: Extract<BankingContent, { type: K }>; accessToken: string };
 // Register new data variants here without changing the conversation timeline.
 const bankingRenderers: { [K in BankingContent["type"]]: (props: RendererProps<K>) => h.JSX.Element } = {
+ INSIGHTS: ({ content }) => <><SectionHeader title="Spending summary" /><p>{content.meta.from} — {content.meta.to}</p><dl>{content.meta.categories.map(c => <DetailRow label={c.category}><MoneyAmount amount={c.amount} currency={c.currency} /></DetailRow>)}</dl><a href="#/transactions">Explore transaction history ↗</a></>,
  ACCOUNTS: BalancesResponse,
  TRANSACTIONS: ({ content, accessToken }) => <TransactionPanel account={content.account} items={content.transactions} total={content.totalElements} accessToken={accessToken} />,
  MANDATES: MandateList,
@@ -188,11 +187,11 @@ const bankingRenderers: { [K in BankingContent["type"]]: (props: RendererProps<K
  LOANS: LoanSummary,
  TEXT: () => <p>Ask another banking question to continue.</p>,
  ERROR: () => <p>Banking information could not be retrieved.</p>,
- ACTION_REQUIRED: ({ content }) => <><SectionHeader title="Action preparation" />{content.action && <><StatusBadge status={content.action.status} /><dl>
+ ACTION_REQUIRED: ({ content }) => <><SectionHeader title="Payment details" />{content.action && <><StatusBadge status={content.action.status} /><dl>
  <DetailRow label="Action">{humanize(content.action.operation)}</DetailRow>
  <DetailRow label="Source">{content.action.accountId}</DetailRow><DetailRow label="Target">{content.action.targetId}</DetailRow>
  {content.action.amount != null && <DetailRow label="Amount"><MoneyAmount amount={content.action.amount} currency={content.action.currencyCode} /></DetailRow>}
- </dl><p class="bank-secondary">Prepared for review only. Execution is not connected. No money has moved and nothing has been cancelled.</p></>}</>,
+ </dl><p class="bank-secondary">These details were checked only. Execution is not connected for this payment type. No money has moved and nothing has been cancelled.</p></>}</>,
  TRANSFER_STATUS: ({ content }) => <><SectionHeader title="Transfer status" /><MoneyAmount amount={content.transfer.amount} currency={content.transfer.currencyCode} /><StatusBadge status={content.transfer.status} /><dl><DetailRow label="Reference">{content.transfer.reference}</DetailRow></dl></>
 };
 export function supportsBankingContent(content: BankingContent): boolean {

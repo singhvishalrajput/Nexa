@@ -20,7 +20,8 @@ class ConversationServiceTest {
           db,
           user,
           interpreter,
-          tools.jackson.databind.json.JsonMapper.builder().findAndAddModules().build());
+          tools.jackson.databind.json.JsonMapper.builder().findAndAddModules().build(),
+          mock(WorkflowService.class));
 
   @Test
   void allConversationOperationsRejectAnotherOwnersId() {
@@ -53,6 +54,7 @@ class ConversationServiceTest {
             eq("BALANCE"),
             eq("Check balances."),
             eq("Your balance is INR 10."),
+            isNull(),
             isNull());
     service.append("chat", "t1", "TEXT", "please tell me my balance");
     verify(db)
@@ -64,6 +66,7 @@ class ConversationServiceTest {
             eq("BALANCE"),
             eq("please tell me my balance"),
             eq("Your balance is INR 10."),
+            isNull(),
             isNull());
   }
 

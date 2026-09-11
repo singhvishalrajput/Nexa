@@ -67,8 +67,8 @@ public class BankingDomainRouter implements DomainRouter {
           result(
               "TEXT",
               "Ask about balances, accounts, transactions, mandates, bills, cards, beneficiaries,"
-                  + " scheduled payments or loans. Financial actions can be prepared for review;"
-                  + " execution is not connected.",
+                  + " scheduled payments or loans. Ask to transfer between your own accounts, or"
+                  + " prepare a beneficiary or bill payment for review.",
               null);
       case UNKNOWN ->
           new Reply(
@@ -144,8 +144,13 @@ public class BankingDomainRouter implements DomainRouter {
           domain(
               "BILL_LIST",
               "BILLS",
-              "Here are your bills and their payment statuses.",
-              bills.list(e.status(), 0, 30));
+              e.from() == null && e.to() == null
+                  ? "Here are your bills and their payment statuses."
+                  : "Here are recorded bills due in the requested period (from the first 100"
+                        + " bills).",
+              e.from() == null && e.to() == null
+                  ? bills.list(e.status(), 0, 30)
+                  : bills.list(null, 0, 100).stream().filter(b -> inPeriod(b.dueAt(), e)).toList());
       case GET_BILL_DETAIL ->
           e.targetId() == null
               ? reference()
@@ -230,5 +235,16 @@ public class BankingDomainRouter implements DomainRouter {
             actions.prepare(intent.name(), e.accountId(), e.targetId(), e.amount()));
       }
     };
+  }
+
+  private boolean inPeriod(String date, EntityExtractor.Entities e) {
+    if (date == null || date.length() < 10) return false;
+    try {
+      var day = java.time.LocalDate.parse(date.substring(0, 10));
+      return (e.from() == null || !day.isBefore(e.from()))
+          && (e.to() == null || !day.isAfter(e.to()));
+    } catch (java.time.DateTimeException ex) {
+      return false;
+    }
   }
 }

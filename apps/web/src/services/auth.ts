@@ -1,5 +1,5 @@
 const configuredApiUrl = (window as Window & { NEXA_API_BASE_URL?: string }).NEXA_API_BASE_URL;
-const API_BASE_URL = configuredApiUrl || "http://localhost:8088/api/v1";
+const API_BASE_URL = (configuredApiUrl || "http://localhost:8088/api/v1").replace(/\/$/, "");
 const AUTH_STORAGE_KEY = "nexa-auth-session";
 
 export type AuthUser = {
@@ -50,33 +50,34 @@ async function request<T>(path: string, init: RequestInit = {}, accessToken?: st
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
   if (init.body) headers.set("Content-Type", "application/json");
-  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-
-  let response: Response;
+  if (accessToken) headers.set("Authorization", "Bearer " + accessToken);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  init.signal?.addEventListener("abort", abort, {once: true});
+  const timeout = window.setTimeout(abort, 20000);
   try {
-    const controller = new AbortController();
-    const abort = () => controller.abort();
-    init.signal?.addEventListener("abort", abort, { once: true });
-    const timeout = window.setTimeout(abort, 20000);
-    try {
-      if (init.signal?.aborted) controller.abort();
-      response = await fetch((core ? API_BASE_URL.replace(/\/v1\/?$/, "") : API_BASE_URL) + path, { ...init, headers, signal: controller.signal });
-    } finally { window.clearTimeout(timeout); init.signal?.removeEventListener("abort", abort); }
-  } catch (_) {
-    throw new ApiRequestError(0, init.method && init.method !== "GET" ? "The response could not be confirmed. Check your account before submitting again." : "We couldn’t reach the banking service. Check your connection and try again.");
+    if (init.signal?.aborted) controller.abort();
+    const response = await fetch((core ? API_BASE_URL.replace(/\/v1\/?$/, "") : API_BASE_URL) + path, {...init, headers, signal: controller.signal});
+    if (response.status === 204) return undefined as T;
+    let body: ApiErrorBody & T;
+    try { body = await response.json(); }
+    catch (error) {
+      if (response.ok || controller.signal.aborted) throw error;
+      body = {} as ApiErrorBody & T;
+    }
+    if (!response.ok) {
+      const fields = Array.isArray(body?.fieldErrors) ? body.fieldErrors.map(error => error.message).join(" ") : "";
+      const fallback = response.status === 403 ? "You do not have access to this information." : response.status === 404 ? "This information could not be found." : response.status >= 500 ? "The bank could not complete this request. Please try again later." : "This request could not be completed. Check your details and try again.";
+      throw new ApiRequestError(response.status, fields || body?.detail || body?.error || fallback);
+    }
+    return body;
+  } catch (error) {
+    if (error instanceof ApiRequestError) throw error;
+    throw new ApiRequestError(0, init.method && init.method !== "GET" ? "The response could not be confirmed. Check your account before submitting again." : "We couldn’t read the banking response. Check your connection and try again.");
+  } finally {
+    window.clearTimeout(timeout);
+    init.signal?.removeEventListener("abort", abort);
   }
-
-  if (!response.ok) {
-    let body: ApiErrorBody = {};
-    try {
-      body = await response.json();
-    } catch (_) {}
-    const fieldMessage = body.fieldErrors?.map((error) => error.message).join(" ");
-    throw new ApiRequestError(response.status, fieldMessage || body.detail || body.error || `Request failed (${response.status}).`);
-  }
-
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
 }
 
 export function authenticatedRequest<T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> {
@@ -96,11 +97,19 @@ async function authorized<T>(path: string, accessToken: string, init: RequestIni
     if (generation !== sessionGeneration) throw error;
     const latest = readStoredAuthentication();
     if (!latest) { window.dispatchEvent(new Event("nexa-session-expired")); throw error; }
+    let refreshed: StoredAuthentication;
     try {
-      const refreshed = latest.accessToken !== token ? latest : await refreshOnce(latest);
-      return await request<T>(path, init, refreshed.accessToken, core);
+      refreshed = latest.accessToken !== token ? latest : await refreshOnce(latest);
     } catch (cause) {
       if (generation === sessionGeneration && cause instanceof ApiRequestError && (cause.status === 401 || cause.status === 403)) {
+        clearAuthentication(); window.dispatchEvent(new Event("nexa-session-expired"));
+      }
+      throw cause;
+    }
+    // A permission failure on the original resource does not invalidate a session.
+    try { return await request<T>(path, init, refreshed.accessToken, core); }
+    catch (cause) {
+      if (generation === sessionGeneration && cause instanceof ApiRequestError && cause.status === 401) {
         clearAuthentication(); window.dispatchEvent(new Event("nexa-session-expired"));
       }
       throw cause;
@@ -109,7 +118,10 @@ async function authorized<T>(path: string, accessToken: string, init: RequestIni
 }
 
 function refreshOnce(authentication: StoredAuthentication): Promise<StoredAuthentication> {
-  if (!refreshInFlight) refreshInFlight = rotateRefreshToken(authentication).finally(() => { refreshInFlight = null; });
+  if (!refreshInFlight) {
+    const pending = rotateRefreshToken(authentication).finally(() => { if (refreshInFlight === pending) refreshInFlight = null; });
+    refreshInFlight = pending;
+  }
   return refreshInFlight;
 }
 
@@ -120,7 +132,8 @@ export function authenticatedCoreRequest<T>(path: string, accessToken: string, i
 function readStoredAuthentication(): StoredAuthentication | null {
   try {
     const value = window.sessionStorage.getItem(AUTH_STORAGE_KEY);
-    return value ? JSON.parse(value) as StoredAuthentication : null;
+    const parsed = value ? JSON.parse(value) : null;
+    return parsed && typeof parsed.accessToken === "string" && typeof parsed.refreshToken === "string" && typeof parsed.user?.id === "string" ? parsed as StoredAuthentication : null;
   } catch (_) {
     return null;
   }
@@ -132,6 +145,7 @@ function saveAuthentication(authentication: StoredAuthentication) {
 
 function clearAuthentication() {
   sessionGeneration++;
+  refreshInFlight = null;
   window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
@@ -141,16 +155,20 @@ async function profileFor(authentication: StoredAuthentication): Promise<AuthSes
 }
 
 async function authenticate(path: "/auth/login" | "/auth/register", payload: object): Promise<AuthSession> {
-  sessionGeneration++;
+  const generation = ++sessionGeneration;
+  refreshInFlight = null;
   const authentication = await request<AuthenticationResponse>(path, {
     method: "POST",
     body: JSON.stringify(payload)
   });
+  if (generation !== sessionGeneration) throw new ApiRequestError(401, "This sign-in was cancelled. Please sign in again.");
   saveAuthentication(authentication);
   try {
-    return await profileFor(authentication);
+    const session = await profileFor(authentication);
+    if (generation !== sessionGeneration) throw new ApiRequestError(401, "This sign-in was cancelled. Please sign in again.");
+    return session;
   } catch (error) {
-    clearAuthentication();
+    if (generation === sessionGeneration) clearAuthentication();
     throw error;
   }
 }

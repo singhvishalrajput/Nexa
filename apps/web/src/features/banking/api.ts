@@ -1,5 +1,5 @@
 import { authenticatedRequest, authenticatedCoreRequest } from "../../services/auth";
-import { BankAccount, BankTransaction, TransactionPage } from "../../services/banking";
+import { BankAccount, BankTransaction, TransactionPage, getAccounts } from "../../services/banking";
 import { BillSnapshot, CardSnapshot, LoanSnapshot, MandateSnapshot, UpcomingSnapshot, BeneficiarySnapshot, TransactionSnapshot } from "../../services/banking-content";
 export type { BankAccount, BankTransaction, TransactionPage };
 export type ProductKind = "cards" | "bills" | "beneficiaries" | "mandates" | "loans" | "scheduled-payments";
@@ -34,7 +34,7 @@ export type Filters = {
     page?: number;
 };
 export const bankApi = {
-    accounts: (token: string) => authenticatedRequest<BankAccount[]>("/accounts", token),
+    accounts: getAccounts,
     account: (token: string, id: string) => authenticatedRequest<BankAccount>("/accounts/" + encodeURIComponent(id), token),
     transactions: (token: string, accountId: string, filters: Filters = {}) => {
         const params = new URLSearchParams({ accountId, size: "15" });

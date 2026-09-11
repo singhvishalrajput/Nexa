@@ -1,3 +1,4 @@
+import { moneyInMinorUnits } from "../../services/banking-content";
 export function validAmount(value: string): boolean {
     return /^(?:0|[1-9]\d{0,12})(?:\.\d{1,2})?$/.test(value) && Number(value) > 0;
 }
@@ -11,9 +12,11 @@ export function parseRoute(hash: string): {
 } {
     const [pathname, query] = hash.replace(/^#\/?/, "").split("?");
     const parts = pathname.split("/");
-    const page = parts[0] || "overview";
+    const page = parts[0] || "assistant";
     if (![...routes, "login", "register"].includes(page))
         return { page: "not-found" };
+    const detailPages = ["accounts", "transactions", "cards", "bills", "beneficiaries", "mandates", "loans", "scheduled-payments"];
+    if (parts.length > 2 || (parts[1] && !detailPages.includes(page))) return { page: "not-found" };
     try {
         return { page: page as Route, id: parts[1] ? decodeURIComponent(parts[1]) : undefined, account: new URLSearchParams(query || "").get("account") || undefined };
     }
@@ -25,11 +28,9 @@ export function go(page: string, id?: string) { window.location.hash = "/" + pag
 export function sumMoney(values: Array<number | string>): string {
     let total = BigInt(0);
     for (const value of values) {
-        const match = String(value).match(/^(-?)(\d+)(?:\.(\d+))?$/);
-        if (!match)
-            continue;
-        const cents = BigInt(match[2]) * BigInt(100) + BigInt((match[3] || "").padEnd(2, "0").slice(0, 2));
-        total += match[1] ? -cents : cents;
+        const cents = moneyInMinorUnits(value);
+        if (cents === null) return "Amount unavailable";
+        total += cents;
     }
     const negative = total < BigInt(0);
     const abs = negative ? -total : total;

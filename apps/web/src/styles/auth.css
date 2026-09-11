@@ -25,10 +25,10 @@
 .nexa-auth-tabs button.is-active { border-color: #e54e2b; color: #171615; }
 
 .nexa-auth-form { padding-top: 24px; display: grid; gap: 15px; }
-.nexa-auth-form > div:first-child p { margin: 0 0 8px; color: #e54e2b; font-size: 9px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+.nexa-auth-form > fieldset > div:first-child p { margin: 0 0 8px; color: #e54e2b; font-size: 9px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
 .nexa-auth-form h2 { margin: 0; font: 400 clamp(34px, 3.5vw, 46px)/1 Georgia, serif; letter-spacing: -.055em; }
-.nexa-auth-form > label { display: grid; gap: 8px; color: #5d5851; font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
-.nexa-auth-form > label > small { justify-self: end; margin-top: -17px; color: #918a80; font-size: 8px; font-weight: 400; }
+.nexa-auth-form > fieldset > label { display: grid; gap: 8px; color: #5d5851; font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.nexa-auth-form > fieldset > label > small { justify-self: end; margin-top: -17px; color: #918a80; font-size: 8px; font-weight: 400; }
 .nexa-auth-form input { width: 100%; min-width: 0; padding: 9px 0; border: 0; border-bottom: 1px solid #a9a197; border-radius: 0; outline: 0; background: transparent; color: #171615; font: 400 14px Arial, sans-serif; letter-spacing: 0; text-transform: none; }
 .nexa-auth-form input:focus { border-color: #e54e2b; }
 .nexa-auth-form input::placeholder { color: #9a9389; }

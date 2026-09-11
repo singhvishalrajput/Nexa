@@ -13,3 +13,9 @@ Validate with `mvn verify` in `apps/api` and `npm run lint`, `npm run typecheck`
 See [API setup](apps/api/README.md) and [banking integration and database cutover](docs/BANKING_INTEGRATION.md).
 
 See [frontend implementation and verification](docs/FRONTEND_IMPLEMENTATION.md) for banking screens, API integration, and backend limitations.
+
+See the [frontend audit results](docs/FRONTEND_AUDIT.md) for the subsequent cleanup, regression checks and release-build verification.
+
+See [chat-first banking architecture and verification](docs/CHAT_FIRST_BANKING.md) for conversational workflows, confirmed own-account transfers, safety guarantees and integration boundaries.
+
+New teammate? Run `.\scripts\setup-db.ps1` from PowerShell 7 to provision the local Oracle schema and apply migrations. See [database setup prerequisites and commands](apps/api/docs/local-oracle-setup.md).

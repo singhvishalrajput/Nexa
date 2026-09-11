@@ -32,6 +32,7 @@ export type BillSnapshot = {
 // Versioned views returned by the authenticated conversational domain router.
 // Action views describe preparation only; execution is not connected.
 export type BankingContent = { version: 1; responseType?: string; errorCode?: string } & (
+  { type: "INSIGHTS"; meta: {categories: Array<{category: string; currency: string; amount: string}>; from: string; to: string} } |
   { type: "ACCOUNTS"; accounts: AccountSnapshot[] } |
   { type: "TRANSACTIONS"; account: AccountSnapshot; transactions: TransactionSnapshot[]; totalElements: number } |
   { type: "MANDATES"; mandates: MandateSnapshot[] } |
@@ -47,16 +48,22 @@ export type BankingContent = { version: 1; responseType?: string; errorCode?: st
 );
 
 /** Round decimal strings without losing paise to a floating-point conversion. */
-export function formatMoney(value: Money, currency = "INR", signed = false): string {
+export function moneyInMinorUnits(value: Money): bigint | null {
   const raw = typeof value === "number" && Number.isFinite(value) ? value.toFixed(4) : String(value);
   const match = raw.match(/^(-?)(\d+)(?:\.(\d+))?$/);
-  if (!match) return "Amount unavailable";
+  if (!match) return null;
   const fraction = (match[3] || "").padEnd(3, "0");
   let paise = BigInt(match[2]) * BigInt(100) + BigInt(fraction.slice(0, 2));
   if (Number(fraction[2]) >= 5) paise += BigInt(1);
+  return match[1] ? -paise : paise;
+}
+export function formatMoney(value: Money, currency = "INR", signed = false): string {
+  const units = moneyInMinorUnits(value);
+  if (units === null) return "Amount unavailable";
+  const paise = units < BigInt(0) ? -units : units;
   const whole = (paise / BigInt(100)).toLocaleString("en-IN");
   const decimals = String(paise % BigInt(100)).padStart(2, "0");
-  const prefix = paise === BigInt(0) ? "" : match[1] ? "− " : signed ? "+ " : "";
+  const prefix = paise === BigInt(0) ? "" : units < BigInt(0) ? "− " : signed ? "+ " : "";
   return `${prefix}${currency === "INR" ? "₹" : currency + " "}${whole}${decimals === "00" ? "" : "." + decimals}`;
 }
 
@@ -65,27 +72,36 @@ export const safeMask = (value: string) => {
   return tail ? `•••• ${tail}` : "Number unavailable";
 };
 export const humanize = (value: string) => value.replace(/_/g, " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
+export const completedStatuses = ["SUCCESS", "POSTED", "COMPLETED", "PAID"];
+export function statusPresentation(value: string) {
+  const label = value === "PAID" ? "Paid" : completedStatuses.includes(value) ? "Completed" : value === "PREPARED" ? "Details checked" : value === "PENDING_VERIFICATION" ? "Awaiting verification" : humanize(value);
+  const tone = completedStatuses.includes(value) || value === "ACTIVE" ? "good" : ["FAILED", "OVERDUE", "BLOCKED", "ACTION_REQUIRED"].includes(value) ? "bad" : ["PENDING", "DUE", "UPCOMING", "SCHEDULED", "PROCESSING", "PREPARED", "PENDING_VERIFICATION"].includes(value) ? "pending" : "neutral";
+  return { label, tone };
+}
+function calendarDate(value: string): Date {
+  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? value + "T00:00:00" : value);
+}
 export function transactionDirection(item: Pick<TransactionSnapshot, "amount" | "status">): string {
   if (["FAILED", "CANCELLED", "EXPIRED"].includes(item.status)) return "Not completed";
   if (Number(item.amount) === 0) return "No money moved";
-  const completed = ["POSTED", "COMPLETED"].includes(item.status);
+  const completed = completedStatuses.includes(item.status);
   return Number(item.amount) > 0 ? completed ? "Received" : "Incoming" : completed ? "Spent" : "Outgoing";
 }
 export function dueLabel(value: string, now = new Date()): string {
-  const date = new Date(value);
+  const date = calendarDate(value);
   const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
   if (date.toDateString() === now.toDateString()) return "Due today";
   if (date.toDateString() === tomorrow.toDateString()) return "Due tomorrow";
   return `Due ${formatDate(value)}`;
 }
 export const formatDate = (value: string, time = false) => {
-  const date = new Date(value);
+  const date = calendarDate(value);
   return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleString("en-IN", time
     ? { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }
     : { day: "numeric", month: "short", year: "numeric" });
 };
 export function dayLabel(value: string, now = new Date()): string {
-  const date = new Date(value);
+  const date = calendarDate(value);
   if (Number.isNaN(date.getTime())) return "Date unavailable";
   const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
   if (date.toDateString() === now.toDateString()) return "Today";

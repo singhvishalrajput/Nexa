@@ -1,4 +1,4 @@
-import { h, ComponentChildren } from "preact";
+import { ComponentChildren } from "preact";
 
 export function ChatIcon({ name }: { name: "mic" | "send" | "history" | "back" | "more" | "close" | "down" | "stop" | "check" }) {
   const paths = {

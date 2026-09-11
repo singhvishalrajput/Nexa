@@ -27,12 +27,14 @@ public class BasicEntityExtractor implements EntityExtractor {
             || intent == Intent.PAY_CARD))
       amount = match(text, "(?:send|transfer|pay)\\s+([0-9,]+(?:\\.[0-9]+)?)");
     String account = match(input, "\\b(acc_[a-z0-9_]+)\\b");
+    if (account == null) account = match(input, "\\baccount (?:id )?([0-9]+)\\b");
     if (Pattern.compile("\\bacc_[a-z0-9_]+\\b", Pattern.CASE_INSENSITIVE)
             .matcher(input)
             .results()
             .count()
         > 1) throw new InvalidRequestException("Please select one source account.");
     String target = match(input, "\\b((?:txn|mnd|bil|crd|ben|sch|lon|trf)_[a-z0-9_]+)\\b");
+    if (target == null) target = match(input, "\\b(TX-[a-f0-9]{32})\\b");
     var references =
         Pattern.compile(
                 "\\b(?:txn|mnd|bil|crd|ben|sch|lon|trf)_[a-z0-9_]+\\b", Pattern.CASE_INSENSITIVE)
@@ -41,6 +43,17 @@ public class BasicEntityExtractor implements EntityExtractor {
       throw new InvalidRequestException("Please ask about one target reference at a time.");
     String payee = match(input, "\\bto ([\\p{L} '-]+)$");
     LocalDate from = null, to = null;
+    if (text.contains("this month")) {
+      var month = LocalDate.now(clock);
+      from = month.withDayOfMonth(1);
+      to = month.withDayOfMonth(month.lengthOfMonth());
+    }
+    if (text.contains("this week")) {
+      from =
+          LocalDate.now(clock)
+              .with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+      to = from.plusDays(6);
+    }
     if (text.contains("last month")) {
       var month = LocalDate.now(clock).minusMonths(1);
       from = month.withDayOfMonth(1);

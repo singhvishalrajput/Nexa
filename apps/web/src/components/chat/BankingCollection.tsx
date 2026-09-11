@@ -1,4 +1,4 @@
-import { h, ComponentChildren } from "preact";
+import { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 /** Object collections compare side by side; records read from top to bottom. */

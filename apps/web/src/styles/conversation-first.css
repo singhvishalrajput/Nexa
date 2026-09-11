@@ -260,3 +260,33 @@
   .nexa-messenger .bank-collection.is-horizontal .bank-detail-row { grid-template-columns: 1fr; gap: 1px; }
 }
 .nexa-messenger .bank-collection-attention { margin: 0 0 10px; color: #8b341d; font-size: 13px; }
+.nexa-messenger { --nexa-paper:#f5f7f3; --nexa-ink:#192b2a; --nexa-muted:#5b6964; --nexa-line:#dbe2d9; --nexa-accent:#28594a; --nexa-selected:#e4eddf; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+.conversation-wordmark-dot { color:var(--accent); font-size:22px; margin-left:6px; }
+.conversation-welcome { padding:32px 0 28px; }
+.conversation-welcome > span { color:var(--muted); font-size:11px; font-weight:650; letter-spacing:.14em; }
+.conversation-welcome h2 { font:clamp(30px,4vw,49px)/1.15 Georgia,serif; letter-spacing:-.035em; color:var(--ink); margin:18px 0; }
+.conversation-welcome p { color:var(--muted); }
+.conversation-starters { display:flex; flex-wrap:wrap; gap:10px; margin-top:24px; }
+.nexa-messenger .conversation-starters button { border:1px solid var(--line); border-radius:12px; padding:14px 16px; background:#fffefa; text-align:left; min-height:48px; font-size:14px; }
+.conversation-surfaces { display:grid; gap:2px; padding:12px 0 20px; border-bottom:1px solid var(--line); margin-bottom:18px; }
+.conversation-surfaces a { padding:9px 12px; color:var(--ink); text-decoration:none; font-size:13px; border-radius:8px; min-height:38px; }
+.conversation-surfaces a:hover { background:var(--nexa-selected); }
+.conversation-proposal { border:1px solid var(--line); border-radius:16px; background:#fffefa; padding:24px; margin:8px 0 24px; overflow-wrap:anywhere; }
+.conversation-proposal-status { color:var(--accent); font-weight:650; text-transform:uppercase; font-size:11px; letter-spacing:.08em; }
+.conversation-proposal h3 { font:26px/1.25 Georgia,serif; margin:12px 0; color:var(--ink); }
+.conversation-proposal p { font-size:14px; }
+.conversation-proposal dl { display:grid; grid-template-columns:90px 1fr; border-top:1px solid var(--line); padding-top:18px; gap:12px; font-size:14px; }
+.conversation-proposal dt { color:var(--muted); }
+.conversation-proposal dd { margin:0; }
+.conversation-proposal-amount { font-size:25px; font-weight:600; }
+.conversation-choices { display:grid; gap:8px; margin:16px 0; }
+.nexa-messenger .conversation-choices button { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; min-height:48px; border:1px solid var(--line); border-radius:8px; text-align:left; }
+.nexa-messenger .conversation-confirm { background:#28594a; color:#fff; padding:12px 20px; border-radius:8px; }
+.nexa-messenger .conversation-confirm:hover:not(:disabled) { background:#1a4337; }
+.conversation-proposal small { display:block; color:var(--muted); font-size:12px; margin-top:12px; }
+.conversation-proposal a { color:var(--accent); display:inline-block; padding:12px 0; }
+@media(max-width:599px) { .conversation-welcome { padding-top:12px; } .conversation-starters { display:grid; } .conversation-proposal { padding:18px; } .conversation-proposal dl { grid-template-columns:64px 1fr; } }
+
+.conversation-proposal-history { padding:12px 16px; margin:8px 0 16px; border-left:2px solid var(--line); color:var(--muted); font-size:13px; }
+.conversation-proposal-history summary { cursor:pointer; padding:8px 0; min-height:44px; }
+.conversation-surfaces a { min-height:44px; }

@@ -82,5 +82,5 @@ export function useVoiceInput(onError: (message: string) => void) {
     recognition.current.stop();
   };
 
-  return { phase, seconds, transcript, start, stop, cancel };
+  return { phase, seconds, transcript, start, stop, cancel, editTranscript: setTranscript };
 }

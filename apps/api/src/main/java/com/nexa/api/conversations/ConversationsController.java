@@ -26,6 +26,28 @@ public class ConversationsController {
 
   private final ConversationService service;
 
+  public record ActionRequest(
+      @NotBlank @Pattern(regexp = "[0-9a-fA-F-]{36}") String clientId,
+      @NotBlank @Pattern(regexp = "SELECT|CONFIRM|CANCEL") String type,
+      @Size(max = 100) String value) {}
+
+  @PostMapping("/{id}/actions/{actionId}")
+  public ConversationService.Turn action(
+      @PathVariable UUID id,
+      @PathVariable UUID actionId,
+      @Valid @RequestBody ActionRequest request) {
+    return service.append(
+        id.toString(),
+        request.clientId(),
+        "TEXT",
+        switch (request.type()) {
+          case "CONFIRM" -> "Confirm transfer";
+          case "CANCEL" -> "Cancel proposal";
+          default -> "Select banking item";
+        },
+        new Workflow.Command(actionId.toString(), request.type(), request.value()));
+  }
+
   public ConversationsController(ConversationService service) {
     this.service = service;
   }

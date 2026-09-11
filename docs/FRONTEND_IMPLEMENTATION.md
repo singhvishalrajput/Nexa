@@ -1,5 +1,17 @@
 # Banking frontend
 
+The subsequent [frontend audit](FRONTEND_AUDIT.md) supersedes the original cleanup scope and test counts below. It removes unreachable legacy implementations, expands lint to all application TypeScript and records the current release verification.
+
+## Conversation usability refinement
+
+The existing layout, routes, navigation and Nexa branding remain in place. The existing Ask Nexa entry points are clearer, and chat now keeps Check Balance, Send Money, Recent Transactions and Get Help available beside the composer. Send Money explains the backend limit and leads to the existing payment review screen. No payment execution endpoint was added.
+
+Voice has a visible Speak label, English/Hindi selection, editable words before sending, and a typing recovery action for microphone errors. Hindi selection also labels the quick actions and help in Hindi; this is not full application translation. Banking replies and natural-language understanding still depend on the existing English-oriented backend.
+
+`styles/usability.css` maps the existing banking palette to shared action, text, border and status tokens, increases readable text and control sizes, and applies consistent 180 ms transitions with reduced-motion overrides. Chat keeps its existing bubbles, cards, history and composer. Controls target at least 48 × 48 CSS pixels, and status text remains visible alongside color. Chat options support keyboard focus containment and Escape dismissal.
+
+Refinement verification: build, type checking, focused lint (10 files) and 23 frontend tests passed. Two speech-hook tests cover Hindi review/edit/cancel, late speech callbacks and typing recovery when speech is unavailable or denied. Browser checks used real balances and non-executing payment preparation, including the recipient/amount summary. Physical microphone capture and an exhaustive screen-reader audit were not performed.
+
 The application entry point now renders the authenticated banking workspace. It uses the existing Oracle JET / Preact runtime, REST services, identity model and banking core. No runtime dependencies, backend endpoints, migrations or synthetic banking data were introduced for this frontend.
 
 ## Screens and API contracts

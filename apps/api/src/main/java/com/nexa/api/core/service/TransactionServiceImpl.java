@@ -110,8 +110,17 @@ public class TransactionServiceImpl implements TransactionService {
   public BankTransaction transfer(TransactionRequest request) {
     validateAmount(request.getAmount());
 
+    if (request.getSourceAccountId() == null || request.getDestinationAccountId() == null)
+      throw new InvalidRequestException("Both accounts are required");
+    // Stable lock order serializes postings even across different conversations.
+    getActiveAccount(Math.min(request.getSourceAccountId(), request.getDestinationAccountId()));
+    getActiveAccount(Math.max(request.getSourceAccountId(), request.getDestinationAccountId()));
+
     Account sourceAccount = getActiveAccount(request.getSourceAccountId());
     Account destinationAccount = getActiveAccount(request.getDestinationAccountId());
+
+    if (!sourceAccount.getCurrencyCode().equals(destinationAccount.getCurrencyCode()))
+      throw new InvalidRequestException("Account currencies must match");
 
     if (sourceAccount.getId().equals(destinationAccount.getId())) {
       throw new InvalidRequestException("Source and destination accounts must be different");
@@ -150,7 +159,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     Account account =
         accountDao
-            .findById(accountId)
+            .findLockedById(accountId)
             .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountId));
 
     if (account.getStatus() != AccountStatus.ACTIVE) {
@@ -177,6 +186,9 @@ public class TransactionServiceImpl implements TransactionService {
     if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
       throw new InvalidRequestException("Amount must be greater than zero");
     }
+    if (amount.scale() > 2 || amount.precision() - amount.scale() > 13)
+      throw new InvalidRequestException(
+          "Amount must have at most two decimals and thirteen integer digits");
   }
 
   private JournalEntry createJournalEntry(BankTransaction transaction) {

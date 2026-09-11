@@ -1,0 +1,284 @@
+/* Shared refinements of the existing banking palette and controls. */
+:root {
+  --nexa-action: #174d3d;
+  --nexa-action-hover: #123e31;
+  --nexa-surface: #ffffff;
+  --nexa-background: #f5f7f3;
+  --nexa-text: #192b2a;
+  --nexa-text-soft: #53635e;
+  --nexa-border: #d2dcd5;
+  --nexa-soft: #e7eed9;
+  --nexa-success: #174d3d;
+  --nexa-success-bg: #e7eed9;
+  --nexa-warning: #705117;
+  --nexa-warning-bg: #f5eedb;
+  --nexa-error: #873c29;
+  --nexa-error-bg: #f3e5dd;
+  --nexa-control-radius: 8px;
+  --nexa-duration: 180ms;
+  --nexa-motion: ease-out;
+}
+.bank-app {
+  --bank-ink: var(--nexa-text);
+  --bank-muted: var(--nexa-text-soft);
+  --bank-line: var(--nexa-border);
+  --bank-green: var(--nexa-action);
+  --bank-bg: var(--nexa-background);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.nexa-messenger {
+  --nexa-paper: var(--nexa-background);
+  --nexa-ink: var(--nexa-text);
+  --nexa-muted: var(--nexa-text-soft);
+  --nexa-line: var(--nexa-border);
+  --nexa-accent: var(--nexa-action);
+  --nexa-selected: var(--nexa-soft);
+  --nexa-radius: var(--nexa-control-radius);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Nirmala UI", sans-serif;
+}
+:is(.bank-app.bank-app, .nexa-messenger.nexa-messenger) :is(button, input, select, textarea, summary) {
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 1rem;
+}
+:is(.bank-app, .nexa-messenger) :is(a, button, input, select, textarea, summary) {
+  transition: color var(--nexa-duration) var(--nexa-motion),
+    background-color var(--nexa-duration) var(--nexa-motion),
+    border-color var(--nexa-duration) var(--nexa-motion),
+    box-shadow var(--nexa-duration) var(--nexa-motion);
+  touch-action: manipulation;
+}
+:is(.bank-app, .nexa-messenger) a {
+  min-height: 48px;
+  min-width: 48px;
+  display: inline-flex;
+  align-items: center;
+}
+:is(.bank-app, .nexa-messenger) :focus-visible {
+  outline: 3px solid var(--nexa-action) !important;
+  outline-offset: 3px !important;
+}
+:is(.bank-app, .nexa-messenger) :disabled {
+  opacity: 1;
+  color: var(--nexa-text-soft);
+  background: var(--nexa-background);
+  border-color: var(--nexa-border);
+  cursor: not-allowed;
+}
+.bank-app :is(.bank-button, .bank-icon-button, input, select, textarea),
+.nexa-messenger :is(.messenger-quick-actions button, .messenger-inline-actions button, .messenger-inline-actions a, .messenger-voice-actions button) {
+  border-radius: var(--nexa-control-radius);
+}
+.bank-app .bank-button,
+.bank-app .nexa-auth-submit,
+.bank-app .nexa-account-actions button,
+.nexa-messenger .messenger-primary {
+  background: var(--nexa-action);
+  color: var(--nexa-surface);
+}
+.bank-app .bank-button:hover:not(:disabled),
+.bank-app .nexa-auth-submit:hover:not(:disabled),
+.bank-app .nexa-account-actions button:hover:not(:disabled),
+.nexa-messenger .messenger-primary:hover:not(:disabled) {
+  background: var(--nexa-action-hover);
+  color: var(--nexa-surface);
+}
+.bank-app :is(.bank-button.secondary, .bank-button.bank-white) {
+  color: var(--nexa-action);
+  background: var(--nexa-soft);
+  border: 1px solid var(--nexa-border);
+}
+.bank-app :is(.bank-button.secondary, .bank-button.bank-white):hover:not(:disabled) {
+  color: var(--nexa-action);
+  background: var(--nexa-background);
+}
+.bank-app .bank-button:disabled, .nexa-messenger button:disabled {
+  color: var(--nexa-text-soft);
+  background: var(--nexa-background);
+  opacity: 1;
+}
+.bank-app :is(.bank-status, .bank-eyebrow, .bank-nav-group, .bank-workspace-label, small, .bank-footer) {
+  font-size: .875rem;
+}
+.bank-app :is(.bank-form label, .bank-form input, .bank-form select, .bank-form textarea, .bank-pagination button) {
+  font-size: 1rem;
+}
+.bank-app.bank-app :is(p, dt, dd) { font-size: 1rem; line-height: 1.6; }
+.bank-app.bank-app :is(p, dt) { color: var(--nexa-text-soft); }
+.bank-app.bank-app .bank-balance-hero p { color: var(--nexa-soft); }
+.bank-app .bank-account-tile > span,
+.bank-app .bank-transaction-name span { font-size: .875rem; color: var(--nexa-text-soft); }
+.bank-app .bank-sidebar nav a { min-height: 48px; font-size: .9375rem; }
+.bank-app .bank-sidebar { overflow-y: auto; }
+.bank-app .bank-account-tile { display: block; }
+.bank-app .bank-product { display: block; }
+.bank-app fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.bank-app .nexa-auth-form fieldset { display: grid; gap: 20px; }
+.bank-app .bank-transaction-state { display: grid; gap: 4px; }
+.bank-app .bank-transaction-state small { color: var(--nexa-text-soft); }
+.bank-app :is(.bank-product, .bank-account-tile, .bank-panel, .bank-record, .bank-detail, .bank-transaction-detail) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.bank-app :is(.bank-product-amount strong, .bank-balance-hero > strong, .bank-account-tile > strong) {
+  overflow-wrap: anywhere;
+}
+.bank-app .nexa-settings-group { gap: 24px; }
+.bank-app .nexa-settings-group > div:first-child span,
+.bank-app .nexa-account-actions span,
+.bank-app .nexa-session-action > span { font-size: .875rem; color: var(--nexa-text-soft); }
+.bank-app .nexa-settings-fields label { font-size: .875rem; text-transform: none; letter-spacing: normal; }
+.bank-app .nexa-settings-fields input { border: 1px solid var(--nexa-border); padding: 10px; border-radius: var(--nexa-control-radius); }
+.bank-app :is(.nexa-account-actions button, .nexa-session-action button, .nexa-account-record dt) { text-transform: none; letter-spacing: normal; }
+.bank-app .nexa-settings-group > div:first-child strong,
+.bank-app .nexa-account-record header strong { font-family: inherit; font-size: 1.125rem; line-height: 1.5; font-weight: 600; }
+.bank-app .nexa-account-record { overflow-wrap: anywhere; }
+.bank-app .nexa-account-record header { flex-wrap: wrap; }
+.bank-app .nexa-auth-error,
+.bank-app .nexa-settings-error { color: var(--nexa-error); background: var(--nexa-error-bg); }
+.bank-app .bank-payment-card p { color: inherit; }
+.bank-app .bank-payment-card :is(h2, .bank-product-amount, .bank-product-amount strong, footer) { color: var(--nexa-surface); }
+.bank-app .bank-payment-card .bank-product-amount span { color: var(--nexa-soft); }
+.bank-app.bank-app .bank-button:not(.secondary):not(.bank-white) { color: var(--nexa-surface); }
+.bank-app.bank-app .bank-button:disabled { color: var(--nexa-text-soft); }
+.bank-app .bank-sidebar .bank-nav-group,
+.bank-app .bank-sidebar .bank-workspace-label { color: var(--nexa-soft); font-size: .875rem; }
+.bank-app .bank-sidebar-bottom :is(a,button) { font-size: .875rem; }
+.bank-app .bank-page-heading p:last-child { font-size: 1rem; }
+.bank-app :is(.bank-sidebar, .bank-balance-hero) :focus-visible { outline-color: var(--nexa-soft) !important; }
+.bank-app .bank-sidebar nav a { width: 100%; }
+.bank-app .bank-dialog { max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; }
+.nexa-messenger .bank-status.pending { color: var(--nexa-warning); }
+.bank-app .bank-transaction { display: grid; }
+.bank-app .bank-profile-link { display: flex; }
+.bank-app .bank-assistant-link {
+  color: var(--nexa-action);
+  background: var(--nexa-soft);
+  border-radius: var(--nexa-control-radius);
+  padding: 8px 12px;
+  font-weight: 600;
+}
+.bank-app .bank-confirm-summary {
+  padding: 16px;
+  border: 1px solid var(--nexa-border);
+  border-radius: var(--nexa-control-radius);
+  background: var(--nexa-background);
+}
+.bank-app .bank-confirm-summary h3 { margin: 0 0 12px; }
+.bank-app .bank-confirm-summary p { margin-bottom: 0; }
+.bank-app .bank-status.good { color: var(--nexa-success); background: var(--nexa-success-bg); }
+.bank-app .bank-status.pending { color: var(--nexa-warning); background: var(--nexa-warning-bg); }
+.bank-app :is(.bank-status.bad, .bank-error) { color: var(--nexa-error); background: var(--nexa-error-bg); }
+.bank-app .bank-positive { color: var(--nexa-success); }
+.bank-app .bank-notice { color: var(--nexa-text); background: var(--nexa-soft); }
+.nexa-messenger .messenger-icon { flex-basis: 48px; width: 48px; height: 48px; }
+.nexa-messenger .messenger-mic { flex-basis: auto; width: auto; gap: 6px; border-radius: var(--nexa-control-radius); }
+.nexa-messenger .messenger-mic span { font-size: .875rem; font-weight: 600; }
+.nexa-messenger .messenger-identity > span { font-size: .875rem; }
+.nexa-messenger .messenger-bubble,
+.nexa-messenger .messenger-composer { background: var(--nexa-surface); }
+.nexa-messenger .from-user .messenger-bubble { background: var(--nexa-soft); }
+.nexa-messenger .messenger-composer { border-color: var(--nexa-border); }
+.nexa-messenger button:hover:not(:disabled) { background: var(--nexa-soft); }
+.nexa-messenger .messenger-primary:hover:not(:disabled) { background: var(--nexa-action-hover); }
+.nexa-messenger .messenger-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px 4px 10px;
+  scrollbar-width: thin;
+}
+.nexa-messenger .messenger-quick-actions button {
+  flex: 0 0 auto;
+  border: 1px solid var(--nexa-border);
+  padding: 8px 12px;
+  color: var(--nexa-action);
+  background: var(--nexa-surface);
+  font-size: .9375rem;
+  font-weight: 600;
+}
+.nexa-messenger .messenger-inline-actions a {
+  padding: 8px 12px;
+  color: var(--nexa-action);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.nexa-messenger .messenger-bubble p + p { margin-top: 12px; }
+.nexa-messenger .messenger-voice-hint {
+  margin: 0 4px;
+  font-size: .875rem;
+  color: var(--nexa-text-soft);
+  line-height: 1.5;
+}
+.nexa-messenger .messenger-composer-meta { flex-wrap: wrap; gap: 0 12px; }
+.nexa-messenger .messenger-composer-meta :is(select, summary) { font-size: .875rem; min-height: 48px; }
+.nexa-messenger .messenger-composer-meta details p { font-size: 1rem; }
+.nexa-messenger .messenger-voice-preview { display: block; max-height: none; font-size: .9375rem; }
+.nexa-messenger .messenger-voice-preview textarea { margin-top: 8px; border: 1px solid var(--nexa-border); }
+.nexa-messenger :is(.messenger-error, .messenger-voice-error) {
+  color: var(--nexa-error);
+  background: var(--nexa-error-bg);
+  border: 1px solid var(--nexa-error);
+  padding: 12px;
+  border-radius: var(--nexa-control-radius);
+  font-size: 1rem;
+}
+.nexa-messenger .messenger-voice-error p { margin: 0; }
+.nexa-messenger .messenger-voice-error button { text-decoration: underline; }
+.nexa-messenger :is(.messenger-date, .messenger-bubble footer, .messenger-voice-label, .messenger-loading, .messenger-history-list time, .bank-response small, .bank-response .bank-secondary, .bank-response .bank-section-header p, .bank-response .bank-date-heading, .bank-status) {
+  color: var(--nexa-text-soft);
+  font-size: .875rem;
+}
+.nexa-messenger .messenger-thinking > span { position: static; width: auto; height: auto; clip-path: none; margin-left: 6px; }
+.nexa-messenger .bank-status.is-positive { color: var(--nexa-success); }
+.nexa-messenger .bank-status.needs-attention { color: var(--nexa-error); }
+.nexa-messenger .messenger-banking-surface {
+  background: var(--nexa-surface);
+  border-color: var(--nexa-border);
+  border-radius: var(--nexa-control-radius);
+}
+.nexa-messenger .messenger-header { border-color: var(--nexa-border); }
+.nexa-messenger .bank-collection.is-horizontal .bank-collection-items > * {
+  border-top-color: var(--nexa-action);
+  border-radius: var(--nexa-control-radius);
+}
+.nexa-messenger .bank-collection-attention { color: var(--nexa-error); font-size: .9375rem; }
+.nexa-messenger .bank-collection-caption { font-size: .875rem; }
+.nexa-messenger .bank-response .bank-section-header h3 {
+  font-size: 1rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.nexa-messenger .bank-response button,
+.nexa-messenger .bank-collection-navigation button { color: var(--nexa-action); }
+.nexa-messenger .bank-response button:disabled,
+.nexa-messenger .bank-collection-navigation button:disabled { color: var(--nexa-text-soft); }
+.nexa-messenger textarea::placeholder { color: var(--nexa-text-soft); }
+.nexa-messenger .messenger-arrival,
+.bank-app .bank-dialog { animation: nexa-state-in var(--nexa-duration) var(--nexa-motion); }
+@keyframes nexa-state-in { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 700px) {
+  .bank-app .bank-topbar { gap: 8px; padding-inline: 12px; }
+  .bank-app .bank-assistant-link { font-size: .875rem; }
+  .bank-app .bank-mobile-tabs :is(a, button) {
+    min-height: 64px;
+    font-size: .8125rem;
+    color: var(--nexa-text-soft);
+    overflow-wrap: anywhere;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .bank-app .bank-mobile-tabs a.active { color: var(--nexa-action); }
+  .nexa-messenger .messenger-bottom { max-height: 55dvh; overflow-y: auto; }
+  .nexa-messenger .messenger-quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.bank-app, .nexa-messenger) *,
+  :is(.bank-app, .nexa-messenger) *::before,
+  :is(.bank-app, .nexa-messenger) *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
