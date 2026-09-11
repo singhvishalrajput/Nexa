@@ -1,124 +1,83 @@
 package com.nexa.api.accounts;
 
-import java.math.BigDecimal;
+import com.nexa.api.core.model.*;
+import com.nexa.api.core.repository.*;
+import com.nexa.api.core.service.*;
+import com.nexa.api.identity.*;
+import com.nexa.api.shared.errors.*;
 import java.security.SecureRandom;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Base64;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.nexa.api.identity.CurrentUserProvider;
-import com.nexa.api.identity.UserQueryService;
-import com.nexa.api.ledger.OpeningLedgerService;
-import com.nexa.api.shared.errors.ConflictException;
-import com.nexa.api.transactions.TransactionRecordingService;
-
 @Service
 public class AccountOpeningService {
+  private static final SecureRandom RANDOM = new SecureRandom();
+  private final CurrentUserProvider current;
+  private final UserQueryService users;
+  private final AccountDao accounts;
+  private final CustomerDao customers;
+  private final AccountService accountService;
+  private final CustomerService customerService;
 
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    private static final Base64.Encoder BASE64_URL = Base64.getUrlEncoder().withoutPadding();
+  public AccountOpeningService(
+      CurrentUserProvider current,
+      UserQueryService users,
+      AccountDao accounts,
+      CustomerDao customers,
+      AccountService accountService,
+      CustomerService customerService) {
+    this.current = current;
+    this.users = users;
+    this.accounts = accounts;
+    this.customers = customers;
+    this.accountService = accountService;
+    this.customerService = customerService;
+  }
 
-    private final CurrentUserProvider currentUserProvider;
-    private final UserQueryService userQueryService;
-    private final BankAccountRepository bankAccountRepository;
-    private final OpeningLedgerService openingLedgerService;
-    private final TransactionRecordingService transactionRecordingService;
-    private final BigDecimal demoOpeningCredit;
-
-    AccountOpeningService(
-            CurrentUserProvider currentUserProvider,
-            UserQueryService userQueryService,
-            BankAccountRepository bankAccountRepository,
-            OpeningLedgerService openingLedgerService,
-            TransactionRecordingService transactionRecordingService,
-            @Value("${nexa.banking.demo-opening-credit}") BigDecimal demoOpeningCredit) {
-        this.currentUserProvider = currentUserProvider;
-        this.userQueryService = userQueryService;
-        this.bankAccountRepository = bankAccountRepository;
-        this.openingLedgerService = openingLedgerService;
-        this.transactionRecordingService = transactionRecordingService;
-        this.demoOpeningCredit = demoOpeningCredit;
+  @Transactional
+  public AccountResponse open(OpenAccountRequest request) {
+    var user = users.requireUser(current.userId());
+    if (!"CUSTOMER".equals(user.role()))
+      throw new ConflictException("Only customers can open a Nexa bank account.");
+    Customer customer =
+        customers
+            .findByUserId(user.id())
+            .orElseGet(
+                () -> {
+                  if (customers.findByEmail(user.email()).isPresent())
+                    throw new ConflictException(
+                        "This customer already exists. Ask an administrator to link the banking"
+                            + " profile to your login.");
+                  Customer c = new Customer();
+                  c.setFullName(user.fullName());
+                  c.setEmail(user.email());
+                  c.setPhoneNumber(user.phoneNumber());
+                  c.setDateOfBirth(request.dateOfBirth());
+                  c.setAddress(request.address());
+                  c.setUserId(user.id());
+                  return customerService.create(c);
+                });
+    if (customer.getDateOfBirth() == null || customer.getAddress() == null) {
+      customer.setDateOfBirth(request.dateOfBirth());
+      customer.setAddress(request.address());
+      customers.save(customer);
     }
+    Account a = new Account();
+    a.setAccountNumber(uniqueNumber());
+    a.setAccountName(request.displayName().trim());
+    a.setAccountType(AccountType.valueOf(request.accountType()));
+    a.setAccountCategory(AccountCategory.CUSTOMER);
+    a.setCustomer(customer);
+    a.setCurrencyCode(request.currencyCode());
+    return AccountQueryService.toResponse(accountService.create(a));
+  }
 
-    @Transactional
-    public AccountResponse open(OpenAccountRequest request) {
-        String userId = currentUserProvider.userId();
-        UserQueryService.UserSummary user = userQueryService.requireUser(userId);
-        if (!"CUSTOMER".equals(user.role())) {
-            throw new ConflictException("Only customers can open a Nexa bank account.");
-        }
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        String accountId = secureId("acc_");
-        String accountNumber = uniqueAccountNumber();
-        String lastFour = accountNumber.substring(accountNumber.length() - 4);
-        BankAccountEntity account = new BankAccountEntity(
-                accountId,
-                userId,
-                accountNumber,
-                "•••• " + lastFour,
-                request.displayName().trim(),
-                request.accountType(),
-                request.currencyCode(),
-                demoOpeningCredit,
-                now);
-
-        try {
-            bankAccountRepository.saveAndFlush(account);
-            String journalEntryId = openingLedgerService.recordOpeningCredit(
-                    secureId("lda_"),
-                    secureId("jen_"),
-                    secureId("ldp_"),
-                    secureId("ldp_"),
-                    accountId,
-                    accountNumber,
-                    demoOpeningCredit,
-                    request.currencyCode(),
-                    now);
-            transactionRecordingService.recordOpeningCredit(
-                    secureId("txn_"),
-                    accountId,
-                    journalEntryId,
-                    "OPENING-" + accountId,
-                    demoOpeningCredit,
-                    request.currencyCode(),
-                    now);
-        } catch (DataIntegrityViolationException exception) {
-            throw new ConflictException("A Nexa bank account could not be opened because its account details already exist.");
-        }
-        return toResponse(account);
+  private String uniqueNumber() {
+    for (int attempt = 0; attempt < 10; attempt++) {
+      StringBuilder n = new StringBuilder("9");
+      while (n.length() < 12) n.append(RANDOM.nextInt(10));
+      if (!accounts.existsByAccountNumber(n.toString())) return n.toString();
     }
-
-    private String uniqueAccountNumber() {
-        for (int attempt = 0; attempt < 10; attempt++) {
-            StringBuilder value = new StringBuilder("9");
-            while (value.length() < 12) value.append(SECURE_RANDOM.nextInt(10));
-            String candidate = value.toString();
-            if (!bankAccountRepository.existsByAccountNumber(candidate)) return candidate;
-        }
-        throw new IllegalStateException("Unable to allocate a unique Nexa account number.");
-    }
-
-    private String secureId(String prefix) {
-        byte[] bytes = new byte[16];
-        SECURE_RANDOM.nextBytes(bytes);
-        return prefix + BASE64_URL.encodeToString(bytes);
-    }
-
-    private AccountResponse toResponse(BankAccountEntity account) {
-        return new AccountResponse(
-                account.getId(),
-                account.getDisplayName(),
-                account.getAccountNumberMasked(),
-                account.getAccountType(),
-                account.getCurrencyCode(),
-                account.getAvailableBalance(),
-                account.getLedgerBalance(),
-                account.getStatus(),
-                account.getUpdatedAt());
-    }
+    throw new ConflictException("Unable to allocate an account number.");
+  }
 }

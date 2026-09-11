@@ -1,13 +1,11 @@
 package com.nexa.api.accounts;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
+import java.time.LocalDate;
 
 public record OpenAccountRequest(
-        @NotBlank @Size(max = 120) String displayName,
-        @NotBlank @Pattern(regexp = "SAVINGS|CURRENT", message = "Account type must be SAVINGS or CURRENT.")
-        String accountType,
-        @NotBlank @Pattern(regexp = "INR", message = "Nexa demo accounts currently support INR only.")
-        String currencyCode) {
-}
+    @NotBlank @Size(max = 100) String displayName,
+    @NotBlank @Pattern(regexp = "SAVINGS|CURRENT") String accountType,
+    @NotBlank @Pattern(regexp = "INR") String currencyCode,
+    @NotNull @Past LocalDate dateOfBirth,
+    @NotBlank @Size(max = 255) String address) {}

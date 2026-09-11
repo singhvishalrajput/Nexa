@@ -1,29 +1,15 @@
 # Nexa
 
-Nexa is a conversational banking application with an Oracle JET web client and a Spring Boot API.
+One banking application with an Oracle JET web client and a Java 17 / Spring Boot 4.1.1 API.
 
-## Repository layout
+- `apps/api/src/main/java/com/nexa/api/core`: authoritative customers, accounts, transactions, journals, ledger entries and management APIs.
+- `apps/api`: authentication, customer-facing APIs, conversations, product views, migrations and backend tests in the same application.
+- `apps/web`: the integrated web client.
 
-```text
-apps/
-  api/   Spring Boot API (Java 21, Maven)
-  web/   Oracle JET web application (Node.js)
-docs/    Shared product, architecture, and handoff documentation
-```
+Start the API from `apps/api` with `./mvnw.cmd spring-boot:run` (or `mvn spring-boot:run`) after configuring Oracle. It listens on port **8088**. Start the frontend from `apps/web` with `npm ci` and `npm run dev`.
 
-## Run locally
+Validate with `mvn verify` in `apps/api` and `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` in `apps/web`. Optional live API checks use `npm run test:live` with test credentials supplied through environment variables.
 
-Start the API from `apps/api`:
+See [API setup](apps/api/README.md) and [banking integration and database cutover](docs/BANKING_INTEGRATION.md).
 
-```powershell
-./mvnw.cmd spring-boot:run
-```
-
-Start the web application from `apps/web`:
-
-```powershell
-npm install
-npm run dev
-```
-
-See `apps/api/README.md` and `docs/BACKEND_HANDOFF.md` for configuration and architecture details.
+See [frontend implementation and verification](docs/FRONTEND_IMPLEMENTATION.md) for banking screens, API integration, and backend limitations.

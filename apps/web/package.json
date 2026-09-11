@@ -4,7 +4,11 @@
   "description": "An Oracle JavaScript Extension Toolkit(JET) web app",
   "scripts": {
     "build": "ojet build",
-    "dev": "ojet serve"
+    "dev": "ojet serve",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.cjs",
+    "lint": "node scripts/lint.cjs",
+    "test:live": "node --test tests/live-banking.cjs"
   },
   "dependencies": {
     "@oracle/oraclejet": "~20.1.0",

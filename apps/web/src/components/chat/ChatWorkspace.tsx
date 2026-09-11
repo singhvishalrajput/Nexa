@@ -258,7 +258,7 @@ export function ChatWorkspace({ session, onClose, onLogout }: ChatWorkspaceProps
     setPendingDeleteId(null);
   };
 
-  const createNexaAccount = async (request: { displayName: string; accountType: "SAVINGS" | "CURRENT" }) => {
+  const createNexaAccount = async (request: { displayName: string; accountType: "SAVINGS" | "CURRENT"; dateOfBirth: string; address: string }) => {
     setOpeningAccount(true);
     setOpeningError("");
     try {
@@ -425,7 +425,7 @@ export function ChatWorkspace({ session, onClose, onLogout }: ChatWorkspaceProps
       </header>
       {mainView === "chat" ? <><section ref={conversationRef} class="nexa-conversation" aria-live="polite">
         <div class="nexa-conversation-intro"><h2>{messages.length === 1 ? "How can I help?" : currentThread.title}</h2><p>{messages.length === 1 ? "Ask naturally. You’ll review every action before anything changes." : "Continue the conversation or start a new one from your history."}</p></div>
-        {!accountLoading && !accountError && !primaryAccount && <section class="nexa-no-account"><span>Nexa account required</span><h3>Open your first bank account.</h3><p>Receive ₹1,00,000 in demo funds and use Nexa’s balance, transaction and payment experiences.</p><button type="button" onClick={() => setAccountOpeningOpen(true)}>Open a Nexa account <b>↗</b></button></section>}
+        {!accountLoading && !accountError && !primaryAccount && <section class="nexa-no-account"><span>Nexa account required</span><h3>Open your first bank account.</h3><p>Create a bank account to use Nexa’s balance and transaction experiences.</p><button type="button" onClick={() => setAccountOpeningOpen(true)}>Open a Nexa account <b>↗</b></button></section>}
         {accountError && <p class="nexa-banking-load-error" role="alert">{accountError}</p>}
         <div class="nexa-message-list">{messages.map((message, index) => <div class={`nexa-message is-${message.role}`} key={`${message.role}-${index}`}><span>{message.role === "assistant" ? "N" : "You"}</span><div class="nexa-message-content"><p>{message.text}</p>{message.insight === "last-month-transactions" && <div class="nexa-inline-analysis"><span><b>₹38,420</b><small>Total spent</small></span><span><b>−11.2%</b><small>Versus May</small></span><span><b>₹14,180</b><small>Home & bills</small></span></div>}{message.attachments?.length ? <div class="nexa-message-attachments">{message.attachments.map((file) => <span key={file.id}><b>{file.kind === "image" ? "IMG" : "DOC"}</b><i>{file.name}</i><small>{formatFileSize(file.size)}</small></span>)}</div> : null}{renderMessageAction(message)}</div></div>)}</div>
         {accountOpeningOpen && !primaryAccount && <div ref={accountOpeningRef} class="nexa-account-opening-anchor"><AccountOpeningCard opening={openingAccount} error={openingError} onCancel={() => { setAccountOpeningOpen(false); setOpeningError(""); }} onOpen={createNexaAccount} /></div>}

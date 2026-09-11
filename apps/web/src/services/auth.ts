@@ -1,21 +1,22 @@
 const configuredApiUrl = (window as Window & { NEXA_API_BASE_URL?: string }).NEXA_API_BASE_URL;
-const API_BASE_URL = configuredApiUrl || "http://localhost:8081/api/v1";
+const API_BASE_URL = configuredApiUrl || "http://localhost:8088/api/v1";
 const AUTH_STORAGE_KEY = "nexa-auth-session";
 
 export type AuthUser = {
   id: string;
   email: string;
-  role: "CUSTOMER" | "ADMIN";
+  role: "CUSTOMER" | "ADMIN" | "SUPPORT_AGENT" | "FRAUD_ANALYST";
 };
 
 export type CustomerProfile = {
+  address?: string | null;
   id: string;
   userId: string;
   fullName: string;
   email: string;
   phoneNumber: string | null;
   status: string;
-  role: "CUSTOMER" | "ADMIN";
+  role: "CUSTOMER" | "ADMIN" | "SUPPORT_AGENT" | "FRAUD_ANALYST";
 };
 
 type AuthenticationResponse = {
@@ -34,6 +35,7 @@ export type AuthSession = StoredAuthentication & {
 
 type ApiErrorBody = {
   detail?: string;
+  error?: string;
   fieldErrors?: Array<{ field: string; message: string }>;
 };
 
@@ -44,7 +46,7 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, accessToken?: string): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, accessToken?: string, core = false): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
   if (init.body) headers.set("Content-Type", "application/json");
@@ -52,9 +54,16 @@ async function request<T>(path: string, init: RequestInit = {}, accessToken?: st
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    init.signal?.addEventListener("abort", abort, { once: true });
+    const timeout = window.setTimeout(abort, 20000);
+    try {
+      if (init.signal?.aborted) controller.abort();
+      response = await fetch((core ? API_BASE_URL.replace(/\/v1\/?$/, "") : API_BASE_URL) + path, { ...init, headers, signal: controller.signal });
+    } finally { window.clearTimeout(timeout); init.signal?.removeEventListener("abort", abort); }
   } catch (_) {
-    throw new ApiRequestError(0, "Cannot reach the Nexa API. Make sure the backend is running on port 8081.");
+    throw new ApiRequestError(0, init.method && init.method !== "GET" ? "The response could not be confirmed. Check your account before submitting again." : "We couldn’t reach the banking service. Check your connection and try again.");
   }
 
   if (!response.ok) {
@@ -63,7 +72,7 @@ async function request<T>(path: string, init: RequestInit = {}, accessToken?: st
       body = await response.json();
     } catch (_) {}
     const fieldMessage = body.fieldErrors?.map((error) => error.message).join(" ");
-    throw new ApiRequestError(response.status, fieldMessage || body.detail || `Request failed (${response.status}).`);
+    throw new ApiRequestError(response.status, fieldMessage || body.detail || body.error || `Request failed (${response.status}).`);
   }
 
   if (response.status === 204) return undefined as T;
@@ -71,7 +80,41 @@ async function request<T>(path: string, init: RequestInit = {}, accessToken?: st
 }
 
 export function authenticatedRequest<T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> {
-  return request<T>(path, init, accessToken);
+  return authorized<T>(path, accessToken, init);
+}
+
+let refreshInFlight: Promise<StoredAuthentication> | null = null;
+let sessionGeneration = 0;
+
+async function authorized<T>(path: string, accessToken: string, init: RequestInit, core = false): Promise<T> {
+  const generation = sessionGeneration;
+  const stored = readStoredAuthentication();
+  const token = stored?.accessToken || accessToken;
+  try { return await request<T>(path, init, token, core); }
+  catch (error) {
+    if (!(error instanceof ApiRequestError) || error.status !== 401) throw error;
+    if (generation !== sessionGeneration) throw error;
+    const latest = readStoredAuthentication();
+    if (!latest) { window.dispatchEvent(new Event("nexa-session-expired")); throw error; }
+    try {
+      const refreshed = latest.accessToken !== token ? latest : await refreshOnce(latest);
+      return await request<T>(path, init, refreshed.accessToken, core);
+    } catch (cause) {
+      if (generation === sessionGeneration && cause instanceof ApiRequestError && (cause.status === 401 || cause.status === 403)) {
+        clearAuthentication(); window.dispatchEvent(new Event("nexa-session-expired"));
+      }
+      throw cause;
+    }
+  }
+}
+
+function refreshOnce(authentication: StoredAuthentication): Promise<StoredAuthentication> {
+  if (!refreshInFlight) refreshInFlight = rotateRefreshToken(authentication).finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
+}
+
+export function authenticatedCoreRequest<T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> {
+  return authorized<T>(path, accessToken, init, true);
 }
 
 function readStoredAuthentication(): StoredAuthentication | null {
@@ -88,6 +131,7 @@ function saveAuthentication(authentication: StoredAuthentication) {
 }
 
 function clearAuthentication() {
+  sessionGeneration++;
   window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
@@ -97,6 +141,7 @@ async function profileFor(authentication: StoredAuthentication): Promise<AuthSes
 }
 
 async function authenticate(path: "/auth/login" | "/auth/register", payload: object): Promise<AuthSession> {
+  sessionGeneration++;
   const authentication = await request<AuthenticationResponse>(path, {
     method: "POST",
     body: JSON.stringify(payload)
@@ -111,10 +156,12 @@ async function authenticate(path: "/auth/login" | "/auth/register", payload: obj
 }
 
 async function rotateRefreshToken(authentication: StoredAuthentication): Promise<StoredAuthentication> {
+  const generation = sessionGeneration;
   const refreshed = await request<AuthenticationResponse>("/auth/refresh", {
     method: "POST",
     body: JSON.stringify({ refreshToken: authentication.refreshToken })
   });
+  if (generation !== sessionGeneration) throw new ApiRequestError(401, "Your session has ended. Please sign in again.");
   saveAuthentication(refreshed);
   return refreshed;
 }
@@ -132,11 +179,12 @@ export function register(fullName: string, email: string, password: string, phon
   });
 }
 
-export function updateProfile(accessToken: string, fullName: string, phoneNumber: string): Promise<CustomerProfile> {
+export function updateProfile(accessToken: string, fullName: string, phoneNumber: string, address: string): Promise<CustomerProfile> {
   return authenticatedRequest<CustomerProfile>("/me", accessToken, {
     method: "PATCH",
     body: JSON.stringify({
       fullName,
+      address: address.trim() || null,
       phoneNumber: phoneNumber.trim() || null
     })
   });
@@ -150,29 +198,20 @@ export async function restoreSession(): Promise<AuthSession | null> {
     return await profileFor(authentication);
   } catch (error) {
     if (!(error instanceof ApiRequestError) || error.status !== 401) {
-      clearAuthentication();
-      return null;
+      throw error;
     }
   }
 
   try {
-    return await profileFor(await rotateRefreshToken(authentication));
-  } catch (_) {
-    clearAuthentication();
-    return null;
+    return await profileFor(await refreshOnce(authentication));
+  } catch (error) {
+    if (error instanceof ApiRequestError && (error.status === 401 || error.status === 403)) { clearAuthentication(); return null; }
+    throw error;
   }
 }
 
 export async function logout(): Promise<void> {
   const authentication = readStoredAuthentication();
-  try {
-    if (authentication) {
-      await request<void>("/auth/logout", {
-        method: "POST",
-        body: JSON.stringify({ refreshToken: authentication.refreshToken })
-      });
-    }
-  } finally {
-    clearAuthentication();
-  }
+  clearAuthentication();
+  if (authentication) await request<void>("/auth/logout", { method: "POST", body: JSON.stringify({ refreshToken: authentication.refreshToken }) });
 }

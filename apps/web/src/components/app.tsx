@@ -2,7 +2,7 @@ import { registerCustomElement } from "ojs/ojvcomponent";
 import { h } from "preact";
 import { useEffect } from "preact/hooks";
 import Context = require("ojs/ojcontext");
-import { NexaLanding } from "./landing/NexaLanding";
+import { BankingApp } from "../features/banking/BankingApp";
 
 export const App = registerCustomElement(
   "app-root",
@@ -13,6 +13,6 @@ export const App = registerCustomElement(
         .applicationBootstrapComplete();
     }, []);
 
-    return <NexaLanding />;
+    return <BankingApp />;
   }
 );

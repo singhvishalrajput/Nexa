@@ -1,5 +1,7 @@
 # Local Oracle setup
 
+> Current runtime, schema and API changes are documented in [Banking integration](../../../docs/BANKING_INTEGRATION.md). Earlier extraction plans below are historical context.
+
 The Nexa API uses the local Oracle AI Database Free pluggable database, `FREEPDB1`. It uses its own `NEXA_APP` user; never configure the API with `SYSTEM`, `SYS`, or `PDBADMIN`.
 
 ## Create the application schema user

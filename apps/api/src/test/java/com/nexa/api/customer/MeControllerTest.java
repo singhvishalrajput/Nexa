@@ -9,8 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -41,7 +41,7 @@ class MeControllerTest {
                 "vishal@example.com",
                 "+91 90000 00482",
                 "ACTIVE",
-                "CUSTOMER"));
+                "CUSTOMER", null));
 
         mockMvc.perform(get("/api/v1/me"))
                 .andExpect(status().isOk())
@@ -53,7 +53,7 @@ class MeControllerTest {
 
     @Test
     void updatesCurrentProfile() throws Exception {
-        when(customerQueryService.updateCurrentProfile(new UpdateProfileRequest("Vishal Kumar Singh", "+91 98765 43210")))
+        when(customerQueryService.updateCurrentProfile(new UpdateProfileRequest("Vishal Kumar Singh", "+91 98765 43210", null)))
                 .thenReturn(new CustomerProfileResponse(
                         "usr_01JDEMO000000000000001",
                         "usr_01JDEMO000000000000001",
@@ -61,7 +61,7 @@ class MeControllerTest {
                         "vishal@example.com",
                         "+91 98765 43210",
                         "ACTIVE",
-                        "CUSTOMER"));
+                        "CUSTOMER", null));
 
         mockMvc.perform(patch("/api/v1/me")
                         .contentType(MediaType.APPLICATION_JSON)

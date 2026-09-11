@@ -5,7 +5,7 @@ import { HeroDemo as Hero } from "./HeroDemo";
 import { ExperienceSection } from "./ExperienceSection";
 import { FinalCta } from "./FinalCta";
 import { LandingFooter } from "./LandingFooter";
-import { ChatWorkspace } from "../chat/ChatWorkspace";
+import { ConversationWorkspace as ChatWorkspace } from "../chat/ConversationWorkspace";
 import { AuthMode, AuthPage } from "../auth/AuthPage";
 import { AuthSession, logout, restoreSession } from "../../services/auth";
 

@@ -32,6 +32,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 public class SecurityConfiguration {
 
     @Bean
@@ -43,6 +44,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/v1/health", "/actuator/health", "/api/v1/auth/**").permitAll()
                         .requestMatchers("/actuator/**").denyAll()
+                        .requestMatchers("/api/accounts/**", "/api/customers/**", "/api/transactions/**", "/api/journal-entries/**", "/api/ledger-entries/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/accounts/**").hasAnyRole("CUSTOMER", "ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions

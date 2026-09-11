@@ -1,5 +1,7 @@
 # Nexa banking service architecture
 
+> Current runtime, schema and API changes are documented in [Banking integration](../../../docs/BANKING_INTEGRATION.md). Earlier extraction plans below are historical context.
+
 ## Runtime boundaries
 
 The codebase is organised so these boundaries can run independently. Until each

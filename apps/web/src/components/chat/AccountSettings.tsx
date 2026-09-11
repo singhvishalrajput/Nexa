@@ -1,5 +1,5 @@
 import { h } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiRequestError, AuthSession, CustomerProfile, updateProfile } from "../../services/auth";
 import { BankAccount } from "../../services/banking";
 
@@ -16,6 +16,8 @@ const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" 
 export function AccountSettings({ session, account, onBack, onLogout, onProfileUpdated }: AccountSettingsProps) {
   const [fullName, setFullName] = useState(session.profile.fullName);
   const [phoneNumber, setPhoneNumber] = useState(session.profile.phoneNumber || "");
+  const [address, setAddress] = useState(session.profile.address || "");
+  const submissionLock = useRef(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -23,22 +25,27 @@ export function AccountSettings({ session, account, onBack, onLogout, onProfileU
   useEffect(() => {
     setFullName(session.profile.fullName);
     setPhoneNumber(session.profile.phoneNumber || "");
-  }, [session.profile.fullName, session.profile.phoneNumber]);
+    setAddress(session.profile.address || "");
+  }, [session.profile.fullName, session.profile.phoneNumber, session.profile.address]);
 
   const save = async (event: Event) => {
     event.preventDefault();
+    if (submissionLock.current) return;
+    submissionLock.current = true;
     setSaving(true);
     setSaved(false);
     setError("");
     try {
-      const updated = await updateProfile(session.accessToken, fullName.trim(), phoneNumber);
+      const updated = await updateProfile(session.accessToken, fullName.trim(), phoneNumber, address);
       setFullName(updated.fullName);
       setPhoneNumber(updated.phoneNumber || "");
+      setAddress(updated.address || "");
       setSaved(true);
       onProfileUpdated(updated);
     } catch (cause) {
       setError(cause instanceof ApiRequestError ? cause.message : "Could not update your profile.");
     } finally {
+      submissionLock.current = false;
       setSaving(false);
     }
   };
@@ -47,10 +54,11 @@ export function AccountSettings({ session, account, onBack, onLogout, onProfileU
     <div class="nexa-account-heading"><p>Your Nexa profile</p><h1>Account settings</h1><span>Manage the personal details linked to your secure Nexa session.</span></div>
     <form class="nexa-account-form" onSubmit={save}>
       <div class="nexa-settings-group">
-        <div><strong>Personal information</strong><span>Your name and phone number are stored with your customer profile.</span></div>
+        <div><strong>Personal information</strong><span>Your name, address and phone number are stored with your customer profile.</span></div>
         <div class="nexa-settings-fields">
           <label>Full name<input required maxLength={160} value={fullName} onInput={(event) => { setFullName(event.currentTarget.value); setSaved(false); }} /></label>
           <label>Login email<input class="is-readonly" type="email" value={session.profile.email} readOnly aria-readonly="true" /></label>
+          <label>Address<input maxLength={255} value={address} required={!!account} onInput={(event) => { setAddress(event.currentTarget.value); setSaved(false); }} /></label>
           <label>Phone number<input maxLength={32} value={phoneNumber} placeholder="Optional" onInput={(event) => { setPhoneNumber(event.currentTarget.value); setSaved(false); }} /></label>
         </div>
       </div>
@@ -66,7 +74,7 @@ export function AccountSettings({ session, account, onBack, onLogout, onProfileU
         <div class="nexa-session-action"><span>Signed in as <b>{session.profile.email}</b></span><button type="button" onClick={onLogout}>Sign out</button></div>
       </div>
       {error && <p class="nexa-settings-error" role="alert">{error}</p>}
-      <div class="nexa-account-actions"><span>{saved ? "Profile updated in Nexa" : "Only your name and phone number can be changed here."}</span><button type="submit" disabled={saving || !fullName.trim()}>{saving ? "Saving…" : saved ? "Saved" : "Save changes"}</button></div>
+      <div class="nexa-account-actions"><span>{saved ? "Profile updated in Nexa" : "Your name, address and phone number can be changed here."}</span><button type="submit" disabled={saving || !fullName.trim()}>{saving ? "Saving…" : saved ? "Saved" : "Save changes"}</button></div>
     </form>
   </section>;
 }

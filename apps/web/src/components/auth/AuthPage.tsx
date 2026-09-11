@@ -19,6 +19,7 @@ export function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: AuthPagePr
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const submissionLock = useRef(false);
   const emailRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -28,7 +29,9 @@ export function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: AuthPagePr
 
   const submit = async (event: Event) => {
     event.preventDefault();
-    if (submitting) return;
+    if (submissionLock.current) return;
+    if (mode === "register" && (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^a-zA-Z0-9]/.test(password))) { setError("Include uppercase, lowercase, a number, and a special character in your password."); return; }
+    submissionLock.current = true;
     setSubmitting(true);
     setError("");
     try {
@@ -39,6 +42,7 @@ export function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: AuthPagePr
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Authentication failed. Please try again.");
     } finally {
+      submissionLock.current = false;
       setSubmitting(false);
     }
   };
@@ -52,17 +56,17 @@ export function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: AuthPagePr
 
       <main class="nexa-auth-main">
         <section class="nexa-auth-intro">
-          <p>Private financial workspace</p>
+          <p>PERSONAL BANKING</p>
           <h1>{mode === "login" ? <>Welcome<br />back.</> : <>Start with<br />clarity.</>}</h1>
           <span>{mode === "login"
-            ? "Sign in to continue to your conversations and financial workspace."
+            ? "Your accounts, payments and everyday banking. Together in one secure workspace."
             : "Create your customer profile, then enter your private Nexa workspace."}</span>
         </section>
 
         <section class="nexa-auth-panel" aria-labelledby="nexa-auth-title">
           <div class="nexa-auth-tabs" role="tablist" aria-label="Authentication options">
-            <button class={mode === "login" ? "is-active" : ""} type="button" role="tab" aria-selected={mode === "login"} onClick={() => onSwitch("login")}>Log in</button>
-            <button class={mode === "register" ? "is-active" : ""} type="button" role="tab" aria-selected={mode === "register"} onClick={() => onSwitch("register")}>Create account</button>
+            <button class={mode === "login" ? "is-active" : ""} type="button" role="tab" aria-selected={mode === "login"} disabled={submitting} onClick={() => onSwitch("login")}>Log in</button>
+            <button class={mode === "register" ? "is-active" : ""} type="button" role="tab" aria-selected={mode === "register"} disabled={submitting} onClick={() => onSwitch("register")}>Create account</button>
           </div>
 
           <form class="nexa-auth-form" onSubmit={submit}>
@@ -76,7 +80,7 @@ export function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: AuthPagePr
             {mode === "register" && <span class="nexa-password-help">Use 8–72 characters with uppercase, lowercase, a number, and a special character.</span>}
             {error && <div class="nexa-auth-error" role="alert">{error}</div>}
 
-            <button class="nexa-auth-submit" type="submit" disabled={submitting}>{submitting ? "Please wait…" : mode === "login" ? "Enter workspace" : "Create account"}<b aria-hidden="true">↗</b></button>
+            <button class="nexa-auth-submit" type="submit" disabled={submitting}>{submitting ? "Please wait…" : mode === "login" ? "Sign in to Nexa" : "Create account"}<b aria-hidden="true">↗</b></button>
           </form>
         </section>
       </main>

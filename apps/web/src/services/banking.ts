@@ -8,7 +8,7 @@ export type BankAccount = {
   currencyCode: "INR";
   availableBalance: number;
   ledgerBalance: number;
-  status: "ACTIVE" | "FROZEN" | "CLOSED";
+  status: "ACTIVE" | "BLOCKED" | "CLOSED";
   updatedAt: string;
 };
 
@@ -25,7 +25,7 @@ export type BankTransaction = {
   occurredAt: string;
 };
 
-type TransactionPage = {
+export type TransactionPage = {
   content: BankTransaction[];
   page: number;
   size: number;
@@ -33,13 +33,17 @@ type TransactionPage = {
   totalPages: number;
 };
 
+export function getTransactionPage(accessToken: string, accountId: string, page = 0): Promise<TransactionPage> {
+  return authenticatedRequest<TransactionPage>(`/accounts/${encodeURIComponent(accountId)}/transactions?size=10&page=${page}`, accessToken);
+}
+
 export function getAccounts(accessToken: string): Promise<BankAccount[]> {
   return authenticatedRequest<BankAccount[]>("/accounts", accessToken);
 }
 
 export function openAccount(
   accessToken: string,
-  account: { displayName: string; accountType: "SAVINGS" | "CURRENT" }
+  account: { displayName: string; accountType: "SAVINGS" | "CURRENT"; dateOfBirth: string; address: string }
 ): Promise<BankAccount> {
   return authenticatedRequest<BankAccount>("/accounts", accessToken, {
     method: "POST",

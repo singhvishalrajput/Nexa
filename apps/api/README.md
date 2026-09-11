@@ -1,87 +1,27 @@
-# Nexa API
+# Nexa banking API
 
-Spring Boot backend for the Nexa conversational-banking prototype.
+Java 17, Spring Boot 4.1.1, Maven, Oracle JDBC 17 and Flyway. The banking application's implementation now lives in `com.nexa.api.core` inside this API; there is one application entry point and one Maven build.
 
-## Current foundation
+## Run
 
-- Java 21 Maven application
-- Public API health check at `GET /api/v1/health`
-- Spring Boot Actuator health check at `GET /actuator/health`
-- CORS limited by profile configuration
-- Request correlation IDs returned as `X-Correlation-ID`
-- Consistent JSON error responses
-- Local Oracle AI Database Free configuration, with Flyway migrations
-- BCrypt password hashing and stateless JWT authentication
-- Rotating, server-side revocable refresh tokens
-- Customer ownership checks for accounts and transactions
-- Payment-service entities for beneficiaries, transfers, strong approvals, and idempotency
-- An audit and transactional-outbox boundary for service-to-service events
+Set `BANKING_DB_PASSWORD` and, when needed, `BANKING_DB_URL` and `BANKING_DB_USERNAME`. Existing `NEXA_DB_*` variables remain supported for deployments; `BANKING_DB_*` takes precedence. Defaults target the existing dedicated `NEXA_APP` schema at `jdbc:oracle:thin:@localhost:1521/FREEPDB1`. The source application's SYSTEM account default is replaced with this required application-schema integration.
 
-## Service boundaries
+Run `./mvnw.cmd spring-boot:run` or `mvn spring-boot:run`. The default port is **8088**, configurable through `SERVER_PORT`. The frontend defaults to `http://localhost:8088/api/v1`; set `window.NEXA_API_BASE_URL` for another address.
 
-The application is prepared for independently deployable Identity, Accounts and
-Ledger, Payments, Platform Events, and API Gateway services. Their ownership
-rules and the transfer event contract are documented in
-[docs/microservice-architecture.md](docs/microservice-architecture.md).
+The default local profile permits `http://localhost:8000`, seeds the existing development login `vishal@example.com` / `NexaDemo@123`, and supplies a development JWT secret. Deployments must select a non-local profile and provide `NEXA_JWT_SECRET` (at least 32 bytes) and `NEXA_CORS_ALLOWED_ORIGINS`. Never use the local seed login or development secret in production.
 
-The current `nexa-api` remains the composition runtime while those services are
-extracted. This avoids sharing financial tables or introducing distributed
-transactions before the payment workflow is implemented end to end.
+Flyway owns schema creation and migration; Hibernate validates it. Read [the cutover notes](../../docs/BANKING_INTEGRATION.md) before upgrading an existing database. Application banking timestamps use UTC.
 
-## Run locally
+## APIs
 
-Prerequisite: Java 21 available on `PATH`. The included Maven Wrapper downloads the required Maven version automatically.
+- Public: `/api/v1/health`, `/actuator/health`, and `/api/v1/auth/{register,login,refresh,logout}`.
+- Customer: `/api/v1/me`, `/api/v1/accounts`, balances and histories, `/api/v1/transactions`, conversations, beneficiaries and banking products. Ownership comes from the signed JWT subject.
+- Administrator: the source APIs at `/api/customers`, `/api/accounts`, `/api/transactions`, `/api/journal-entries`, `/api/ledger-entries`. All original CRUD/search/filter routes are retained. Deposit, withdraw and transfer use `POST /api/transactions/{deposit,withdraw,transfer}` with `sourceAccountId`, `destinationAccountId` and positive `amount` as appropriate.
 
-```powershell
-cd D:\Nexa\apps\api
-.\mvnw.cmd spring-boot:run
-```
+Customer account opening accepts `displayName`, `accountType` (SAVINGS/CURRENT), `currencyCode` (INR), `dateOfBirth` and `address`. It creates an account with zero balance. Deposits and withdrawals require an active SYSTEM/CASH account, provisioned by the migration. No automatic demo credit is issued.
 
-The default `local` profile accepts the Oracle JET application at `http://localhost:8000` and connects to `localhost:1521/FREEPDB1` as `NEXA_APP`.
+The management APIs use numeric account/customer/journal/ledger IDs and positive transaction amounts. Customer API IDs are their string representation; customer history signs amounts relative to the requested account. Both API surfaces read and write the same core records. The management API retains its `error` response envelope; customer APIs retain their structured error envelope.
 
-Before starting the application, create the `NEXA_APP` database user and set its password only in your terminal:
+## Verification
 
-```powershell
-$env:NEXA_DB_PASSWORD = "your-local-nexa-app-password"
-```
-
-The schema is created and seeded automatically by Flyway on the first application start. `SYSTEM`, `SYS`, and `PDBADMIN` must never be used by the application.
-
-The local profile seeds a development-only login:
-
-- Email: `vishal@example.com`
-- Password: `NexaDemo@123`
-
-Use this account only for local development. The local JWT signing secret can be overridden with `NEXA_JWT_SECRET`; deployed environments must always supply a unique secret of at least 32 bytes.
-
-## Authentication API
-
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
-
-Access tokens last 15 minutes by default. Send one to protected endpoints as `Authorization: Bearer <accessToken>`. Refresh tokens are rotated: after a successful refresh, discard the old refresh token and retain the new one.
-
-See [docs/authentication.md](docs/authentication.md) for the complete Postman verification flow.
-
-## Read-only API
-
-- `GET /api/v1/me`
-- `GET /api/v1/accounts`
-- `GET /api/v1/accounts/{accountId}`
-- `GET /api/v1/accounts/{accountId}/balance`
-- `GET /api/v1/accounts/{accountId}/transactions?page=0&size=50&category=&from=&to=`
-
-All read APIs require a valid access token and derive the current user from its signed JWT subject. Account queries additionally verify that the requested account belongs to that user.
-
-```powershell
-Invoke-RestMethod http://localhost:8081/api/v1/health
-Invoke-RestMethod http://localhost:8081/actuator/health
-```
-
-## Configuration
-
-`application-local.yml` contains only safe local defaults. Copy `application-example.yml` or set environment variables when a deployment needs different settings. Do not commit database credentials, tokens, or `.env` files.
-
-AI integration is intentionally not part of the authentication foundation.
+Run `mvn verify` (or the Maven wrapper). Tests cover authentication, conversations, product routing, source banking rules, database-backed postings and a complete authenticated account/deposit/history flow. Tests use isolated H2 databases; they do not connect to or migrate your Oracle database.

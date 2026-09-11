@@ -1,61 +1,62 @@
 package com.nexa.api.accounts;
 
+import com.nexa.api.core.model.Account;
+import com.nexa.api.core.repository.AccountDao;
+import com.nexa.api.identity.CurrentUserProvider;
+import com.nexa.api.shared.errors.ResourceNotFoundException;
+import java.time.ZoneOffset;
 import java.util.List;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.nexa.api.identity.CurrentUserProvider;
-import com.nexa.api.shared.errors.ResourceNotFoundException;
-
 @Service
+@Transactional(readOnly = true)
 public class AccountQueryService {
+  private final CurrentUserProvider user;
+  private final AccountDao accounts;
 
-    private final CurrentUserProvider currentUserProvider;
-    private final BankAccountRepository bankAccountRepository;
+  public AccountQueryService(CurrentUserProvider user, AccountDao accounts) {
+    this.user = user;
+    this.accounts = accounts;
+  }
 
-    AccountQueryService(CurrentUserProvider currentUserProvider, BankAccountRepository bankAccountRepository) {
-        this.currentUserProvider = currentUserProvider;
-        this.bankAccountRepository = bankAccountRepository;
+  public List<AccountResponse> currentAccounts() {
+    return accounts.findByCustomerUserIdOrderByCreatedAtAsc(user.userId()).stream()
+        .map(AccountQueryService::toResponse)
+        .toList();
+  }
+
+  public AccountResponse requireOwnedAccount(String id) {
+    return toResponse(requireOwnedEntity(id));
+  }
+
+  public Account requireOwnedEntity(String id) {
+    try {
+      return accounts
+          .findByIdAndCustomerUserId(Long.valueOf(id), user.userId())
+          .orElseThrow(() -> new ResourceNotFoundException("The account was not found."));
+    } catch (NumberFormatException e) {
+      throw new ResourceNotFoundException("The account was not found.");
     }
+  }
 
-    @Transactional(readOnly = true)
-    public List<AccountResponse> currentAccounts() {
-        String userId = currentUserProvider.userId();
-        return bankAccountRepository.findByUserIdOrderByCreatedAtAsc(userId).stream()
-                .map(this::toResponse)
-                .toList();
-    }
+  public AccountBalanceResponse balance(String id) {
+    var a = requireOwnedAccount(id);
+    return new AccountBalanceResponse(
+        a.id(), a.currencyCode(), a.availableBalance(), a.ledgerBalance(), a.updatedAt());
+  }
 
-    @Transactional(readOnly = true)
-    public AccountResponse requireOwnedAccount(String accountId) {
-        String userId = currentUserProvider.userId();
-        BankAccountEntity account = bankAccountRepository.findByIdAndUserId(accountId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("The account was not found."));
-        return toResponse(account);
-    }
-
-    @Transactional(readOnly = true)
-    public AccountBalanceResponse balance(String accountId) {
-        AccountResponse account = requireOwnedAccount(accountId);
-        return new AccountBalanceResponse(
-                account.id(),
-                account.currencyCode(),
-                account.availableBalance(),
-                account.ledgerBalance(),
-                account.updatedAt());
-    }
-
-    private AccountResponse toResponse(BankAccountEntity account) {
-        return new AccountResponse(
-                account.getId(),
-                account.getDisplayName(),
-                account.getAccountNumberMasked(),
-                account.getAccountType(),
-                account.getCurrencyCode(),
-                account.getAvailableBalance(),
-                account.getLedgerBalance(),
-                account.getStatus(),
-                account.getUpdatedAt());
-    }
+  public static AccountResponse toResponse(Account a) {
+    String n = a.getAccountNumber();
+    return new AccountResponse(
+        a.getId().toString(),
+        a.getAccountName(),
+        "•••• " + n.substring(Math.max(0, n.length() - 4)),
+        a.getAccountType().name(),
+        a.getCurrencyCode(),
+        a.getBalance(),
+        a.getBalance(),
+        a.getStatus().name(),
+        a.getUpdatedAt() == null ? null : a.getUpdatedAt().atOffset(ZoneOffset.UTC));
+  }
 }

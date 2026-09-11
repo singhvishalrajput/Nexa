@@ -1,5 +1,7 @@
 # Nexa Backend Handoff
 
+> For the merged banking core, current setup and schema cutover, see [Banking integration](BANKING_INTEGRATION.md). Pre-merge implementation and activation notes below are historical.
+
 **Status:** Frontend prototype complete; backend not started  
 **Last updated:** 4 September 2026  
 **Purpose:** Give a new backend task or developer enough product, architecture, security, and integration context to begin without relying on the original frontend conversation.
@@ -726,7 +728,7 @@ We are starting the Nexa backend. Nexa is a conversational banking application w
 
 Read docs\BACKEND_HANDOFF.md completely before making changes. Treat the existing frontend as the visual and interaction reference, but remember that all current banking data and outcomes are mocked.
 
-Create the backend at D:\Nexa\apps\api as a Java 21 Maven Spring Boot modular monolith. Begin only with the foundation and first secure vertical slice defined in the handoff. Use Oracle, Flyway, Spring Security, explicit module boundaries, BigDecimal money values, an append-only double-entry ledger, idempotent transfer execution, and an auditable transfer lifecycle.
+Create the backend at D:\Nexa\apps\api as a Java 17 Maven Spring Boot modular monolith. Begin only with the foundation and first secure vertical slice defined in the handoff. Use Oracle, Flyway, Spring Security, explicit module boundaries, BigDecimal money values, an append-only double-entry ledger, idempotent transfer execution, and an auditable transfer lifecycle.
 
 Do not add Kafka yet; design domain events and a transactional-outbox boundary so it can be introduced after the core journey works. Do not add AI before the deterministic banking APIs are reliable. Use WebAuthn/passkeys for eventual face/fingerprint-backed approvals and never store biometric data.
 

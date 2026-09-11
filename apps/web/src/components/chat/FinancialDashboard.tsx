@@ -26,7 +26,7 @@ export function FinancialDashboard({ userName, accounts, transactions, onBack, o
   const [period, setPeriod] = useState<"month" | "quarter">("month");
   const firstName = userName.trim().split(" ")[0] || "there";
   const totalBalance = accounts.reduce((sum, account) => sum + Number(account.availableBalance), 0);
-  const income = transactions.filter((item) => item.amount > 0 && item.type !== "DEMO_OPENING_CREDIT").reduce((sum, item) => sum + Number(item.amount), 0);
+  const income = transactions.filter((item) => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0);
   const spent = Math.abs(transactions.filter((item) => item.amount < 0).reduce((sum, item) => sum + Number(item.amount), 0));
   const totals = { balance: money(totalBalance), income: money(income), spent: money(spent), saved: money(Math.max(0, income - spent)) };
 

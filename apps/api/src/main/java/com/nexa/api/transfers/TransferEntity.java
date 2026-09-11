@@ -16,7 +16,7 @@ import org.hibernate.type.SqlTypes;
 class TransferEntity {
     @Id @Column(name = "ID", length = 26) private String id;
     @Column(name = "USER_ID", length = 26, nullable = false) private String userId;
-    @Column(name = "SOURCE_ACCOUNT_ID", length = 26, nullable = false) private String sourceAccountId;
+    @Column(name = "SOURCE_ACCOUNT_ID", nullable = false) private Long sourceAccountId;
     @Column(name = "BENEFICIARY_ID", length = 26, nullable = false) private String beneficiaryId;
     @Column(name = "TRANSFER_REFERENCE", length = 80, nullable = false) private String transferReference;
     @Column(name = "AMOUNT", precision = 19, scale = 4, nullable = false) private BigDecimal amount;

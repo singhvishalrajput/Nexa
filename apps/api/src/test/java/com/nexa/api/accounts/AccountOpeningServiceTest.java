@@ -1,81 +1,78 @@
 package com.nexa.api.accounts;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
-import java.math.BigDecimal;
-
-import org.junit.jupiter.api.BeforeEach;
+import com.nexa.api.core.model.*;
+import com.nexa.api.core.repository.*;
+import com.nexa.api.core.service.*;
+import com.nexa.api.identity.*;
+import com.nexa.api.shared.errors.*;
+import java.time.LocalDate;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.ArgumentCaptor;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.nexa.api.identity.CurrentUserProvider;
-import com.nexa.api.identity.UserQueryService;
-import com.nexa.api.ledger.OpeningLedgerService;
-import com.nexa.api.shared.errors.ConflictException;
-import com.nexa.api.transactions.TransactionRecordingService;
-
-@ExtendWith(MockitoExtension.class)
 class AccountOpeningServiceTest {
+  final UserQueryService users = mock(UserQueryService.class);
+  final AccountDao accounts = mock(AccountDao.class);
+  final CustomerDao customers = mock(CustomerDao.class);
+  final AccountService accountService = mock(AccountService.class);
+  final CustomerService customerService = mock(CustomerService.class);
+  final AccountOpeningService service =
+      new AccountOpeningService(
+          () -> "owner", users, accounts, customers, accountService, customerService);
+  final OpenAccountRequest request =
+      new OpenAccountRequest("Primary", "SAVINGS", "INR", LocalDate.of(1990, 1, 1), "Mumbai");
 
-    @Mock private CurrentUserProvider currentUserProvider;
-    @Mock private UserQueryService userQueryService;
-    @Mock private BankAccountRepository bankAccountRepository;
-    @Mock private OpeningLedgerService openingLedgerService;
-    @Mock private TransactionRecordingService transactionRecordingService;
+  @Test
+  void createsZeroBalanceAccountThroughAuthoritativeService() {
+    when(users.requireUser("owner"))
+        .thenReturn(
+            new UserQueryService.UserSummary(
+                "owner", "a@example.com", "Customer", null, "ACTIVE", "CUSTOMER"));
+    var c = new Customer();
+    c.setId(1L);
+    c.setUserId("owner");
+    c.setDateOfBirth(request.dateOfBirth());
+    c.setAddress(request.address());
+    when(customers.findByUserId("owner")).thenReturn(Optional.of(c));
+    when(accountService.create(any()))
+        .thenAnswer(
+            call -> {
+              Account a = call.getArgument(0);
+              a.setId(2L);
+              return a;
+            });
+    var response = service.open(request);
+    assertThat(response.availableBalance()).isZero();
+    assertThat(response.ledgerBalance()).isZero();
+    assertThat(response.id()).isEqualTo("2");
+    verify(accountService)
+        .create(
+            argThat(
+                a -> a.getCustomer() == c && a.getAccountCategory() == AccountCategory.CUSTOMER));
+    verifyNoInteractions(customerService);
+  }
 
-    private AccountOpeningService service;
+  @Test
+  void rejectsNonCustomer() {
+    when(users.requireUser("owner"))
+        .thenReturn(
+            new UserQueryService.UserSummary(
+                "owner", "a@example.com", "Admin", null, "ACTIVE", "ADMIN"));
+    assertThatThrownBy(() -> service.open(request)).isInstanceOf(ConflictException.class);
+    verifyNoInteractions(accountService, customerService);
+  }
 
-    @BeforeEach
-    void setUp() {
-        service = new AccountOpeningService(
-                currentUserProvider,
-                userQueryService,
-                bankAccountRepository,
-                openingLedgerService,
-                transactionRecordingService,
-                new BigDecimal("100000.00"));
-        when(currentUserProvider.userId()).thenReturn("usr_customer");
-        when(userQueryService.requireUser("usr_customer")).thenReturn(new UserQueryService.UserSummary(
-                "usr_customer", "customer@example.com", "Customer", null, "ACTIVE", "CUSTOMER"));
-    }
-
-    @Test
-    void createsAccountLedgerAndVisibleOpeningTransaction() {
-        when(bankAccountRepository.existsByAccountNumber(anyString())).thenReturn(false);
-        when(bankAccountRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(openingLedgerService.recordOpeningCredit(
-                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
-                any(BigDecimal.class), anyString(), any())).thenReturn("jen_opening");
-
-        AccountResponse response = service.open(new OpenAccountRequest("Primary account", "SAVINGS", "INR"));
-
-        assertThat(response.availableBalance()).isEqualByComparingTo("100000.00");
-        assertThat(response.accountNumberMasked()).startsWith("•••• ");
-        ArgumentCaptor<BankAccountEntity> accountCaptor = ArgumentCaptor.forClass(BankAccountEntity.class);
-        verify(bankAccountRepository).saveAndFlush(accountCaptor.capture());
-        assertThat(accountCaptor.getValue().getVersion()).isNull();
-        verify(openingLedgerService).recordOpeningCredit(
-                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
-                any(BigDecimal.class), anyString(), any());
-        verify(transactionRecordingService).recordOpeningCredit(
-                anyString(), anyString(), anyString(), anyString(),
-                any(BigDecimal.class), anyString(), any());
-    }
-
-    @Test
-    void rejectsAccountOpeningForNonCustomerRoles() {
-        when(userQueryService.requireUser("usr_customer")).thenReturn(new UserQueryService.UserSummary(
-                "usr_customer", "agent@example.com", "Agent", null, "ACTIVE", "SUPPORT_AGENT"));
-
-        assertThatThrownBy(() -> service.open(new OpenAccountRequest("Another", "CURRENT", "INR")))
-                .isInstanceOf(ConflictException.class);
-    }
+  @Test
+  void doesNotClaimExistingCustomerByEmail() {
+    when(users.requireUser("owner"))
+        .thenReturn(
+            new UserQueryService.UserSummary(
+                "owner", "a@example.com", "Customer", null, "ACTIVE", "CUSTOMER"));
+    when(customers.findByEmail("a@example.com")).thenReturn(Optional.of(new Customer()));
+    assertThatThrownBy(() -> service.open(request)).isInstanceOf(ConflictException.class);
+    verifyNoInteractions(accountService, customerService);
+  }
 }

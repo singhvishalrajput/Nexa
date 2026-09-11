@@ -54,8 +54,11 @@
 **/*.tmp
 **/*.swp
 **/*~
+/.tools/
 
 # Operating-system files
 **/.DS_Store
 **/Thumbs.db
 **/desktop.ini
+
+**/application-local.properties
