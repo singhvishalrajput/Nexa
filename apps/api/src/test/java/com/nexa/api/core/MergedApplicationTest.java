@@ -1,12 +1,16 @@
 package com.nexa.api.core;
+import com.nexa.api.beans.Account;
+import com.nexa.api.beans.AccountCategory;
+import com.nexa.api.beans.AccountType;
+import com.nexa.api.beans.Customer;
+import com.nexa.api.service.AccountService;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.nexa.api.core.model.*;
-import com.nexa.api.core.service.AccountService;
+import com.nexa.api.service.AccountService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

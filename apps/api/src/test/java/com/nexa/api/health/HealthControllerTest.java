@@ -1,4 +1,10 @@
 package com.nexa.api.health;
+import com.nexa.api.config.CorrelationIdFilter;
+import com.nexa.api.config.CorsConfiguration;
+import com.nexa.api.controller.HealthController;
+import com.nexa.api.security.SecurityConfiguration;
+import com.nexa.api.security.SecurityErrorWriter;
+
 
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.emptyOrNullString;
@@ -16,8 +22,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.nexa.api.shared.configuration.CorrelationIdFilter;
-import com.nexa.api.shared.configuration.CorsConfiguration;
+import com.nexa.api.config.CorrelationIdFilter;
+import com.nexa.api.config.CorsConfiguration;
 import com.nexa.api.security.SecurityConfiguration;
 import com.nexa.api.security.SecurityErrorWriter;
 

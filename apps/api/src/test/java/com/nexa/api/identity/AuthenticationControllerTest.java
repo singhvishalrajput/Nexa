@@ -1,4 +1,10 @@
 package com.nexa.api.identity;
+import com.nexa.api.beans.AuthenticationResponse;
+import com.nexa.api.beans.Customer;
+import com.nexa.api.controller.AuthenticationController;
+import com.nexa.api.exep.ApiExceptionHandler;
+import com.nexa.api.service.AuthenticationService;
+
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -17,7 +23,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.nexa.api.shared.errors.ApiExceptionHandler;
+import com.nexa.api.exep.ApiExceptionHandler;
 
 @WebMvcTest(AuthenticationController.class)
 @AutoConfigureMockMvc(addFilters = false)

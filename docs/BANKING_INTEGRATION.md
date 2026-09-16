@@ -2,7 +2,7 @@
 
 ## Final structure and authority
 
-The former banking-application Java sources are consolidated into `apps/api/src/main/java/com/nexa/api/core/{model,repository,service,web}`. Customer, Account, BankTransaction, JournalEntry and LedgerEntry are the only active core banking entities. The existing Nexa application entry point scans them alongside identity, conversations and product services. The separate source project's entry point, POM, configuration, duplicate exception classes and manual create/recreate scripts are superseded.
+The former banking-application Java sources are consolidated into the API's conventional layers: `apps/api/src/main/java/com/nexa/api/{beans,repository,service,controller,config,security,exep}`. Customer, Account, BankTransaction, JournalEntry and LedgerEntry are the only active core banking entities. The existing Nexa application entry point scans them alongside identity, conversations and product services. The separate source project's entry point, POM, configuration, duplicate exception classes and manual create/recreate scripts are superseded.
 
 The merged build uses the source's Java 17, Spring Boot 4.1.1, Oracle JDBC 17 and devtools dependencies, with Nexa's security, validation, actuator and Flyway integrations. Spring Boot 4's modular test packages and Jackson 3 are used throughout. There is no second backend or parallel account/transaction store.
 

@@ -1,10 +1,15 @@
 package com.nexa.api.conversations;
+import com.nexa.api.beans.BankingContent;
+import com.nexa.api.controller.ConversationsController;
+import com.nexa.api.exep.ApiExceptionHandler;
+import com.nexa.api.service.ConversationService;
+
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.nexa.api.shared.errors.ApiExceptionHandler;
+import com.nexa.api.exep.ApiExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;

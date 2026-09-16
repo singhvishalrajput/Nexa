@@ -1,4 +1,9 @@
 package com.nexa.api.transactions;
+import com.nexa.api.beans.TransactionQuery;
+import com.nexa.api.beans.TransactionStatus;
+import com.nexa.api.service.BusinessDateResolver;
+import com.nexa.api.service.NaturalLanguageTransactionQueryParser;
+
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -35,7 +40,7 @@ class BusinessDateResolverTest {
     assertThat(query.dateRange().startDate()).isEqualTo(LocalDate.of(2026, 9, 15));
     assertThat(query.minAmount()).isEqualByComparingTo("2000");
     assertThat(query.direction()).isEqualTo(TransactionQuery.Direction.OUTGOING);
-    assertThat(query.statuses()).containsExactly(com.nexa.api.core.model.TransactionStatus.SUCCESS);
+    assertThat(query.statuses()).containsExactly(com.nexa.api.beans.TransactionStatus.SUCCESS);
     assertThat(query.condition()).isInstanceOf(TransactionQuery.Group.class);
   }
 

@@ -1,4 +1,6 @@
 package com.nexa.api.banking;
+import com.nexa.api.beans.AccountType;
+
 
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;

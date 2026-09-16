@@ -1,4 +1,15 @@
 package com.nexa.api.nlp;
+import com.nexa.api.beans.Intent;
+import com.nexa.api.exep.InvalidRequestException;
+import com.nexa.api.repository.IntentRepository;
+import com.nexa.api.service.BasicEmbeddingProvider;
+import com.nexa.api.service.BasicEntityExtractor;
+import com.nexa.api.service.BasicIntentClassifier;
+import com.nexa.api.service.EmbeddingProvider;
+import com.nexa.api.service.InMemoryVectorIndex;
+import com.nexa.api.service.IntentClassifier;
+import com.nexa.api.service.VectorIndex;
+
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -63,9 +74,9 @@ class BasicIntentClassifierTest {
             extractor.extract("transfer INR 10.999 to ben_demo_1", Intent.START_TRANSFER).amount())
         .isEqualByComparingTo("10.999");
     assertThatThrownBy(() -> extractor.extract("pay bill bil_1 bil_2", Intent.PAY_BILL))
-        .isInstanceOf(com.nexa.api.shared.errors.InvalidRequestException.class);
+        .isInstanceOf(com.nexa.api.exep.InvalidRequestException.class);
     assertThatThrownBy(() -> extractor.extract("transfer from acc_1 acc_2", Intent.START_TRANSFER))
-        .isInstanceOf(com.nexa.api.shared.errors.InvalidRequestException.class);
+        .isInstanceOf(com.nexa.api.exep.InvalidRequestException.class);
   }
 
   @Test

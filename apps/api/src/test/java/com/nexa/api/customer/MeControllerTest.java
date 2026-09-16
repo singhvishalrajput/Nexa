@@ -1,4 +1,12 @@
 package com.nexa.api.customer;
+import com.nexa.api.beans.Customer;
+import com.nexa.api.beans.CustomerProfileResponse;
+import com.nexa.api.beans.UpdateProfileRequest;
+import com.nexa.api.config.CorrelationIdFilter;
+import com.nexa.api.controller.MeController;
+import com.nexa.api.exep.ApiExceptionHandler;
+import com.nexa.api.service.CustomerQueryService;
+
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,8 +25,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.http.MediaType;
 
-import com.nexa.api.shared.configuration.CorrelationIdFilter;
-import com.nexa.api.shared.errors.ApiExceptionHandler;
+import com.nexa.api.config.CorrelationIdFilter;
+import com.nexa.api.exep.ApiExceptionHandler;
 
 @WebMvcTest(MeController.class)
 @AutoConfigureMockMvc(addFilters = false)

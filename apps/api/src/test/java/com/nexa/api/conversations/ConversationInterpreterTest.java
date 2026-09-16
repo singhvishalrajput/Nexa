@@ -1,10 +1,17 @@
 package com.nexa.api.conversations;
+import com.nexa.api.beans.Account;
+import com.nexa.api.beans.Intent;
+import com.nexa.api.service.AccountQueryService;
+import com.nexa.api.service.ConversationInterpreter;
+import com.nexa.api.service.OllamaInterpreter;
+import com.nexa.api.service.TransactionQueryService;
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-import com.nexa.api.accounts.AccountQueryService;
-import com.nexa.api.transactions.TransactionQueryService;
+import com.nexa.api.service.AccountQueryService;
+import com.nexa.api.service.TransactionQueryService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +32,7 @@ class ConversationInterpreterTest {
 
   @Test
   void simpleBalanceRequestsNeverCallOllamaEvenWithHistory() {
-    var ollama = mock(com.nexa.api.nlp.OllamaInterpreter.class);
+    var ollama = mock(com.nexa.api.service.OllamaInterpreter.class);
     interpreter.setOllama(ollama);
     when(accounts.currentAccounts()).thenReturn(List.of());
     for (String text :
@@ -39,7 +46,7 @@ class ConversationInterpreterTest {
               interpreter
                   .interpret(
                       text,
-                      List.of(new com.nexa.api.nlp.OllamaInterpreter.Message("user", "last month")))
+                      List.of(new com.nexa.api.service.OllamaInterpreter.Message("user", "last month")))
                   .intent())
           .as(text)
           .isEqualTo("GET_BALANCE");
@@ -50,7 +57,7 @@ class ConversationInterpreterTest {
 
   @Test
   void filteredAmbiguousAndFollowupRequestsStillReachOllama() {
-    var ollama = mock(com.nexa.api.nlp.OllamaInterpreter.class);
+    var ollama = mock(com.nexa.api.service.OllamaInterpreter.class);
     interpreter.setOllama(ollama);
     when(accounts.currentAccounts()).thenReturn(List.of());
     for (String text :

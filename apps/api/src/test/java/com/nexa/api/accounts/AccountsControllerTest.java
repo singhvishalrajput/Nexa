@@ -1,4 +1,17 @@
 package com.nexa.api.accounts;
+import com.nexa.api.beans.Account;
+import com.nexa.api.beans.AccountBalanceResponse;
+import com.nexa.api.beans.AccountResponse;
+import com.nexa.api.beans.AccountType;
+import com.nexa.api.beans.PageResponse;
+import com.nexa.api.beans.TransactionResponse;
+import com.nexa.api.config.CorrelationIdFilter;
+import com.nexa.api.controller.AccountsController;
+import com.nexa.api.exep.ApiExceptionHandler;
+import com.nexa.api.service.AccountOpeningService;
+import com.nexa.api.service.AccountQueryService;
+import com.nexa.api.service.TransactionQueryService;
+
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -20,11 +33,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.nexa.api.shared.configuration.CorrelationIdFilter;
-import com.nexa.api.shared.errors.ApiExceptionHandler;
-import com.nexa.api.shared.web.PageResponse;
-import com.nexa.api.transactions.TransactionQueryService;
-import com.nexa.api.transactions.TransactionResponse;
+import com.nexa.api.config.CorrelationIdFilter;
+import com.nexa.api.exep.ApiExceptionHandler;
+import com.nexa.api.beans.PageResponse;
+import com.nexa.api.service.TransactionQueryService;
+import com.nexa.api.beans.TransactionResponse;
 
 @WebMvcTest(AccountsController.class)
 @AutoConfigureMockMvc(addFilters = false)

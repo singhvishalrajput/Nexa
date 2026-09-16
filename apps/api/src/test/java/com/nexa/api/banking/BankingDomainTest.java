@@ -1,10 +1,16 @@
 package com.nexa.api.banking;
+import com.nexa.api.beans.BankingModels;
+import com.nexa.api.exep.InvalidRequestException;
+import com.nexa.api.exep.ResourceNotFoundException;
+import com.nexa.api.repository.BankingProductRepository;
+import com.nexa.api.service.CurrentUserProvider;
+import com.nexa.api.service.MandateQueryService;
+
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.nexa.api.identity.CurrentUserProvider;
-import com.nexa.api.shared.errors.*;
+import com.nexa.api.service.CurrentUserProvider;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 

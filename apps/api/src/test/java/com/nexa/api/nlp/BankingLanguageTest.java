@@ -1,4 +1,7 @@
 package com.nexa.api.nlp;
+import com.nexa.api.beans.BankingLanguage;
+import com.nexa.api.beans.Intent;
+
 
 import static org.assertj.core.api.Assertions.*;
 

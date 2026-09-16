@@ -1,9 +1,17 @@
 package com.nexa.api.nlp;
+import com.nexa.api.beans.Account;
+import com.nexa.api.beans.AccountType;
+import com.nexa.api.beans.BankingContent;
+import com.nexa.api.beans.Intent;
+import com.nexa.api.service.ConversationInterpreter;
+import com.nexa.api.service.DomainRouter;
+import com.nexa.api.service.EntityExtractor;
+import com.nexa.api.service.IntentClassifier;
+import com.nexa.api.service.OllamaInterpreter;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.nexa.api.conversations.*;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;

@@ -1,14 +1,31 @@
 package com.nexa.api.conversations;
+import com.nexa.api.beans.Intent;
+import com.nexa.api.repository.IntentRepository;
+import com.nexa.api.service.AccountQueryService;
+import com.nexa.api.service.ActionPreparationService;
+import com.nexa.api.service.BankingDomainRouter;
+import com.nexa.api.service.BasicEmbeddingProvider;
+import com.nexa.api.service.BasicEntityExtractor;
+import com.nexa.api.service.BasicIntentClassifier;
+import com.nexa.api.service.BeneficiaryQueryService;
+import com.nexa.api.service.BillQueryService;
+import com.nexa.api.service.CardQueryService;
+import com.nexa.api.service.ConversationInterpreter;
+import com.nexa.api.service.ConversationService;
+import com.nexa.api.service.InMemoryVectorIndex;
+import com.nexa.api.service.LoanQueryService;
+import com.nexa.api.service.MandateQueryService;
+import com.nexa.api.service.ScheduledPaymentQueryService;
+import com.nexa.api.service.TransactionQueryService;
+import com.nexa.api.service.TransferQueryService;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.nexa.api.accounts.AccountQueryService;
-import com.nexa.api.banking.*;
-import com.nexa.api.beneficiaries.BeneficiaryQueryService;
-import com.nexa.api.nlp.*;
-import com.nexa.api.transactions.TransactionQueryService;
-import com.nexa.api.transfers.TransferQueryService;
+import com.nexa.api.service.AccountQueryService;
+import com.nexa.api.service.BeneficiaryQueryService;
+import com.nexa.api.service.TransactionQueryService;
+import com.nexa.api.service.TransferQueryService;
 import java.time.Clock;
 import java.util.*;
 import org.junit.jupiter.api.Test;

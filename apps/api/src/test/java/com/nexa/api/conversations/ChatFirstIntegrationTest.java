@@ -1,4 +1,9 @@
 package com.nexa.api.conversations;
+import com.nexa.api.beans.Account;
+import com.nexa.api.beans.AccountType;
+import com.nexa.api.beans.Customer;
+import com.nexa.api.service.Workflow;
+
 
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;

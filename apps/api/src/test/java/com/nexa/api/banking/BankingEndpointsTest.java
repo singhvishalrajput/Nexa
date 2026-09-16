@@ -1,14 +1,32 @@
 package com.nexa.api.banking;
+import com.nexa.api.beans.BankingModels;
+import com.nexa.api.controller.ActionsController;
+import com.nexa.api.controller.BeneficiariesController;
+import com.nexa.api.controller.BillController;
+import com.nexa.api.controller.CardController;
+import com.nexa.api.controller.CreditCardsController;
+import com.nexa.api.controller.LoanController;
+import com.nexa.api.controller.MandateController;
+import com.nexa.api.controller.ScheduledPaymentController;
+import com.nexa.api.controller.TransactionsController;
+import com.nexa.api.exep.ApiExceptionHandler;
+import com.nexa.api.repository.BankingProductRepository;
+import com.nexa.api.service.ActionPreparationService;
+import com.nexa.api.service.BeneficiaryQueryService;
+import com.nexa.api.service.BillQueryService;
+import com.nexa.api.service.CardQueryService;
+import com.nexa.api.service.CurrentUserProvider;
+import com.nexa.api.service.LoanQueryService;
+import com.nexa.api.service.MandateQueryService;
+import com.nexa.api.service.ScheduledPaymentQueryService;
+import com.nexa.api.service.TransactionQueryService;
+import com.nexa.api.service.TransferQueryService;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.nexa.api.beneficiaries.*;
-import com.nexa.api.identity.CurrentUserProvider;
-import com.nexa.api.shared.errors.*;
-import com.nexa.api.transactions.*;
-import com.nexa.api.transfers.*;
+import com.nexa.api.service.CurrentUserProvider;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;

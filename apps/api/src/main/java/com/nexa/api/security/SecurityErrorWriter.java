@@ -1,4 +1,6 @@
 package com.nexa.api.security;
+import com.nexa.api.exep.ApiError;
+
 
 import java.io.IOException;
 import java.time.Instant;
@@ -10,7 +12,7 @@ import org.slf4j.MDC;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
-import com.nexa.api.shared.errors.ApiError;
+import com.nexa.api.exep.ApiError;
 
 @Component
 public class SecurityErrorWriter {

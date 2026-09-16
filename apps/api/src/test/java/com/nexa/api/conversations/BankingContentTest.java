@@ -1,14 +1,23 @@
 package com.nexa.api.conversations;
+import com.nexa.api.beans.Account;
+import com.nexa.api.beans.AccountResponse;
+import com.nexa.api.beans.BankingContent;
+import com.nexa.api.beans.PageResponse;
+import com.nexa.api.beans.TransactionResponse;
+import com.nexa.api.service.AccountQueryService;
+import com.nexa.api.service.ConversationInterpreter;
+import com.nexa.api.service.TransactionQueryService;
+
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import tools.jackson.databind.ObjectMapper;
-import com.nexa.api.accounts.AccountQueryService;
-import com.nexa.api.accounts.AccountResponse;
-import com.nexa.api.shared.web.PageResponse;
-import com.nexa.api.transactions.TransactionQueryService;
-import com.nexa.api.transactions.TransactionResponse;
+import com.nexa.api.service.AccountQueryService;
+import com.nexa.api.beans.AccountResponse;
+import com.nexa.api.beans.PageResponse;
+import com.nexa.api.service.TransactionQueryService;
+import com.nexa.api.beans.TransactionResponse;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;

@@ -1,12 +1,18 @@
 package com.nexa.api.transactions;
+import com.nexa.api.beans.Account;
+import com.nexa.api.beans.BankTransaction;
+import com.nexa.api.beans.Customer;
+import com.nexa.api.exep.InvalidRequestException;
+import com.nexa.api.exep.ResourceNotFoundException;
+import com.nexa.api.repository.TransactionDao;
+import com.nexa.api.service.AccountQueryService;
+import com.nexa.api.service.TransactionQueryService;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.nexa.api.accounts.AccountQueryService;
-import com.nexa.api.core.model.*;
-import com.nexa.api.core.repository.TransactionDao;
-import com.nexa.api.shared.errors.*;
+import com.nexa.api.service.AccountQueryService;
+import com.nexa.api.repository.TransactionDao;
 import java.time.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;

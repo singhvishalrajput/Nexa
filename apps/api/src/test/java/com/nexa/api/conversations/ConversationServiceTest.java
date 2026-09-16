@@ -1,11 +1,18 @@
 package com.nexa.api.conversations;
+import com.nexa.api.exep.ResourceNotFoundException;
+import com.nexa.api.service.ConversationInterpreter;
+import com.nexa.api.service.ConversationService;
+import com.nexa.api.service.CurrentUserProvider;
+import com.nexa.api.service.OllamaInterpreter;
+import com.nexa.api.service.WorkflowService;
+
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.nexa.api.identity.CurrentUserProvider;
-import com.nexa.api.shared.errors.ResourceNotFoundException;
+import com.nexa.api.service.CurrentUserProvider;
+import com.nexa.api.exep.ResourceNotFoundException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -127,8 +134,8 @@ class ConversationServiceTest {
         .interpret(
             "only savings",
             List.of(
-                new com.nexa.api.nlp.OllamaInterpreter.Message("user", "show balances"),
-                new com.nexa.api.nlp.OllamaInterpreter.Message(
+                new com.nexa.api.service.OllamaInterpreter.Message("user", "show balances"),
+                new com.nexa.api.service.OllamaInterpreter.Message(
                     "assistant", "Here are your balances.")));
   }
 }

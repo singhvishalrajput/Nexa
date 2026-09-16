@@ -4,7 +4,7 @@ This is a learning showcase. See [showcase flows and simulation boundaries](docs
 
 One banking application with an Oracle JET web client and a Java 17 / Spring Boot 4.1.1 API.
 
-- `apps/api/src/main/java/com/nexa/api/core`: authoritative customers, accounts, transactions, journals, ledger entries and management APIs.
+- `apps/api/src/main/java/com/nexa/api/{beans,repository,service,controller}`: authoritative customers, accounts, transactions, journals, ledger entries and management APIs.
 - `apps/api`: authentication, customer-facing APIs, conversations, product views, migrations and backend tests in the same application.
 - `apps/web`: the integrated web client.
 

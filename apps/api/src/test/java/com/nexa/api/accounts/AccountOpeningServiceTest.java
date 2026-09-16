@@ -1,14 +1,20 @@
 package com.nexa.api.accounts;
+import com.nexa.api.beans.Account;
+import com.nexa.api.beans.AccountCategory;
+import com.nexa.api.beans.Customer;
+import com.nexa.api.beans.OpenAccountRequest;
+import com.nexa.api.exep.ConflictException;
+import com.nexa.api.repository.AccountDao;
+import com.nexa.api.repository.CustomerDao;
+import com.nexa.api.service.AccountOpeningService;
+import com.nexa.api.service.AccountService;
+import com.nexa.api.service.CustomerService;
+import com.nexa.api.service.UserQueryService;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.nexa.api.core.model.*;
-import com.nexa.api.core.repository.*;
-import com.nexa.api.core.service.*;
-import com.nexa.api.identity.*;
-import com.nexa.api.shared.errors.*;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;

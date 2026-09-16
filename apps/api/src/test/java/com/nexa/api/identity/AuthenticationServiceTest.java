@@ -1,4 +1,17 @@
 package com.nexa.api.identity;
+import com.nexa.api.beans.AuthenticationResponse;
+import com.nexa.api.beans.Customer;
+import com.nexa.api.beans.LoginRequest;
+import com.nexa.api.beans.RefreshTokenEntity;
+import com.nexa.api.beans.RefreshTokenRequest;
+import com.nexa.api.beans.RegisterRequest;
+import com.nexa.api.beans.UserEntity;
+import com.nexa.api.exep.ConflictException;
+import com.nexa.api.repository.RefreshTokenRepository;
+import com.nexa.api.repository.UserRepository;
+import com.nexa.api.security.JwtService;
+import com.nexa.api.service.AuthenticationService;
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,7 +38,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.nexa.api.security.JwtService;
 import com.nexa.api.security.JwtService.IssuedAccessToken;
-import com.nexa.api.shared.errors.ConflictException;
+import com.nexa.api.exep.ConflictException;
 
 @ExtendWith(MockitoExtension.class)
 class AuthenticationServiceTest {

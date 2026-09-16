@@ -1,4 +1,7 @@
 package com.nexa.api.nlp;
+import com.nexa.api.beans.FastBankingIntent;
+import com.nexa.api.beans.Intent;
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 

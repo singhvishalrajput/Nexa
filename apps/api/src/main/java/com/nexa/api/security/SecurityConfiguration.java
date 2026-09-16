@@ -1,4 +1,6 @@
 package com.nexa.api.security;
+import com.nexa.api.beans.Customer;
+
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
