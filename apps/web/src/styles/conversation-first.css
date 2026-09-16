@@ -1,292 +1,217 @@
-/* Messaging conventions in Nexa's warm paper, ink and terracotta palette. */
-.nexa-messenger {
-  --nexa-paper: #f8f5ee;
-  --nexa-ink: #24221f;
-  --nexa-muted: #696157;
-  --nexa-line: #ded8ce;
-  --nexa-accent: #a53d24;
-  --nexa-selected: #eee7dc;
-  --nexa-radius: 6px;
-  --chat-ease: cubic-bezier(.2, .7, .2, 1);
-  --paper: var(--nexa-paper);
-  --ink: var(--nexa-ink);
-  --muted: var(--nexa-muted);
-  --line: var(--nexa-line);
-  --accent: var(--nexa-accent);
-  position: fixed;
-  inset: var(--messenger-top, 0px) 0 auto;
-  z-index: 20;
-  height: var(--messenger-height, 100dvh);
-  color: var(--ink);
-  background: var(--paper);
-  color-scheme: light;
-  font-family: Arial, "Nirmala UI", "Noto Sans Devanagari", sans-serif;
-  font-size: 16px;
-  line-height: 1.55;
-  overflow: hidden;
-}
-.nexa-messenger * { box-sizing: border-box; }
-.nexa-messenger button, .nexa-messenger select, .nexa-messenger textarea { font: inherit; color: inherit; }
-.nexa-messenger button { cursor: pointer; border: 0; box-shadow: none; background: transparent; }
-.nexa-messenger button:disabled { opacity: .45; cursor: default; }
-.nexa-messenger :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-.nexa-messenger .messenger-main { height: 100%; width: min(100%, 1040px); margin: auto; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--paper); }
-.nexa-messenger .messenger-header { position: relative; z-index: 3; min-height: 80px; padding: calc(12px + env(safe-area-inset-top)) 24px 12px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--line); background: var(--paper); }
-.nexa-messenger .messenger-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 11px; border-radius: 50%; }
-.nexa-messenger .messenger-icon svg, .nexa-messenger .messenger-new svg, .nexa-messenger .messenger-voice-actions svg { width: 22px; height: 22px; flex-shrink: 0; }
-.nexa-messenger button:hover:not(:disabled) { background: #e9e2d7; }
-.nexa-messenger .messenger-identity { flex: 1; min-width: 0; }
-.nexa-messenger .messenger-identity h1 { margin: 0; font: 29px/1.1 Georgia, serif; letter-spacing: -.05em; color: var(--ink); }
-.nexa-messenger .messenger-identity > span { display: block; font-size: 12px; margin-top: 3px; color: var(--muted); }
-.nexa-messenger .messenger-menu-wrap { position: relative; }
-.nexa-messenger .messenger-options { position: absolute; right: 0; top: 52px; min-width: 240px; padding: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--nexa-radius); box-shadow: none; }
-.nexa-messenger .messenger-options button { width: 100%; min-height: 44px; border-radius: 8px; padding: 10px 12px; text-align: left; }
-.nexa-messenger .messenger-feed-wrap { position: relative; min-height: 0; }
-.nexa-messenger .messenger-feed { height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #bbb2a5 transparent; overflow-anchor: none; }
-.nexa-messenger .messenger-timeline { max-width: 800px; margin: 0 auto; padding: 24px 28px 28px; }
-.nexa-messenger .messenger-date { margin: 4px auto 22px; width: fit-content; max-width: 100%; padding: 4px 0; background: transparent; color: #655d53; font-size: 12px; text-align: center; }
-.nexa-messenger .messenger-exchange + .messenger-exchange .messenger-date { margin-top: 24px; }
-.nexa-messenger .messenger-message { display: flex; margin: 0 0 14px; }
-.nexa-messenger .messenger-message.from-user { justify-content: flex-end; }
-.nexa-messenger .messenger-bubble { min-width: 72px; max-width: 85%; padding: 12px 16px 8px; background: #fffefa; border: 0; border-radius: 3px 12px 12px; }
-.nexa-messenger .from-user .messenger-bubble { max-width: 76%; background: var(--nexa-selected); border-color: transparent; border-radius: 12px 3px 12px 12px; }
-.nexa-messenger .messenger-bubble p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; font-size: 16px; line-height: 1.65; }
-.nexa-messenger .messenger-bubble footer { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 5px; color: #65594e; font-size: 12px; line-height: 1.4; }
-.nexa-messenger .messenger-voice-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #65594e; margin-bottom: 6px; }
-.nexa-messenger .messenger-voice-label svg { width: 14px; height: 14px; }
-.nexa-messenger .messenger-suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 24px; }
-.nexa-messenger .messenger-suggestions button { min-height: 44px; padding: 8px 4px; border: 0; border-radius: var(--nexa-radius); color: var(--accent); background: transparent; text-decoration: underline; text-underline-offset: 4px; font-size: 13px; text-align: left; }
-.nexa-messenger .messenger-load { text-align: center; margin-bottom: 20px; }
-.nexa-messenger .messenger-load button { padding: 10px 16px; min-height: 44px; border-radius: var(--nexa-radius); color: var(--accent); }
-.nexa-messenger .messenger-loading { color: var(--muted); text-align: center; font-size: 13px; }
-.nexa-messenger .messenger-thinking { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; }
-.nexa-messenger .messenger-thinking i { width: 6px; height: 6px; border-radius: 50%; background: #8c7966; animation: messenger-think 1.4s ease-in-out infinite; }
-.nexa-messenger .messenger-thinking i:nth-child(2) { animation-delay: .15s; }
-.nexa-messenger .messenger-thinking i:nth-child(3) { animation-delay: .3s; }
-.nexa-messenger .messenger-thinking > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-@keyframes messenger-think { 50% { opacity: .35; } }
-.nexa-messenger .messenger-new { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid var(--line); border-radius: var(--nexa-radius); background: var(--paper); color: var(--accent); font-size: 13px; }
-.nexa-messenger .messenger-error { margin: 16px 0; max-width: 90%; padding: 12px 16px; border-radius: 12px; background: #f3e5dd; color: #78351f; font-size: 14px; }
-.nexa-messenger .messenger-error p { margin: 0 0 4px; }
-.nexa-messenger .messenger-error button, .nexa-messenger .messenger-inline-actions button { min-height: 44px; padding: 8px 12px; border-radius: 10px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
-.nexa-messenger .messenger-inline-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.nexa-messenger .messenger-bottom { padding: 12px max(24px, calc((100% - 744px) / 2)) calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--paper); }
-.nexa-messenger .messenger-composer { margin: 0; padding: 6px; border: 1px solid #d6cec2; border-radius: 8px; background: #fffefa; }
-.nexa-messenger .messenger-input-row { display: flex; align-items: flex-end; gap: 4px; }
-.nexa-messenger textarea { width: 100%; min-width: 0; min-height: 44px; max-height: 144px; margin: 0; padding: 10px 10px 8px 14px; resize: none; border: 0; border-radius: 8px; outline: none; box-shadow: none; background: transparent; font-size: 16px; line-height: 24px; overflow-y: auto; }
-.nexa-messenger textarea:focus-visible { outline-offset: -3px; }
-.nexa-messenger textarea::placeholder { color: #776e64; opacity: 1; }
-.nexa-messenger .messenger-primary { color: #fffaf4; background: var(--accent); }
-.nexa-messenger .messenger-primary:hover:not(:disabled) { background: #85301d; }
-.nexa-messenger .messenger-composer-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 5px; color: var(--muted); font-size: 12px; }
-.nexa-messenger .messenger-composer-meta > label { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-.nexa-messenger .messenger-composer-meta select { min-height: 44px; border: 0; background: transparent; font-size: 12px; padding: 4px; }
-.nexa-messenger .messenger-composer-meta details { position: relative; }
-.nexa-messenger .messenger-composer-meta summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
-.nexa-messenger .messenger-composer-meta details p { position: absolute; right: 0; bottom: 40px; z-index: 4; width: min(300px, calc(100vw - 40px)); margin: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); font-size: 13px; color: var(--ink); }
-.nexa-messenger .messenger-voice-session { padding: 10px 14px; }
-.nexa-messenger .messenger-voice-state { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-.nexa-messenger .messenger-voice-state time { margin-left: auto; font-variant-numeric: tabular-nums; }
-.nexa-messenger .recording-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
-.nexa-messenger .messenger-voice-preview { max-height: 110px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0 4px; }
-.nexa-messenger .messenger-voice-actions { display: flex; justify-content: space-between; margin-top: 8px; gap: 12px; }
-.nexa-messenger .messenger-voice-actions button { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border-radius: var(--nexa-radius); }
-.nexa-messenger .messenger-drawer-backdrop { position: absolute; inset: 0; z-index: 5; background: #24221f55; }
-.nexa-messenger .messenger-history { display: flex; flex-direction: column; width: min(360px, 92vw); height: 100%; background: var(--paper); padding: calc(20px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom)); }
-.nexa-messenger .messenger-history header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.nexa-messenger .messenger-history h2 { margin: 0; font: 28px Georgia, serif; }
-.nexa-messenger .messenger-new-chat { min-height: 48px; border-radius: var(--nexa-radius); background: var(--nexa-selected); margin-bottom: 18px; text-align: left; padding: 10px 14px; }
-.nexa-messenger .messenger-history-list { overflow-y: auto; min-height: 0; }
-.nexa-messenger .messenger-history-list > button { width: 100%; display: flex; flex-direction: column; gap: 5px; padding: 14px; border-radius: 12px; text-align: left; margin-bottom: 4px; }
-.nexa-messenger .messenger-history-list > button.is-current { background: var(--nexa-selected); }
-.nexa-messenger .messenger-history-list span { overflow-wrap: anywhere; }
-.nexa-messenger .messenger-history-list time { color: var(--muted); font-size: 12px; }
-.nexa-messenger .messenger-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-@media (max-width: 600px) {
-  .nexa-messenger .messenger-header { min-height: 68px; padding: calc(8px + env(safe-area-inset-top)) 8px 8px; gap: 6px; }
-  .nexa-messenger .messenger-identity h1 { font-size: 25px; }
-  .nexa-messenger .messenger-identity > span { font-size: 12px; }
-  .nexa-messenger .messenger-timeline { padding: 18px 12px; }
-  .nexa-messenger .messenger-bubble { max-width: 91%; padding: 10px 13px 7px; }
-  .nexa-messenger .from-user .messenger-bubble { max-width: 86%; }
-  .nexa-messenger .messenger-bottom { padding: 8px 10px calc(2px + env(safe-area-inset-bottom)); }
-  .nexa-messenger .messenger-suggestions { gap: 6px; }
-  .nexa-messenger .messenger-composer-meta { margin: 0 6px; }
-}
-@media (prefers-reduced-motion: reduce) { .nexa-messenger .messenger-thinking i { animation: none; } }
+@import url("conversation-results.css");
+/* Conversation layout. Breakpoints and all shared tokens are defined in tokens.css. */
+.nexa-messenger {        position:fixed; inset:var(--messenger-top,0px) 0 auto; height:var(--messenger-height,100dvh); display:grid; grid-template-columns:minmax(0,1fr); overflow:hidden; z-index:20; background:var(--nexa-background); color:var(--nexa-text); font:1rem/1.6 var(--nexa-font); color-scheme:light; }
+.nexa-messenger * { box-sizing:border-box; }
+.nexa-messenger { grid-template-rows:minmax(0,1fr); }
+.messenger-history > * { flex-shrink:0; }
 
-/* Banking results are independent surfaces in the conversation timeline. */
-.nexa-messenger .messenger-banking-response { width: 100%; margin: 0 0 24px; min-width: 0; }
-.nexa-messenger .messenger-banking-intro { margin: 0 0 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.nexa-messenger .messenger-banking-surface { padding: 16px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; min-width: 0; }
-.nexa-messenger .bank-response { margin-top: 0; min-width: 0; }
-.nexa-messenger .bank-response h3, .nexa-messenger .bank-response h4 { margin: 0; color: var(--ink); font-family: inherit; line-height: 1.45; letter-spacing: normal; }
-.nexa-messenger .bank-response h3 { font-size: 16px; font-weight: 600; }
-.nexa-messenger .bank-response h4 { font-size: 15px; font-weight: 600; }
-.nexa-messenger .bank-response .bank-secondary, .nexa-messenger .bank-response small { color: #6a6258; font-size: 12px; line-height: 1.5; }
-.nexa-messenger .bank-response .bank-money { display: block; font-size: 17px; font-variant-numeric: tabular-nums; line-height: 1.4; letter-spacing: -.025em; overflow-wrap: anywhere; }
-.nexa-messenger .bank-section-header { margin: 0 0 12px; }
-.nexa-messenger .bank-response .bank-section-header p { margin: 2px 0 0; font-size: 12px; color: #6a6258; }
-.nexa-messenger .bank-account { padding: 8px 0 14px; }
-.nexa-messenger .bank-account + .bank-account { padding-top: 16px; border-top: 1px solid #e9e3d8; }
-.nexa-messenger .bank-account > .bank-secondary { display: block; margin: 10px 0 3px; }
-.nexa-messenger .bank-account > .bank-money { font-size: clamp(25px, 5vw, 32px); font-weight: 500; }
-.nexa-messenger .bank-account-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
-.nexa-messenger .bank-status { display: inline-block; width: fit-content; padding: 0; color: #5e584f; font-size: 12px; font-weight: 600; line-height: 1.6; }
-.nexa-messenger .bank-status.is-positive { color: #365142; background: transparent; }
-.nexa-messenger .bank-status.needs-attention { color: #8b341d; background: transparent; }
-.nexa-messenger .bank-transactions ul { margin: 0; padding: 0; list-style: none; }
-.nexa-messenger .bank-response .bank-date-heading { margin: 16px 0 5px; font-size: 12px; color: #6a6258; font-weight: 500; }
-.nexa-messenger .bank-transaction-row { width: 100%; padding: 12px 2px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 42%); gap: 10px; text-align: left; border-radius: 10px; align-items: start; }
-.nexa-messenger .bank-transaction-name { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
-.nexa-messenger .bank-transaction-name > strong { font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
-.nexa-messenger .bank-transaction-name small { overflow-wrap: anywhere; }
-.nexa-messenger .bank-transaction-amount { text-align: right; min-width: 0; }
-.nexa-messenger .bank-transaction-amount .bank-money { font-size: 16px; }
-.nexa-messenger .bank-transaction-amount small { display: block; margin-top: 4px; font-size: 12px; }
-.nexa-messenger .bank-inline-action { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 8px 6px; color: #923b22; font-size: 13px; border-radius: 8px; text-align: left; line-height: 1.5; }
-.nexa-messenger .bank-view-all { margin-top: 6px; }
-.nexa-messenger .bank-pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
-.nexa-messenger .bank-pagination > span { font-size: 12px; color: #6a6258; }
-.nexa-messenger .bank-transaction-detail > h3 { margin: 12px 0 4px; }
-.nexa-messenger .bank-transaction-detail > .bank-money { font-size: 30px; margin: 0 0 8px; }
-.nexa-messenger .bank-response dl { margin: 16px 0; }
-.nexa-messenger .bank-detail-row { display: grid; grid-template-columns: minmax(90px, 35%) minmax(0, 1fr); gap: 12px; padding: 7px 0; font-size: 13px; line-height: 1.5; }
-.nexa-messenger .bank-detail-row dt { color: #6a6258; }
-.nexa-messenger .bank-detail-row dd { margin: 0; overflow-wrap: anywhere; }
-.nexa-messenger .bank-reference { margin: 8px 0; font-size: 12px; }
-.nexa-messenger .bank-reference summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: #6a6258; }
-.nexa-messenger .bank-reference code { display: block; user-select: all; overflow-wrap: anywhere; font-size: 12px; background: #f1ece3; padding: 10px; border-radius: 6px; }
-.nexa-messenger .bank-reference [role=status] { display: block; }
-.nexa-messenger .bank-response .bank-help { font-size: 13px; margin: 8px 0; color: #6a6258; }
-.nexa-messenger .bank-response .bank-as-of { margin: 12px 0 0; font-size: 12px; color: #756b61; }
-.nexa-messenger .bank-summary-item { padding: 12px 0; }
-.nexa-messenger .bank-summary-item + .bank-summary-item { margin-top: 8px; border-top: 1px solid #e9e3d8; }
-.nexa-messenger .bank-item-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.nexa-messenger .bank-summary-item > .bank-money { font-size: 24px; margin-top: 4px; }
-.nexa-messenger .bank-beneficiary { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; }
-.nexa-messenger .bank-response .bank-beneficiary p { font-size: 12px; margin: 3px 0; }
-@media (max-width: 420px) {
-  .nexa-messenger .messenger-banking-surface { padding: 12px 0; }
-  .nexa-messenger .bank-transaction-row { grid-template-columns: minmax(0, 1fr) minmax(0, 43%); gap: 7px; }
-  .nexa-messenger .bank-transaction-amount .bank-money { font-size: 14px; }
-  .nexa-messenger .bank-detail-row { grid-template-columns: minmax(80px, 34%) minmax(0, 1fr); gap: 8px; }
-}
+.nexa-messenger :is(h1,h2,h3,h4,p) { overflow-wrap:anywhere; }
+.nexa-messenger :is(button,select,textarea) { font:inherit; color:inherit; }
+.nexa-messenger :is(button,a,select,summary) { min-height:44px; touch-action:manipulation; }
+.nexa-messenger button { cursor:pointer; border:0; background:transparent; border-radius:var(--radius-sm); padding:var(--space-sm) 12px; transition:background var(--nexa-duration) ease-out; }
+.nexa-messenger a { color:var(--nexa-action); text-underline-offset:4px; display:inline-flex; align-items:center; }
+.nexa-messenger button:hover:not(:disabled) { background:var(--nexa-soft); }
+.nexa-messenger button:disabled { color:var(--nexa-text-muted); background:var(--nexa-background); cursor:not-allowed; opacity:.65; }
+.nexa-messenger :focus-visible { outline:3px solid var(--nexa-focus); outline-offset:3px; }
+.nexa-messenger svg { width:22px; height:22px; flex-shrink:0; }
+.nexa-messenger .messenger-main { min-width:0; height:100%; display:grid; grid-template-rows:auto minmax(0,1fr) auto; }
+.nexa-messenger .messenger-header { display:flex; gap:12px; align-items:center; padding:calc(18px + env(safe-area-inset-top)) 28px 18px; border-bottom:1px solid var(--nexa-border); background:var(--nexa-surface); z-index:3; }
+.messenger-identity { flex:1; min-width:0; }
+.nexa-messenger .messenger-identity h1 { font:600 1rem/1.4 var(--nexa-font); color:var(--nexa-text); margin:0; letter-spacing:-.02em; }
+.messenger-identity > span { display:block; color:var(--nexa-text-muted); font-size:.75rem; margin-top:4px; }
+.nexa-messenger .messenger-icon { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:44px; min-height:44px; padding:10px; flex-shrink:0; }
+.messenger-header .messenger-icon > span { display:none; }
+.messenger-menu-wrap { position:relative; }
+.messenger-options { position:absolute; top:52px; right:0; width:min(270px,calc(100vw - 24px)); padding:6px; border:1px solid var(--nexa-border); border-radius:var(--radius-md); background:var(--nexa-surface); box-shadow:var(--nexa-shadow); }
+.messenger-options button { display:block; width:100%; text-align:left; }
+.messenger-feed-wrap { min-height:0; position:relative; display:flex; flex-direction:column; }
+.messenger-feed { min-height:0; flex:1; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; overflow-anchor:none; scrollbar-width:thin; }
+.messenger-timeline { max-width:850px; margin:auto; padding:var(--space-xl) 40px; }
+.conversation-welcome { padding:var(--space-md) 0 12px; }
+.conversation-welcome > span:not(.conversation-welcome-mark) { display:block; font-size:.7rem; letter-spacing:.15em; font-weight:650; color:var(--nexa-action); margin-top:var(--space-md); }
+.conversation-welcome-mark { display:grid; place-items:center; width:50px; height:50px; background:var(--nexa-soft); border-radius:var(--radius-lg); color:var(--nexa-action); font-size:36px; }
+.conversation-welcome h2 { max-width:620px; margin:var(--space-md) 0; color:var(--nexa-text); font:500 clamp(2rem,3vw,3rem)/1.15 var(--nexa-font); letter-spacing:-.055em; }
+.conversation-welcome > p { color:var(--nexa-text-muted); margin:0; font-size:.95rem; }
+.conversation-starters { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:var(--space-lg) 0 var(--space-md); }
+.nexa-messenger .conversation-quick-action { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:6px; text-align:left; padding:var(--space-md); border:1px solid var(--nexa-border); border-radius:var(--radius-lg); background:var(--nexa-surface); box-shadow:var(--nexa-shadow-card); }
+.conversation-action-icon { display:grid; place-items:center; width:32px; height:32px; border-radius:10px; background:var(--nexa-background); color:var(--nexa-action); margin-bottom:4px; }
+.conversation-quick-action > strong { font-size:.9rem; font-weight:600; line-height:1.5; }
+.conversation-quick-action > span:not(.conversation-action-icon) { color:var(--nexa-text-muted); font-size:.8rem; line-height:1.5; }
+.conversation-quick-action > svg { position:absolute; right:16px; top:24px; width:17px; color:var(--nexa-text-muted); }
+.conversation-welcome .conversation-welcome-note { display:flex; align-items:center; gap:var(--space-sm); font-size:.75rem; }
+.conversation-welcome-note svg { width:16px; }
+.nexa-messenger .messenger-message { display:flex; margin:0 0 20px; }
+.messenger-message.from-user { justify-content:flex-end; }
+.nexa-messenger .messenger-bubble { min-width:60px; max-width:90%; padding:14px 18px; border-radius:4px 18px 18px; background:var(--nexa-surface); overflow-wrap:anywhere; }
+.nexa-messenger .from-user .messenger-bubble { background:var(--nexa-soft); border-radius:18px 4px 18px 18px; }
+.messenger-bubble p { white-space:pre-wrap; margin:0; line-height:1.65; }
+.messenger-bubble p + p { margin-top:12px; }
+.messenger-bubble footer { display:flex; justify-content:flex-end; gap:var(--space-sm); margin-top:var(--space-sm); color:var(--nexa-text-muted); font-size:.7rem; }
+.messenger-voice-label { display:flex; gap:6px; align-items:center; font-size:.75rem; color:var(--nexa-text-muted); }
+.messenger-date { text-align:center; color:var(--nexa-text-muted); font-size:.75rem; margin:var(--space-sm) 0 var(--space-lg); }
+.messenger-loading,.messenger-load { text-align:center; color:var(--nexa-text-muted); }
+.messenger-suggestions { display:flex; flex-wrap:wrap; gap:var(--space-sm); margin:var(--space-sm) 0 var(--space-lg); }
+.nexa-messenger .messenger-suggestions button { text-align:left; color:var(--nexa-action); border:1px solid var(--nexa-border); font-size:.8rem; }
+.messenger-thinking { display:flex; align-items:center; gap:5px; font-size:var(--text-sm); color:var(--nexa-text-muted); }
+.messenger-thinking i { height:5px; width:5px; border-radius:50%; background:var(--nexa-action); animation:messenger-think 1.2s ease-in-out infinite; }
+.messenger-thinking > span { margin-left:var(--space-sm); }
+@keyframes messenger-think { 50% { opacity:.4; } }
+.nexa-messenger .messenger-new { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:6px; background:var(--nexa-surface); box-shadow:var(--nexa-shadow); border:1px solid var(--nexa-border); font-size:var(--text-sm); }
+.messenger-bottom { padding:12px max(28px,calc((100% - 770px)/2)) calc(12px + env(safe-area-inset-bottom)); background:var(--nexa-background); }
+.messenger-quick-actions { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.nexa-messenger .messenger-quick-actions button { font-size:.75rem; padding:var(--space-sm) 12px; border:1px solid var(--nexa-border); background:var(--nexa-surface); border-radius:999px; }
+.messenger-composer { margin:0; padding:var(--space-sm); border:1px solid var(--nexa-border-control); border-radius:var(--radius-lg); background:var(--nexa-surface); box-shadow:var(--nexa-shadow-card); }
+.messenger-input-row { display:flex; gap:4px; align-items:flex-end; }
+.messenger-input-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.nexa-messenger textarea { min-width:0; width:100%; min-height:48px; max-height:144px; padding:12px; border:0; border-radius:8px; resize:none; background:transparent; font-size:var(--text-md); line-height:24px; color:var(--nexa-text); }
+.nexa-messenger textarea::placeholder { color:var(--nexa-text-muted); opacity:1; }
+.nexa-messenger textarea:focus-visible { outline-offset:-3px; }
+.nexa-messenger .messenger-primary { border-radius:var(--radius-md); }
+.messenger-mic span,.messenger-send span { display:none; }
+.messenger-composer-meta { display:flex; align-items:center; flex-wrap:wrap; gap:0 12px; color:var(--nexa-text-muted); font-size:.75rem; margin-top:4px; }
+.messenger-composer-meta > label { display:flex; gap:6px; align-items:center; }
+.nexa-messenger .messenger-composer-meta :is(select,button,summary) { font-size:.75rem; }
+.messenger-composer-meta select { border:0; background:transparent; max-width:140px; }
+.messenger-composer-meta details { position:relative; margin-left:auto; }
+.messenger-composer-meta summary { display:flex; align-items:center; cursor:pointer; }
+.messenger-composer-meta details p { position:absolute; z-index:4; bottom:40px; right:0; width:min(300px,calc(100vw - 40px)); padding:var(--space-md); border-radius:var(--radius-md); border:1px solid var(--nexa-border); background:var(--nexa-surface); box-shadow:var(--nexa-shadow); font-size:var(--text-sm); }
+.messenger-voice-hint { margin:0; font-size:.75rem; color:var(--nexa-text-muted); }
+.messenger-voice-session { padding:var(--space-sm); }
+.messenger-voice-state { display:flex; gap:10px; align-items:center; }
+.messenger-voice-state time { margin-left:auto; font-variant-numeric:tabular-nums; }
+.recording-dot { width:10px; height:10px; background:var(--nexa-error); border-radius:50%; }
+.messenger-voice-preview { display:block; margin-top:12px; font-size:var(--text-sm); }
+.nexa-messenger .messenger-voice-preview textarea { border:1px solid var(--nexa-border-control); margin-top:var(--space-sm); }
+.messenger-voice-actions,.messenger-inline-actions { display:flex; flex-wrap:wrap; gap:var(--space-sm); margin-top:12px; }
+.messenger-voice-actions button { display:inline-flex; gap:var(--space-sm); align-items:center; }
+.nexa-messenger :is(.messenger-error,.messenger-voice-error) { border:1px solid var(--nexa-error); background:var(--nexa-error-bg); color:var(--nexa-error); border-radius:var(--radius-md); padding:var(--space-md); margin:12px 0; }
+.messenger-error p,.messenger-voice-error p { margin:0; }
+.messenger-error button,.messenger-voice-error button { text-decoration:underline; }
+.messenger-drawer-backdrop { position:absolute; inset:0; z-index:5; background:var(--nexa-backdrop); }
+.messenger-drawer-backdrop[hidden] { display:none; }
 
-/* Desktop conversation workspace: persistent history beside the full-width chat. */
-@media (min-width: 900px) {
-  .nexa-messenger { display: grid; grid-template-columns: clamp(280px, 27vw, 360px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
-  .nexa-messenger .messenger-main { width: 100%; min-width: 0; min-height: 0; margin: 0; }
-  .nexa-messenger .messenger-history-sidebar { width: 100%; min-width: 0; min-height: 0; border-right: 1px solid var(--line); padding: 20px 14px; }
-  .nexa-messenger .messenger-history-sidebar header { min-height: 40px; padding: 0 12px; margin-bottom: 20px; }
-  .nexa-messenger .messenger-history-sidebar h2 { font-size: 26px; }
-  .nexa-messenger .messenger-history-sidebar .messenger-history-list { flex: 1; }
-  .nexa-messenger .messenger-history-sidebar .messenger-history-list > button { border-left: 3px solid transparent; border-radius: 0; padding: 14px 12px; }
-  .nexa-messenger .messenger-history-sidebar .messenger-history-list > button.is-current { border-left-color: var(--accent); }
-  .nexa-messenger .messenger-timeline { width: 100%; max-width: none; padding: 24px 32px 28px; }
-  .nexa-messenger .messenger-bottom { padding: 12px 24px calc(8px + env(safe-area-inset-bottom)); }
-  .nexa-messenger .messenger-banking-response { max-width: 100%; }
-}
+.nexa-messenger .messenger-new-chat { display:flex; align-items:center; gap:var(--space-sm); width:100%; text-align:left; border:1px solid var(--nexa-border); font-size:var(--text-sm); margin-bottom:0; }
 
-/* Motion belongs only to the conversation. History does not replay arrivals. */
-.nexa-messenger .messenger-arrival,
-.nexa-messenger .messenger-options,
-.nexa-messenger .bank-transaction-detail,
-.nexa-messenger .bank-help,
-.nexa-messenger .messenger-error,
-.nexa-messenger .messenger-loading,
-.nexa-messenger .messenger-voice-session,
-.nexa-messenger details[open] > :not(summary) {
-  animation: chat-arrive 180ms var(--chat-ease) both;
-}
-.nexa-messenger button,
-.nexa-messenger select {
-  transition: background-color 140ms var(--chat-ease), color 140ms var(--chat-ease), opacity 140ms var(--chat-ease);
-}
-.nexa-messenger .messenger-composer { transition: border-color 160ms var(--chat-ease); }
-.nexa-messenger .messenger-composer:focus-within { border-color: var(--accent); }
-.nexa-messenger .messenger-drawer-backdrop {
-  opacity: 1;
-  transition: opacity 160ms var(--chat-ease), display 160ms allow-discrete;
-}
-.nexa-messenger .messenger-drawer-backdrop .messenger-history {
-  transform: translateX(0);
-  transition: transform 180ms var(--chat-ease);
-}
-.nexa-messenger .messenger-drawer-backdrop[hidden] { display: none; opacity: 0; pointer-events: none; }
-.nexa-messenger .messenger-drawer-backdrop[hidden] .messenger-history { transform: translateX(-12px); }
-@starting-style {
-  .nexa-messenger .messenger-drawer-backdrop { opacity: 0; }
-  .nexa-messenger .messenger-drawer-backdrop .messenger-history { transform: translateX(-12px); }
-}
-@keyframes chat-arrive {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .nexa-messenger *, .nexa-messenger *::before, .nexa-messenger *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
-}
-/* Landing-inspired paper panels and editorial labels, scoped to chat only. */
-.nexa-messenger .messenger-banking-surface { padding: 16px; border: 1px solid #c8c0b4; background: #fbf9f4; }
-.nexa-messenger .bank-section-header { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
-.nexa-messenger .bank-section-header h3 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
-.nexa-messenger .messenger-header { border-bottom-color: #b6afa3; }
-.nexa-messenger .messenger-identity h1 { font-family: Arial, sans-serif; font-weight: 800; letter-spacing: -.06em; }
-.nexa-messenger .bank-collection { min-width: 0; }
-.nexa-messenger .bank-collection-caption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
-.nexa-messenger .bank-collection-caption > :first-child { color: var(--accent); }
-.nexa-messenger .bank-collection-viewport { min-width: 0; scrollbar-width: thin; scrollbar-color: #b8ad9f transparent; }
-.nexa-messenger .bank-collection-viewport:focus-visible { outline-offset: -3px; }
-.nexa-messenger .bank-collection-items { min-width: 0; }
-.nexa-messenger .bank-collection.is-vertical .bank-collection-viewport { max-height: clamp(260px, 45dvh, 420px); overflow-y: auto; overflow-x: hidden; }
-.nexa-messenger .bank-collection.is-horizontal .bank-collection-viewport { overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-inline: 1px; }
-.nexa-messenger .bank-collection.is-horizontal .bank-collection-items { display: flex; gap: 12px; align-items: stretch; }
-.nexa-messenger .bank-collection.is-horizontal .bank-collection-items > * { flex: 0 0 min(290px, 86%); min-width: 0; scroll-snap-align: start; margin: 0; padding: 14px; border: 1px solid var(--line); border-top: 2px solid #c35232; background: var(--paper); }
-.nexa-messenger .bank-collection.is-direct .bank-collection-items > * { margin-top: 0; }
-.nexa-messenger .bank-collection-navigation { display: flex; justify-content: space-between; gap: 12px; }
-.nexa-messenger .bank-collection .bank-summary-item { padding-block: 10px; }
-.nexa-messenger .bank-collection .bank-summary-item dl { margin: 8px 0; }
-.nexa-messenger .bank-collection .bank-detail-row { padding-block: 4px; }
-.nexa-messenger .bank-collection .bank-summary-item > p { margin-block: 5px; }
-.nexa-messenger .bank-transactions li + li { border-top: 1px solid var(--line); }
-.nexa-messenger .bank-transaction-row { border-radius: 0; padding-inline: 6px; }
-.nexa-messenger .bank-collection.is-horizontal .bank-account > .bank-money { font-size: 28px; }
-@media (max-width: 600px) {
-  .nexa-messenger .messenger-banking-surface { padding: 12px; }
-  .nexa-messenger .bank-collection.is-horizontal .bank-detail-row { grid-template-columns: 1fr; gap: 1px; }
-}
-.nexa-messenger .bank-collection-attention { margin: 0 0 10px; color: #8b341d; font-size: 13px; }
-.nexa-messenger { --nexa-paper:#f5f7f3; --nexa-ink:#192b2a; --nexa-muted:#5b6964; --nexa-line:#dbe2d9; --nexa-accent:#28594a; --nexa-selected:#e4eddf; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-.conversation-wordmark-dot { color:var(--accent); font-size:22px; margin-left:6px; }
-.conversation-welcome { padding:32px 0 28px; }
-.conversation-welcome > span { color:var(--muted); font-size:11px; font-weight:650; letter-spacing:.14em; }
-.conversation-welcome h2 { font:clamp(30px,4vw,49px)/1.15 Georgia,serif; letter-spacing:-.035em; color:var(--ink); margin:18px 0; }
-.conversation-welcome p { color:var(--muted); }
-.conversation-starters { display:flex; flex-wrap:wrap; gap:10px; margin-top:24px; }
-.nexa-messenger .conversation-starters button { border:1px solid var(--line); border-radius:12px; padding:14px 16px; background:#fffefa; text-align:left; min-height:48px; font-size:14px; }
-.conversation-surfaces { display:grid; gap:2px; padding:12px 0 20px; border-bottom:1px solid var(--line); margin-bottom:18px; }
-.conversation-surfaces a { padding:9px 12px; color:var(--ink); text-decoration:none; font-size:13px; border-radius:8px; min-height:38px; }
-.conversation-surfaces a:hover { background:var(--nexa-selected); }
-.conversation-proposal { border:1px solid var(--line); border-radius:16px; background:#fffefa; padding:24px; margin:8px 0 24px; overflow-wrap:anywhere; }
-.conversation-proposal-status { color:var(--accent); font-weight:650; text-transform:uppercase; font-size:11px; letter-spacing:.08em; }
-.conversation-proposal h3 { font:26px/1.25 Georgia,serif; margin:12px 0; color:var(--ink); }
-.conversation-proposal p { font-size:14px; }
-.conversation-proposal dl { display:grid; grid-template-columns:90px 1fr; border-top:1px solid var(--line); padding-top:18px; gap:12px; font-size:14px; }
-.conversation-proposal dt { color:var(--muted); }
+.messenger-history-list { flex:1 0 auto; min-height:48px; overflow:visible; font-size:.8rem; }
+.messenger-history-list > p { color:var(--nexa-text-muted); padding:0 10px; }
+.messenger-history-item { border-radius:var(--radius-sm); margin-bottom:4px; }
+.messenger-history-item.is-current { background:var(--nexa-soft); border-inline-start:3px solid var(--nexa-action); }
+.messenger-history-item.is-current .messenger-history-open { font-weight:600; }
+.messenger-history-row { display:flex; align-items:center; }
+.nexa-messenger .messenger-history-open { min-width:0; flex:1; display:flex; flex-direction:column; gap:4px; padding:10px; text-align:left; }
+.messenger-history-open span { overflow-wrap:anywhere; }
+.messenger-history-open time { color:var(--nexa-text-muted); font-size:.75rem; }
+.nexa-messenger .messenger-history-delete-icon { display:grid; place-items:center; width:44px; flex:0 0 44px; padding:10px; }
+.messenger-history-delete-icon svg { width:16px; }
+.messenger-history-confirm { padding:var(--space-sm); }
+.messenger-history-confirm > div { display:flex; flex-wrap:wrap; }
+
+.conversation-context { display:none; overflow-y:auto; border-left:1px solid var(--nexa-border); padding:var(--space-xl) var(--space-lg); background:var(--nexa-surface); }
+.conversation-context-content { color:var(--nexa-text); font:.875rem/1.6 var(--nexa-font); }
+.conversation-context-heading { display:flex; align-items:center; justify-content:space-between; font-size:.75rem; color:var(--nexa-text-muted); }
+.conversation-context-content h2 { font:600 1.25rem/1.4 var(--nexa-font); color:var(--nexa-text); margin:12px 0 4px; }
+.nexa-messenger .conversation-privacy { padding:4px 0; color:var(--nexa-action); font-size:.75rem; text-decoration:underline; }
+.conversation-context-account { padding:20px 0; border-bottom:1px solid var(--nexa-border); }
+.conversation-context-account h3 { margin:0; font:600 .875rem/1.5 var(--nexa-font); color:var(--nexa-text); }
+.conversation-context-account > span { font-size:.75rem; color:var(--nexa-text-muted); }
+.conversation-context-account > p { color:var(--nexa-text-muted); font-size:.75rem; margin:18px 0 0; }
+.conversation-context-account > strong { display:block; font-size:1.65rem; font-weight:550; letter-spacing:-.04em; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.conversation-context-account a { display:flex; gap:6px; align-items:center; width:fit-content; font-size:.75rem; margin-top:var(--space-sm); }
+.conversation-context-account a svg { width:16px; }
+.conversation-security { padding:20px; margin-top:28px; background:var(--nexa-background); border-radius:var(--radius-md); }
+.conversation-security svg { color:var(--nexa-action); }
+.conversation-security h3 { font:600 .8rem/1.5 var(--nexa-font); margin:12px 0 6px; }
+.conversation-security p { margin:0; font-size:.75rem; color:var(--nexa-text-muted); }
+.conversation-skeleton { display:grid; gap:var(--space-md); color:var(--nexa-text-muted); padding:20px 0; }
+.conversation-skeleton span { height:24px; width:80%; border-radius:6px; background:var(--nexa-soft); }
+.nexa-messenger .bank-dialog { width:min(440px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); overflow-y:auto; padding:var(--space-lg); border:1px solid var(--nexa-border); border-radius:var(--radius-lg); background:var(--nexa-surface); }
+.nexa-messenger .bank-dialog::backdrop { background:var(--nexa-backdrop); }
+.nexa-messenger .bank-dialog > header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.nexa-messenger .bank-dialog > header h2 { font-size:var(--text-md); }
+.conversation-proposal { background:var(--nexa-surface); border:1px solid var(--nexa-border); border-radius:var(--radius-lg); padding:var(--space-lg); margin-bottom:var(--space-lg); overflow-wrap:anywhere; box-shadow:var(--nexa-shadow-card); }
+.conversation-proposal-status { font-size:.75rem; font-weight:650; color:var(--nexa-action); }
+.conversation-proposal h3 { font:600 1.35rem/1.4 var(--nexa-font); color:var(--nexa-text); margin:var(--space-sm) 0 12px; }
+.conversation-proposal dl { display:grid; grid-template-columns:minmax(80px,1fr) minmax(0,2fr); gap:12px; padding:20px 0; border-block:1px solid var(--nexa-border); font-size:var(--text-sm); }
+.conversation-proposal dt { color:var(--nexa-text-muted); }
 .conversation-proposal dd { margin:0; }
-.conversation-proposal-amount { font-size:25px; font-weight:600; }
-.conversation-choices { display:grid; gap:8px; margin:16px 0; }
-.nexa-messenger .conversation-choices button { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; min-height:48px; border:1px solid var(--line); border-radius:8px; text-align:left; }
-.nexa-messenger .conversation-confirm { background:#28594a; color:#fff; padding:12px 20px; border-radius:8px; }
-.nexa-messenger .conversation-confirm:hover:not(:disabled) { background:#1a4337; }
-.conversation-proposal small { display:block; color:var(--muted); font-size:12px; margin-top:12px; }
-.conversation-proposal a { color:var(--accent); display:inline-block; padding:12px 0; }
-@media(max-width:599px) { .conversation-welcome { padding-top:12px; } .conversation-starters { display:grid; } .conversation-proposal { padding:18px; } .conversation-proposal dl { grid-template-columns:64px 1fr; } }
-
-.conversation-proposal-history { padding:12px 16px; margin:8px 0 16px; border-left:2px solid var(--line); color:var(--muted); font-size:13px; }
-.conversation-proposal-history summary { cursor:pointer; padding:8px 0; min-height:44px; }
-.conversation-surfaces a { min-height:44px; }
+.conversation-proposal-amount { font-size:1.5rem; font-weight:600; }
+.conversation-proposal small { display:block; font-size:.75rem; color:var(--nexa-text-muted); margin-top:12px; }
+.conversation-proposal a { display:inline-flex; align-items:center; }
+.conversation-choices { display:grid; gap:var(--space-sm); }
+.nexa-messenger .conversation-choices button { border:1px solid var(--nexa-border); text-align:left; display:flex; justify-content:space-between; gap:12px; }
+.nexa-messenger .conversation-confirm { padding:12px 20px; }
+.conversation-proposal-history { border-left:2px solid var(--nexa-border); padding:var(--space-sm) var(--space-md); margin-bottom:20px; color:var(--nexa-text-muted); }
+.conversation-proposal-history summary { display:flex; align-items:center; cursor:pointer; }
+.nexa-messenger .messenger-banking-surface { padding:20px; background:var(--nexa-surface); border:1px solid var(--nexa-border); border-radius:var(--radius-lg); box-shadow:var(--nexa-shadow-card); }
+.nexa-messenger .bank-section-header { margin-bottom:var(--space-md); }
+.nexa-messenger .bank-response .bank-section-header h3 { font-size:var(--text-md); }
+.nexa-messenger .bank-status { padding:2px var(--space-sm); border-radius:6px; font-size:.75rem; background:var(--nexa-background); }
+.nexa-messenger .bank-status.good { color:var(--nexa-success); background:var(--nexa-success-bg); }
+.nexa-messenger .bank-status.bad { color:var(--nexa-error); background:var(--nexa-error-bg); }
+.nexa-messenger .bank-status.pending { color:var(--nexa-warning); background:var(--nexa-warning-bg); }
+.bank-collection { min-width:0; }
+.bank-collection-caption { font-size:.75rem; color:var(--nexa-text-muted); margin-bottom:var(--space-sm); }
+.bank-collection-caption span + span { margin-left:12px; }
+.bank-collection-items { min-width:0; }
+.bank-collection.is-comparison .bank-collection-items { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-md); }
+.nexa-messenger .bank-collection.is-comparison .bank-account { margin:0; border:0; border-radius:var(--radius-md); background:var(--nexa-background); padding:var(--space-md); }
+.bank-collection-attention { color:var(--nexa-error); font-size:var(--text-sm); }
+.nexa-messenger .bank-response .bank-account > .bank-money { font-size:1.65rem; }
+.bank-transactions li + li { border-top:1px solid var(--nexa-border); }
+.conversation-insights > div > span { font-size:.75rem; color:var(--nexa-text-muted); }
+.conversation-spending-total { display:block; font-size:2rem; letter-spacing:-.04em; font-weight:550; margin:4px 0 var(--space-lg); }
+.conversation-insights ul { list-style:none; padding:0; margin:0 0 var(--space-lg); }
+.conversation-insights li { position:relative; margin:var(--space-md) 0; padding-right:44px; }
+.conversation-insights li > div:first-child { display:flex; flex-wrap:wrap; justify-content:space-between; gap:var(--space-sm); font-size:var(--text-sm); }
+.conversation-insights li small { position:absolute; right:0; bottom:-5px; font-size:.7rem; color:var(--nexa-text-muted); }
+.conversation-bar { height:6px; background:var(--nexa-soft); border-radius:8px; margin-top:10px; overflow:hidden; }
+.conversation-bar > span { display:block; background:var(--nexa-action); height:100%; border-radius:inherit; }
+.nexa-messenger .conversation-skip { position:absolute; top:-100px; left:12px; z-index:10; background:var(--nexa-surface); padding:12px; }
+.nexa-messenger .conversation-skip:focus { top:12px; }
+@media (min-width:900px) {
+  .nexa-messenger { grid-template-columns:var(--nexa-sidebar-width) minmax(0,1fr); }
+  .nexa-messenger .messenger-history-sidebar { width:var(--nexa-sidebar-width); }
+  .messenger-header > .messenger-icon:first-child,.messenger-header > button[aria-controls="messenger-history"] { display:none; }
+}
+@media (min-width:1280px) {
+  .nexa-messenger { grid-template-columns:var(--nexa-sidebar-width) minmax(0,1fr) 288px; }
+  .conversation-context { display:block; }
+  .nexa-messenger .conversation-context-toggle { display:none; }
+}
+@media (max-width:599px) {
+  .nexa-messenger .messenger-header { padding:calc(var(--space-sm) + env(safe-area-inset-top)) var(--space-sm) var(--space-sm); gap:4px; }
+  .nexa-messenger .messenger-identity h1 { font-size:.8rem; }
+  .messenger-identity > span { font-size:.65rem; }
+  .messenger-timeline { padding:20px var(--space-md); }
+  .conversation-welcome { padding-top:var(--space-sm); }
+  .conversation-welcome h2 { font-size:2rem; }
+  .conversation-starters { gap:var(--space-sm); margin-top:var(--space-lg); }
+  .nexa-messenger .conversation-quick-action { padding:14px; }
+  .conversation-quick-action > svg { display:none; }
+  .conversation-quick-action > strong { font-size:.8rem; }
+  .conversation-quick-action > span:not(.conversation-action-icon) { font-size:.75rem; }
+  .messenger-bottom { padding:var(--space-sm) 12px calc(var(--space-sm) + env(safe-area-inset-bottom)); }
+  .messenger-quick-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; margin-bottom:var(--space-sm); }
+  .nexa-messenger .messenger-quick-actions button { padding:6px var(--space-sm); font-size:.7rem; }
+  .messenger-composer-meta { gap:0 6px; }
+  .messenger-composer-meta > button { display:none; }
+  .messenger-voice-hint { font-size:.65rem; }
+  .nexa-messenger .messenger-bubble { max-width:96%; padding:12px; }
+  .nexa-messenger .messenger-banking-surface { padding:14px; }
+  .bank-collection.is-comparison .bank-collection-items { grid-template-columns:1fr; }
+  .conversation-proposal { padding:var(--space-md); }
+  .conversation-proposal .messenger-inline-actions { flex-direction:column; }
+  .nexa-messenger .bank-dialog { margin:auto 0 0; max-width:100%; width:100%; border-radius:20px 20px 0 0; }
+}
+@media (max-height:550px) {
+  .nexa-messenger .messenger-header { padding-block:4px; }
+  .messenger-quick-actions,.messenger-voice-hint { display:none; }
+  .messenger-bottom { padding-top:4px; padding-bottom:4px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .nexa-messenger *, .nexa-messenger *::before, .nexa-messenger *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+}
+@media (forced-colors:active) {
+  .conversation-bar > span { background:Highlight; forced-color-adjust:none; }
+  .nexa-messenger :is(button,a,input,textarea,select) { border:1px solid ButtonText; }
+}

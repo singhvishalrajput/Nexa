@@ -1,6 +1,7 @@
 package com.nexa.api.conversations;
 
 import com.nexa.api.identity.CurrentUserProvider;
+import com.nexa.api.nlp.BankingLanguage;
 import com.nexa.api.shared.errors.ResourceNotFoundException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -137,7 +138,11 @@ public class ConversationService {
             && (text.matches(
                     "(?is).*\\b(password|passcode|pin|otp|cvv|bearer|secret|api.?key)\\b.*")
                 || text.matches("(?s).*(?:\\d[ -]?){13,19}.*"));
-    var workflow = sensitive ? null : workflows.handle(id, text, command);
+    var workflow =
+        sensitive
+            ? null
+            : workflows.handle(
+                id, command == null ? resolveActionReference(id, text) : text, command);
     var interpretation =
         sensitive
             ? new ConversationInterpreter.Interpretation(
@@ -146,9 +151,20 @@ public class ConversationService {
                 "Please do not send passwords, PINs, verification codes or full card numbers. This"
                     + " message was not retained. Describe what you need without those details.")
             : workflow == null
-                ? interpreter.interpret(text)
+                ? interpretWithContext(id, text)
                 : new ConversationInterpreter.Interpretation(
-                    workflow.operation(), "Banking request.", workflow.message());
+                    workflow.operation(), workflowTitle(workflow), workflow.message());
+    if (!sensitive
+        && workflow == null
+        && java.util.Set.of("START_TRANSFER", "PAY_BILL", "PAY_CARD", "CANCEL_MANDATE")
+            .contains(interpretation.intent())
+        && !BankingLanguage.guarded(text)) {
+      workflow = workflows.startRequested(id, text, interpretation.intent());
+      if (workflow != null)
+        interpretation =
+            new ConversationInterpreter.Interpretation(
+                workflow.operation(), workflowTitle(workflow), workflow.message());
+    }
     String storedText =
         sensitive || "VOICE".equals(source) ? interpretation.essence() : text.trim();
     db.update(
@@ -184,6 +200,104 @@ public class ConversationService {
   public void delete(String id) {
     requireOwned(id, true);
     db.update("DELETE FROM conversations WHERE id = ? AND user_id = ?", id, user.userId());
+  }
+
+  private String workflowTitle(Workflow workflow) {
+    return switch (workflow.operation()) {
+      case "OWN_TRANSFER", "START_TRANSFER" -> "Money transfer";
+      case "PAY_BILL" -> "Bill payment";
+      case "PAY_CARD" -> "Card payment";
+      case "CANCEL_MANDATE" -> "Direct debit cancellation";
+      default -> "Card controls";
+    };
+  }
+
+  private ConversationInterpreter.Interpretation interpretWithContext(String id, String text) {
+    String normalized = BankingLanguage.normalize(text);
+    var simpleRead = com.nexa.api.nlp.FastBankingIntent.match(text);
+    if (simpleRead == com.nexa.api.nlp.Intent.GET_BALANCE
+        || simpleRead == com.nexa.api.nlp.Intent.GET_RECENT_TRANSACTIONS) {
+      var latest =
+          db.query(
+              "SELECT * FROM conversation_turns WHERE conversation_id = ? ORDER BY sequence_id DESC"
+                  + " FETCH NEXT 1 ROWS ONLY",
+              this::turn,
+              id);
+      if (!latest.isEmpty()
+          && latest.get(0).banking() != null
+          && !normalized.matches(".*\\b(all|savings|current)\\b.*")) {
+        var content = latest.get(0).banking();
+        String accountId =
+            content.account() != null
+                ? content.account().id()
+                : content.accounts() != null && content.accounts().size() == 1
+                    ? content.accounts().get(0).id()
+                    : null;
+        if (accountId != null) return interpreter.readForAccount(text, accountId);
+      }
+    }
+    if (BankingLanguage.continuation(text)
+        || normalized.matches(
+            "(?s)^(only|just|what about|and for|for that|its|uska|last month|this month|from"
+                + " |first|the first|details|savings|current).*")) {
+      var latest =
+          db.query(
+              "SELECT * FROM conversation_turns WHERE conversation_id = ? ORDER BY sequence_id DESC"
+                  + " FETCH NEXT 1 ROWS ONLY",
+              this::turn,
+              id);
+      if (!latest.isEmpty() && latest.get(0).workflow() == null) {
+        var previous = latest.get(0);
+        var followup =
+            interpreter.followUp(text, previous.intent(), previous.banking(), previous.userText());
+        if (followup != null) return followup;
+      }
+      if (BankingLanguage.continuation(text))
+        return new ConversationInterpreter.Interpretation(
+            "UNKNOWN", "Clarify banking request.", "What would you like me to help with?");
+    }
+    if (!interpreter.usesLocalModel() || interpreter.isFastRequest(text))
+      return interpreter.interpret(text);
+    // append has already checked ownership and locked this conversation. Never include other chats.
+    var recent =
+        db.query(
+            "SELECT * FROM conversation_turns WHERE conversation_id = ? ORDER BY sequence_id DESC"
+                + " FETCH NEXT 4 ROWS ONLY",
+            this::turn,
+            id);
+    var messages = new java.util.ArrayList<com.nexa.api.nlp.OllamaInterpreter.Message>();
+    for (int i = recent.size() - 1; i >= 0; i--) {
+      var turn = recent.get(i);
+      if ("PRIVACY".equals(turn.intent())) continue;
+      messages.add(new com.nexa.api.nlp.OllamaInterpreter.Message("user", turn.userText()));
+      // No account/card payloads, credentials or database snapshots are sent to the model.
+      messages.add(
+          new com.nexa.api.nlp.OllamaInterpreter.Message("assistant", turn.assistantText()));
+    }
+    return interpreter.interpret(text, messages);
+  }
+
+  private String resolveActionReference(String id, String text) {
+    String normalized = BankingLanguage.normalize(text);
+    if (!normalized.matches(
+            "(?:please )?(pay it|pay that|pay this(?: bill)?|pay the bill|bill pay karo|send"
+                + " (?:him|her|them) .+)")
+        || BankingLanguage.guarded(text)) return text;
+    var latest =
+        db.query(
+            "SELECT * FROM conversation_turns WHERE conversation_id = ? ORDER BY sequence_id DESC"
+                + " FETCH NEXT 1 ROWS ONLY",
+            this::turn,
+            id);
+    if (latest.isEmpty() || latest.get(0).banking() == null) return text;
+    var content = latest.get(0).banking();
+    if (content.bills() != null)
+      return "pay bill " + (content.bills().size() == 1 ? content.bills().get(0).id() : "");
+    if (content.cards() != null)
+      return "pay card " + (content.cards().size() == 1 ? content.cards().get(0).id() : "");
+    if (content.beneficiaries() != null && content.beneficiaries().size() == 1)
+      return normalized + " to " + content.beneficiaries().get(0).id();
+    return text;
   }
 
   private Conversation conversation(ResultSet row, int ignored) throws SQLException {

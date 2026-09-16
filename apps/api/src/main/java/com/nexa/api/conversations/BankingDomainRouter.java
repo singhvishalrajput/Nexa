@@ -56,7 +56,7 @@ public class BankingDomainRouter implements DomainRouter {
   private Reply reference() {
     return new Reply(
         "ACTION_REQUIRED",
-        "Please include the item's reference ID from its summary.",
+        "Which item would you like to see? Choose one from the list.",
         null,
         "REFERENCE_REQUIRED");
   }
@@ -147,7 +147,7 @@ public class BankingDomainRouter implements DomainRouter {
               e.from() == null && e.to() == null
                   ? "Here are your bills and their payment statuses."
                   : "Here are recorded bills due in the requested period (from the first 100"
-                        + " bills).",
+                      + " bills).",
               e.from() == null && e.to() == null
                   ? bills.list(e.status(), 0, 30)
                   : bills.list(null, 0, 100).stream().filter(b -> inPeriod(b.dueAt(), e)).toList());
@@ -222,16 +222,21 @@ public class BankingDomainRouter implements DomainRouter {
         if (e.accountId() == null || e.targetId() == null)
           yield new Reply(
               "ACTION_REQUIRED",
-              "Provide a source account ID, target beneficiary/bill/card/mandate ID and amount"
-                  + " where needed. No money has moved; nothing has been cancelled.",
+              e.targetId() == null
+                  ? intent == Intent.PAY_BILL
+                      ? "Which bill would you like to pay?"
+                      : intent == Intent.PAY_CARD
+                          ? "Which card would you like to pay?"
+                          : intent == Intent.CANCEL_MANDATE
+                              ? "Which direct debit would you like to cancel?"
+                              : "Who would you like to pay?"
+                  : "Which account should the money come from?",
               null,
               "ACTION_DETAILS_REQUIRED");
         yield domain(
             "ACTION_REQUIRED",
             "ACTION_REQUIRED",
-            "Prepared for review only. Explicit confirmation is required before any future"
-                + " execution. Payment and cancellation execution is not connected; no money has"
-                + " moved and nothing has been cancelled.",
+            "Please check the payment details before confirming.",
             actions.prepare(intent.name(), e.accountId(), e.targetId(), e.amount()));
       }
     };

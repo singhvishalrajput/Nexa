@@ -74,3 +74,20 @@ test('unsupported speech and denied microphone give a typing recovery path', () 
   assert.equal(denied.render().phase, 'idle');
   assert.equal(denied.render().transcript, '');
 });
+
+test('voice demo works without speech support and stays editable until explicitly sent', () => {
+  const app = setup(false);
+  for (const language of ['en-IN', 'hi-IN']) {
+    app.render().startDemo(language);
+    assert.equal(app.render().phase, 'review');
+    assert.equal(app.render().simulated, true);
+    assert.ok(app.render().transcript.length > 0);
+    assert.equal(app.recognition(), undefined);
+    app.render().editTranscript('show my accounts');
+    assert.equal(app.render().transcript, 'show my accounts');
+    app.render().cancel();
+    assert.equal(app.render().phase, 'idle');
+    assert.equal(app.render().simulated, false);
+    assert.equal(app.render().transcript, '');
+  }
+});

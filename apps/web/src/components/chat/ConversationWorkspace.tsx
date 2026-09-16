@@ -1,3 +1,11 @@
+import { BankingIcon } from "../BankingIcon";
+import { SidebarBrand, SidebarNavigation, SidebarFooter } from "../SidebarNavigation";
+import { getLocale, setLocale, t } from "../../services/locale";
+import { AccountContext, QuickAction } from "./ConversationTools";
+import { AccountSnapshot } from "../../services/banking-content";
+import { Modal } from "../../features/banking/ui";
+import { workflowConfirmationLabel } from "./WorkflowCard";
+import { ConnectionNotice } from "../ConnectionNotice";
 import { useNavigationGuard } from "../../hooks/useNavigationGuard";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { ApiRequestError, AuthSession } from "../../services/auth";
@@ -5,9 +13,10 @@ import { ActionCommand, Conversation, Turn, TurnRequest, createConversation, del
 import { useVoiceInput } from "../../hooks/useVoiceInput";
 import { ChatIcon, MessageBubble } from "./MessageBubble";
 import { AssistantResponse } from "./AssistantResponse";
+import { ConversationHistoryItem } from "./ConversationHistoryItem";
 import { formatMoney, safeMask } from "../../services/banking-content";
 
-type Props = { session: AuthSession; onClose: () => void; onLogout: () => void | Promise<void> };
+type Props = { session: AuthSession; onClose: () => void; onLogout: () => void | Promise<void>; accounts?: AccountSnapshot[]; accountsLoading?: boolean; accountsError?: string; onRefreshAccounts?: () => void };
 const greeting = "Hi! How can I help with your banking today?";
 const spokenResponse = (turn: Turn) => {
   const data = turn.banking;
@@ -22,17 +31,28 @@ const spokenResponse = (turn: Turn) => {
   return turn.assistantText;
 };
 
-export function ConversationWorkspace({ session, onClose, onLogout }: Props) {
+export function ConversationWorkspace({ session, onClose, onLogout, accounts = [], accountsLoading = false, accountsError = "", onRefreshAccounts = () => {} }: Props) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [current, setCurrent] = useState<Conversation | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [, updateWorkflowClock] = useState(0);
+  useEffect(() => {
+    const workflow = [...turns].reverse().find(turn => turn.workflow)?.workflow;
+    if (!workflow || !["COLLECTING", "REVIEW"].includes(workflow.status)) return;
+    const remaining = Date.parse(workflow.expiresAt) - Date.now();
+    if (!Number.isFinite(remaining) || remaining <= 0) return;
+    const timer = window.setTimeout(() => updateWorkflowClock(value => value + 1), Math.min(remaining + 25, 2147483647));
+    return () => window.clearTimeout(timer);
+  }, [turns]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [voiceError, setVoiceError] = useState("");
   const [guidance, setGuidance] = useState<"help" | null>(null);
   const [notice, setNotice] = useState(greeting);
-  const [language, setLanguage] = useState<"en-IN" | "hi-IN">("en-IN");
+  const [language, setLanguage] = useState<"en-IN" | "hi-IN">(getLocale);
+  const [contextOpen, setContextOpen] = useState(false);
+  const [balancesHidden, setBalancesHidden] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [outgoing, setOutgoing] = useState<{ text: string; source: "TEXT" | "VOICE"; createdAt: string } | null>(null);
@@ -63,7 +83,7 @@ export function ConversationWorkspace({ session, onClose, onLogout }: Props) {
   const listening = voice.phase !== "idle";
   const token = session.accessToken;
   useNavigationGuard(!!input.trim() || listening || !!pending.current, sending);
-  const discardDraft = () => !input.trim() || window.confirm("Discard your typed message and continue?");
+  const discardDraft = () => !input.trim() || window.confirm(t("Discard your typed message and continue?"));
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 900px)");
@@ -109,6 +129,7 @@ export function ConversationWorkspace({ session, onClose, onLogout }: Props) {
   useLayoutEffect(() => {
     const element = log.current;
     if (!element) return;
+    if (!turns.length && !outgoing && !sending && !guidance) { element.scrollTop = 0; return; }
     if (prependHeight.current !== null) {
       element.scrollTop += element.scrollHeight - prependHeight.current;
       prependHeight.current = null;
@@ -120,7 +141,7 @@ export function ConversationWorkspace({ session, onClose, onLogout }: Props) {
   useLayoutEffect(() => {
     if (!textarea.current) return;
     textarea.current.style.height = "auto";
-    textarea.current.style.height = `${Math.min(textarea.current.scrollHeight, 144)}px`;
+    textarea.current.style.height = `${Math.min(textarea.current.scrollHeight + 2, 144)}px`;
   }, [input, voice.phase]);
 
   useEffect(() => {
@@ -153,7 +174,7 @@ export function ConversationWorkspace({ session, onClose, onLogout }: Props) {
         (historyModal ? historyToggle : menuToggle).current?.focus();
       }
       if (event.key === "Tab" && panel) {
-        const controls = Array.from(panel.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]"));
+        const controls = Array.from(panel.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], select:not(:disabled), summary")).filter(control => control.getClientRects().length > 0);
         const first = controls[0], last = controls[controls.length - 1];
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
@@ -208,9 +229,37 @@ export function ConversationWorkspace({ session, onClose, onLogout }: Props) {
     try {
       const items = await listConversations(token, page.current + 1);
       page.current += 1;
-      setConversations((existing) => [...existing, ...items]); setMoreHistory(items.length === 30);
+      setConversations((existing) => [...existing, ...items.filter(item => !existing.some(old => old.id === item.id))]); setMoreHistory(items.length === 30);
     } catch (_) { setError("History couldn’t be loaded. Please try again."); }
     finally { endBusy(); }
+  };
+
+  const removeConversation = async (conversation: Conversation) => {
+    if (locked.current || listening || pending.current) return;
+    startBusy();
+    try {
+      try { await deleteConversation(token, conversation.id); }
+      catch (e) { if (!(e instanceof ApiRequestError && e.status === 404)) throw e; }
+      if (!alive.current) return;
+      setConversations(items => items.filter(item => item.id !== conversation.id));
+      if (current?.id === conversation.id) {
+        window.speechSynthesis?.cancel();
+        setCurrent(null); setTurns([]); setOlder(false); setInput(""); setOutgoing(null);
+        setGuidance(null); setHasNew(false); animatedTurn.current = null; followLatest.current = true;
+        tell("This conversation has been deleted.");
+      }
+      pendingDelete.current = null;
+      // Refill the last loaded page so offset pagination cannot skip an item after deletion.
+      try {
+        const lastPage = await listConversations(token, page.current);
+        if (alive.current) {
+          setConversations(items => [...items, ...lastPage.filter(item => !items.some(old => old.id === item.id))]);
+          setMoreHistory(lastPage.length === 30);
+        }
+      } catch (_) {
+        page.current = Math.max(-1, page.current - 1); setMoreHistory(true);
+      }
+    } finally { endBusy(); }
   };
 
   const submit = async (value = input, source: "TEXT" | "VOICE" = "TEXT", action?: ActionCommand) => {
@@ -239,13 +288,9 @@ export function ConversationWorkspace({ session, onClose, onLogout }: Props) {
     if (command === "cancel" && pendingDelete.current) { pendingDelete.current = null; setInput(""); tell("Cancelled. Nothing has changed."); return; }
     if (command === "confirm delete") {
       if (!current || pendingDelete.current !== current.id) { tell("There is no deletion waiting for confirmation."); return; }
-      startBusy();
       try {
-        await deleteConversation(token, current.id);
-        setConversations((items) => items.filter((item) => item.id !== current.id));
-        setCurrent(null); setTurns([]); setOlder(false); pendingDelete.current = null; setInput(""); tell("This conversation has been deleted.");
+        await removeConversation(current);
       } catch (_) { setError("This conversation couldn’t be deleted. Please try again."); }
-      finally { endBusy(); }
       return;
     }
     pendingDelete.current = null;
@@ -272,7 +317,7 @@ export function ConversationWorkspace({ session, onClose, onLogout }: Props) {
       setOutgoing(null);
       animatedTurn.current = result.id;
       setTurns((items) => items.some((item) => item.id === result.id) ? items : [...items, result]);
-      setNotice(""); speak(spokenResponse(result)); if (action?.type === "SELECT") textarea.current?.focus();
+      setNotice(""); if (result.workflow?.status === "COMPLETED" || result.banking?.type === "ACCOUNTS") onRefreshAccounts(); speak(spokenResponse(result)); if (action?.type === "SELECT") textarea.current?.focus();
       // Refresh titles without loading message bodies for every conversation.
       // A history refresh failure must not turn a successful send into a failed one.
       try {
@@ -282,7 +327,7 @@ export function ConversationWorkspace({ session, onClose, onLogout }: Props) {
     } catch (e) {
       setInput("");
       if (e instanceof ApiRequestError && [400, 404, 409].includes(e.status)) {
-        pending.current = null; setOutgoing(null); setError(e.message + " Review the proposal or cancel it to start again.");
+        pending.current = null; setOutgoing(null); setError(t("This request could not be completed. Review the proposal or cancel it to start again."));
         return;
       }
       setError(e instanceof ApiRequestError && e.status === 401
@@ -300,103 +345,125 @@ export function ConversationWorkspace({ session, onClose, onLogout }: Props) {
     setGuidance(kind); setNotice(""); followLatest.current = true; latest();
   };
   const runCommand = (command: string) => { if (command !== "new conversation" && !discardDraft()) return; setMenuOpen(false); void submit(command); };
-  const dayFor = (date: string) => new Date(date).toLocaleDateString([], { day: "numeric", month: "long", year: "numeric" });
+  const dayFor = (date: string) => new Date(date).toLocaleDateString(language, { day: "numeric", month: "long", year: "numeric" });
   const closeHistory = () => { setHistoryOpen(false); historyToggle.current?.focus(); };
 
   const historyContents = <>
-      <header><h2 id="messenger-history-title">Conversations</h2>{!wideLayout && <button type="button" class="messenger-icon" aria-label="Close history" onClick={closeHistory}><ChatIcon name="close" /></button>}</header>
-      <button type="button" class="messenger-new-chat" disabled={busy || listening || !!pending.current} onClick={() => void submit("new conversation")}>New conversation</button>
-      <nav class="conversation-surfaces" aria-label="Banking details"><a href="#/accounts">Accounts ↗</a><a href="#/transactions">Transaction history ↗</a><a href="#/cards">Cards ↗</a><a href="#/bills">Bills ↗</a><a href="#/overview">All banking details ↗</a><a href="#/settings">Profile & security ↗</a></nav><div class="messenger-history-list">{conversations.length ? conversations.map((item) => <button type="button" disabled={busy || listening || !!pending.current} aria-current={item.id === current?.id ? "true" : undefined} class={item.id === current?.id ? "is-current" : ""} onClick={() => select(item)} key={item.id}><span>{item.title.replace(/\.$/, "").replace(/^./, letter => letter.toUpperCase())}</span><time>{dayFor(item.createdAt)}</time></button>) : <p>Your conversations will appear here.</p>}
-        {moreHistory && <button type="button" disabled={busy || listening} onClick={more}>Load more conversations</button>}
+      <SidebarBrand action={!wideLayout && <button type="button" class="messenger-icon" aria-label={t("Close history")} onClick={closeHistory}><ChatIcon name="close"/></button>}/>
+      <SidebarNavigation page="assistant" admin={session.user.role === "ADMIN"}>
+        <button class="sidebar-link" type="button" disabled={busy || listening || !!pending.current} onClick={() => { setHistoryOpen(false); void submit(hindi ? "इस महीने मैंने कितना खर्च किया?" : "Show my spending this month"); }}><BankingIcon name="insights"/><span>{t("Insights")}</span></button>
+      </SidebarNavigation>
+      <button type="button" class="messenger-new-chat" disabled={busy || listening || !!pending.current} onClick={() => void submit("new conversation")}><BankingIcon name="plus"/>{t("New conversation")}</button>
+      <header class="sidebar-history-heading"><h2 id="messenger-history-title">{t("Recent conversations")}</h2></header>
+      <div class="messenger-history-list" role="region" aria-labelledby="messenger-history-title">{conversations.length ? conversations.map(item => <ConversationHistoryItem key={item.id} conversation={item} current={item.id === current?.id} hasDraft={!!input.trim()} disabled={busy || listening || !!pending.current} onSelect={() => void select(item)} onDelete={() => removeConversation(item)}/>) : <p>{t("Your conversations will appear here.")}</p>}
+        {moreHistory && <button type="button" disabled={busy || listening} onClick={more}>{t("Load more conversations")}</button>}
       </div>
+      <SidebarFooter page="assistant" onLogout={() => runCommand("sign out")} disabled={busy || listening || !!pending.current}>
+        <button class="sidebar-link" type="button" onClick={() => { setHistoryOpen(false); showGuidance("help"); }}><BankingIcon name="support"/><span>{t("Support")}</span></button>
+      </SidebarFooter>
   </>;
+  const context = <AccountContext accounts={accounts} loading={accountsLoading} error={accountsError} hidden={balancesHidden} onToggle={() => setBalancesHidden(value => !value)} onRetry={onRefreshAccounts}/>;
 
-  return <div class="nexa-messenger">
-    {wideLayout && <aside ref={historyPanel} id="messenger-history" class="messenger-history messenger-history-sidebar" aria-labelledby="messenger-history-title">{historyContents}</aside>}
-    <main class="messenger-main" aria-label="Nexa banking conversation" inert={historyModal}>
+  return <div class="nexa-messenger" lang={language}>
+    <a class="conversation-skip" href="#nexa-conversation-input" onClick={event => { event.preventDefault(); textarea.current?.focus(); }}>{t("Skip to conversation")}</a>
+    {wideLayout && <aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history messenger-history-sidebar" aria-label={t("Banking navigation and history")}>{historyContents}</aside>}
+    <main class="messenger-main" aria-label={t("Nexa banking conversation")} inert={historyModal}>
       <header class="messenger-header">
-        <button type="button" class="messenger-icon" onClick={onClose} aria-label="Open banking overview"><ChatIcon name="back" /></button>
-        <div class="messenger-identity"><h1>Nexa <span class="conversation-wordmark-dot">✳</span></h1><span>{sending ? "Working on your request…" : "Your banking starts here."}</span></div>
-        <button ref={historyToggle} type="button" class="messenger-icon" onClick={() => { setMenuOpen(false); setHistoryOpen(true); }} aria-label="Conversation history" aria-expanded={wideLayout || historyOpen} aria-controls="messenger-history"><ChatIcon name="history" /></button>
+        <button type="button" class="messenger-icon" onClick={onClose} aria-label={t("Open banking overview")}><ChatIcon name="back" /><span>{t("Banking")}</span></button>
+        <div class="messenger-identity"><h1>{t("Your money, in conversation.")}</h1><span>{t(sending ? "Working on your request…" : "Personal banking")}</span></div>
+        <button type="button" class="messenger-icon conversation-context-toggle" aria-label={t("Account context")} aria-expanded={contextOpen} onClick={() => setContextOpen(true)}><BankingIcon name="accounts"/></button>
+        <button ref={historyToggle} type="button" class="messenger-icon" onClick={() => { setMenuOpen(false); setHistoryOpen(true); }} aria-label={t("Conversation history")} aria-expanded={wideLayout || historyOpen} aria-controls="messenger-history"><ChatIcon name="history" /><span>{t("History")}</span></button>
         <div class="messenger-menu-wrap">
-          <button ref={menuToggle} type="button" class="messenger-icon" aria-label="Conversation options" aria-expanded={menuOpen} aria-controls="messenger-options" onClick={() => setMenuOpen(!menuOpen)}><ChatIcon name="more" /></button>
-          {menuOpen && <div ref={menu} id="messenger-options" class="messenger-options" aria-label="Conversation options">
-            <button type="button" disabled={busy || listening || !!pending.current} onClick={() => runCommand("new conversation")}>New conversation</button>
-            <button type="button" disabled={busy || listening} onClick={() => runCommand(readAloud ? "stop reading" : "read aloud")}>{readAloud ? "Turn off spoken replies" : "Read replies aloud"}</button>
-            <button type="button" disabled={busy || listening} onClick={() => runCommand("repeat")}>Read last reply</button>
-            <button type="button" disabled={!current || busy || listening || !!pending.current} onClick={() => runCommand("delete conversation")}>Delete conversation</button>
-            <button type="button" disabled={busy || listening} onClick={() => { setMenuOpen(false); void onLogout(); }}>Sign out</button>
+          <button ref={menuToggle} type="button" class="messenger-icon" aria-label={t("Conversation options")} aria-expanded={menuOpen} aria-controls="messenger-options" onClick={() => setMenuOpen(!menuOpen)}><ChatIcon name="more" /><span>{t("Options")}</span></button>
+          {menuOpen && <div ref={menu} id="messenger-options" class="messenger-options" aria-label={t("Conversation options")}>
+            <button type="button" disabled={busy || listening || !!pending.current} onClick={() => runCommand("new conversation")}>{t("New conversation")}</button>
+            <button type="button" disabled={busy || listening} onClick={() => runCommand(readAloud ? "stop reading" : "read aloud")}>{readAloud ? t("Turn off spoken replies") : t("Read replies aloud")}</button>
+            <button type="button" disabled={busy || listening} onClick={() => runCommand("repeat")}>{t("Read last reply")}</button>
+            <button type="button" disabled={!current || busy || listening || !!pending.current} onClick={() => runCommand("delete conversation")}>{t("Delete conversation")}</button>
+            <button type="button" disabled={busy || listening} onClick={() => { setMenuOpen(false); void onLogout(); }}>{t("Sign out")}</button>
           </div>}
         </div>
       </header>
-      <div class="messenger-feed-wrap">
-        <section ref={log} class="messenger-feed" aria-label="Messages" tabIndex={0} onScroll={() => {
+      <div class="messenger-feed-wrap"><ConnectionNotice/>
+        <section ref={log} class="messenger-feed" aria-label={t("Messages")} tabIndex={0} onScroll={() => {
           const element = log.current;
           if (!element) return;
           followLatest.current = element.scrollHeight - element.scrollTop - element.clientHeight < 90;
           if (followLatest.current) setHasNew(false);
         }}>
           <div class="messenger-timeline">
-            {older && <div class="messenger-load"><button type="button" disabled={busy || listening} onClick={earlier}>Load earlier messages</button></div>}
+            {older && <div class="messenger-load"><button type="button" disabled={busy || listening} onClick={earlier}>{t("Load earlier messages")}</button></div>}
             {!turns.length && !outgoing && <>
-              <div class="conversation-welcome"><span>YOUR EVERYDAY BANKING</span><h2>A little conversation.<br />A lot taken care of.</h2><p>Check in on your money. Make your next move.</p><div class="conversation-starters"><button disabled={busy} onClick={() => void submit("Transfer between my accounts")}>Move money between my accounts ↗</button><button disabled={busy} onClick={() => void submit("Pay my bill")}>Review a bill payment ↗</button></div></div>
-              <MessageBubble role="assistant" text={greeting} />
+              <div class="conversation-welcome"><span class="conversation-welcome-mark" aria-hidden="true">✳</span><span>{t("EVERYDAY, MADE EASIER")}</span><h2>{t("A little clarity. A lot more possibility.")}</h2><p>{t("Ask a question, make a plan, or get something done.")}</p>
+                <div class="conversation-starters">
+                  <QuickAction icon="accounts" title={t("What’s my balance?")} description={t("See what’s available across your accounts")} disabled={busy || listening} onClick={() => void submit(hindi ? "मेरा बैलेंस कितना है?" : "What’s my balance?")}/>
+                  <QuickAction icon="payments" title={t("Move money between my accounts")} description={t("Review a transfer before sending")} disabled={busy || listening} onClick={() => void submit(hindi ? "मेरे खातों के बीच पैसे भेजें" : "Transfer between my accounts")}/>
+                  <QuickAction icon="transactions" title={t("Show my latest transactions")} description={t("A closer look at money in and out")} disabled={busy || listening} onClick={() => void submit(hindi ? "पिछले 10 ट्रांज़ैक्शन दिखाओ।" : "Show my latest transactions")}/>
+                  <QuickAction icon="insights" title={t("Understand my spending")} description={t("Explore your spending by category")} disabled={busy || listening} onClick={() => void submit(hindi ? "इस महीने मैंने कितना खर्च किया?" : "Show my spending this month")}/>
+                </div>
+                <p class="conversation-welcome-note"><BankingIcon name="shield"/>{t("Money moves only after you confirm.")}</p>
+              </div>
 
             </>}
-            <div role="log" aria-label="Conversation messages" aria-live="polite" aria-relevant="additions text">
+            <div role="log" aria-label={t("Conversation messages")} aria-live="polite" aria-relevant="additions text">
               {turns.map((turn, index) => <div class="messenger-exchange" key={turn.id}>
                 {(index === 0 || dayFor(turn.createdAt) !== dayFor(turns[index - 1].createdAt)) && <div class="messenger-date">{dayFor(turn.createdAt)}</div>}
                 <MessageBubble role="user" text={turn.userText} timestamp={turn.createdAt} voice={turn.source === "VOICE"} status="Saved" />
-                <div class={animatedTurn.current === turn.id ? "messenger-arrival" : undefined}><AssistantResponse turn={turn} accessToken={token} busy={busy} active={!!turn.workflow && !turns.slice(index + 1).some(t => !!t.workflow)} onAction={action => void submit(action.type === "CONFIRM" ? "Confirm transfer" : action.type === "CANCEL" ? "Cancel proposal" : "Select banking item", "TEXT", action)} /></div>
+                <div class={animatedTurn.current === turn.id ? "messenger-arrival" : undefined}><AssistantResponse turn={turn} accessToken={token} busy={busy} active={!!turn.workflow && !turns.slice(index + 1).some(t => !!t.workflow)} onAction={action => void submit(action.type === "CONFIRM" ? workflowConfirmationLabel(turn.workflow!.operation) : action.type === "CANCEL" ? "Cancel" : turn.workflow?.choices.find(c => c.id === action.value)?.label || "Choose account", "TEXT", action)} /></div>
               </div>)}
-              {outgoing && <MessageBubble animate role="user" text={outgoing.text} timestamp={outgoing.createdAt} status={sending ? "Sending…" : "Not confirmed"} />}
-              {sending && <MessageBubble animate role="assistant"><span class="messenger-thinking" role="status"><i /><i /><i /><span>Finding your answer…</span></span></MessageBubble>}
+              {!sending && turns.length > 0 && !turns[turns.length - 1].workflow && <div class="messenger-suggestions" role="group" aria-label={t("Follow-up suggestions")}>
+                {(turns[turns.length - 1].banking?.type === "ACCOUNTS" ? ["Show my latest transactions", "Move money between my accounts"] : ["What’s my balance?", "Show transactions above ₹5,000"]).map(suggestion => <button key={suggestion} type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(t(suggestion))}>{t(suggestion)} <span aria-hidden="true">↗</span></button>)}
+              </div>}
+              {outgoing && <MessageBubble animate role="user" text={outgoing.text} timestamp={outgoing.createdAt} status={sending ? t("Sending…") : t("Not confirmed")} />}
+              {sending && <MessageBubble animate role="assistant"><span class="messenger-thinking" role="status"><i /><i /><i /><span>{t("Finding your answer…")}</span></span></MessageBubble>}
             </div>
-            {busy && !sending && <p class="messenger-loading" role="status">Loading conversation…</p>}
-            {notice && notice !== greeting && <MessageBubble key={notice} animate role="assistant" text={notice}>
-              {pendingDelete.current && <div class="messenger-inline-actions"><button type="button" disabled={busy} onClick={() => void submit("cancel")}>Keep conversation</button><button type="button" disabled={busy} onClick={() => void submit("confirm delete")}>Confirm delete</button></div>}
+            {busy && !sending && <p class="messenger-loading" role="status">{t("Loading conversation…")}</p>}
+            {notice && notice !== greeting && <MessageBubble key={notice} animate role="assistant" text={t(notice)}>
+              {pendingDelete.current && <div class="messenger-inline-actions"><button type="button" disabled={busy} onClick={() => void submit("cancel")}>{t("Keep conversation")}</button><button type="button" disabled={busy} onClick={() => void submit("confirm delete")}>{t("Confirm delete")}</button></div>}
             </MessageBubble>}
             {guidance && <MessageBubble role="assistant">
               <div role="status" lang={hindi ? "hi" : "en"}>
                 <p>{hindi ? "नीचे एक बटन चुनें या माइक दबाकर बोलें। भेजने से पहले अपनी बात जाँचें।" : "Choose a button below, or tap Speak to ask a question. Check your words before sending."}</p>
                 <p>{hindi ? "बैंक के कर्मचारी से मदद के लिए अपने कार्ड पर दिया नंबर इस्तेमाल करें या शाखा जाएँ। अपना PIN या पासवर्ड साझा न करें।" : "Need help from a person? Use the number printed on your bank card or visit your branch. Never share your PIN or password."}</p>
               </div>
-              <div class="messenger-inline-actions"><button type="button" disabled={busy || listening || !!pending.current} onClick={() => runCommand(readAloud ? "stop reading" : "read aloud")}>{readAloud ? "Stop reading replies" : "Read replies aloud"}</button><button type="button" onClick={() => setGuidance(null)}>{hindi ? "ठीक है" : "Got it"}</button></div>
+              <div class="messenger-inline-actions"><button type="button" disabled={busy || listening || !!pending.current} onClick={() => runCommand(readAloud ? "stop reading" : "read aloud")}>{readAloud ? t("Stop reading replies") : t("Read replies aloud")}</button><button type="button" onClick={() => setGuidance(null)}>{hindi ? "ठीक है" : "Got it"}</button></div>
             </MessageBubble>}
-            {error && <div class="messenger-error" role="alert"><p>{error}</p>
-              {pending.current ? <div class="messenger-inline-actions"><button type="button" disabled={busy || listening} onClick={() => void submit("retry")}>Try again</button><button type="button" disabled={busy || listening} onClick={() => void submit("discard unsent message")}>Remove message</button></div>
-                : <button type="button" disabled={busy || listening} onClick={() => window.location.reload()}>Try loading again</button>}
+            {error && <div class="messenger-error" role="alert"><p>{t(error)}</p>
+              {pending.current ? <div class="messenger-inline-actions"><button type="button" disabled={busy || listening} onClick={() => void submit("retry")}>{t("Try again")}</button><button type="button" disabled={busy || listening} onClick={() => void submit("discard unsent message")}>{t("Remove message")}</button></div>
+                : <button type="button" disabled={busy || listening} onClick={() => window.location.reload()}>{t("Try loading again")}</button>}
             </div>}
           </div>
         </section>
-        {hasNew && <button type="button" class="messenger-new" onClick={() => latest()}><ChatIcon name="down" />New messages</button>}
+        {hasNew && <button type="button" class="messenger-new" onClick={() => latest()}><ChatIcon name="down" />{t("New messages")}</button>}
       </div>
       <footer class="messenger-bottom">
-        <div class="messenger-quick-actions" role="group" aria-label="Banking quick actions" lang={hindi ? "hi" : "en"}>
-          <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit("show my balance")}>{hindi ? "बैलेंस देखें" : "Check Balance"}</button>
-          <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit("I want to transfer money")}>{hindi ? "पैसे भेजें" : "Send Money"}</button>
-          <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit("show recent transactions")}>{hindi ? "लेन-देन देखें" : "Recent Transactions"}</button>
-          <button type="button" disabled={listening} onClick={() => showGuidance("help")}>{hindi ? "मदद लें" : "Get Help"}</button>
+        <div class="messenger-quick-actions" role="group" aria-label={t("Banking quick actions")} lang={hindi ? "hi" : "en"}>
+          <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(hindi ? "मेरा बैलेंस कितना है?" : "show my balance")}>{hindi ? "बैलेंस देखें" : t("Check Balance")}</button>
+          <button type="button" disabled={busy || listening || !!pending.current} onClick={() => { window.location.hash = "/send-money"; }}>{hindi ? "पैसे भेजें" : t("Send Money")}</button>
+          <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(hindi ? "पिछले 10 ट्रांज़ैक्शन दिखाओ।" : "show recent transactions")}>{hindi ? "लेन-देन देखें" : t("Recent Transactions")}</button>
+          <button type="button" disabled={listening} onClick={() => showGuidance("help")}>{hindi ? "मदद लें" : t("Get Help")}</button>
         </div>
-        {voiceError && <div class="messenger-voice-error" role="alert"><p>{voiceError}</p><button type="button" onClick={() => { setVoiceError(""); textarea.current?.focus(); }}>Type instead</button></div>}
+        {voiceError && <div class="messenger-voice-error" role="alert"><p>{t(voiceError)}</p><button type="button" onClick={() => { setVoiceError(""); textarea.current?.focus(); }}>{t("Type instead")}</button></div>}
         <form class="messenger-composer" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
           {listening ? <div class="messenger-voice-session">
-            <div class="messenger-voice-state" role="status"><span class={voice.phase === "listening" ? "recording-dot" : ""} /><strong>{voice.phase === "review" ? "Voice message ready" : voice.phase === "stopping" ? "Finishing…" : "Listening"}</strong><time>{Math.floor(voice.seconds / 60)}:{String(voice.seconds % 60).padStart(2, "0")}</time></div>
-            {voice.phase === "review" && <label class="messenger-voice-preview">Check your words before sending<textarea aria-label="Your voice message" lang={hindi ? "hi" : "en"} value={voice.transcript} maxLength={2000} onInput={event => voice.editTranscript(event.currentTarget.value)} dir="auto" /></label>}
-            <div class="messenger-voice-actions"><button type="button" onClick={voice.cancel}>Cancel</button>{voice.phase === "review" ? <button type="button" class="messenger-primary" disabled={!voice.transcript.trim()} onClick={sendVoice} aria-label="Send voice message"><ChatIcon name="send" />Send</button> : <button type="button" disabled={voice.phase === "stopping"} onClick={voice.stop} aria-label="Stop listening"><ChatIcon name="stop" />Stop</button>}</div>
+            <div class="messenger-voice-state" role="status"><span class={voice.phase === "listening" ? "recording-dot" : ""} /><strong>{voice.phase === "review" ? (voice.simulated ? t("Message ready") : t("Voice message ready")) : voice.phase === "stopping" ? t("Finishing…") : t("Listening")}</strong><time>{Math.floor(voice.seconds / 60)}:{String(voice.seconds % 60).padStart(2, "0")}</time></div>
+            {voice.phase === "review" && <label class="messenger-voice-preview">{t("Check your words before sending")}<textarea aria-label={t("Your voice message")} lang={hindi ? "hi" : "en"} value={voice.transcript} maxLength={2000} onInput={event => voice.editTranscript(event.currentTarget.value)} dir="auto" /></label>}
+            <div class="messenger-voice-actions"><button type="button" onClick={voice.cancel}>{t("Cancel")}</button>{voice.phase === "review" ? <button type="button" class="messenger-primary" disabled={!voice.transcript.trim()} onClick={sendVoice} aria-label={t("Send voice message")}><ChatIcon name="send" />{t("Send")}</button> : <button type="button" disabled={voice.phase === "stopping"} onClick={voice.stop} aria-label={t("Stop listening")}><ChatIcon name="stop" />{t("Stop")}</button>}</div>
           </div> : <div class="messenger-input-row">
-            <label class="messenger-sr-only" for="nexa-conversation-input">Message Nexa</label>
+            <label class="messenger-input-label" for="nexa-conversation-input">{hindi ? "अपना सवाल लिखें" : t("Write your question")}</label>
             <textarea ref={textarea} id="nexa-conversation-input" rows={1} maxLength={2000} value={input} readOnly={busy || !!pending.current} dir="auto" enterkeyhint="send" onInput={(event) => setInput(event.currentTarget.value)} onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey && !event.isComposing && window.matchMedia("(pointer: fine)").matches) { event.preventDefault(); void submit(); }
-            }} placeholder={hindi ? "यहाँ लिखें…" : wideLayout ? "Ask about your money, or tell me what you’d like to do…" : "Ask Nexa…"} aria-describedby="messenger-voice-hint" />
-            <button type="button" class={`messenger-icon messenger-mic ${input.trim() ? "" : "messenger-primary"}`} disabled={busy || !!pending.current} onClick={() => { setVoiceError(""); voice.start(language); }} aria-label={hindi ? "हिन्दी में बोलें" : "Speak your message"}><ChatIcon name="mic" /><span lang={hindi ? "hi" : "en"}>{hindi ? "बोलें" : "Speak"}</span></button>
-            <button type="submit" class={`messenger-icon messenger-send ${input.trim() ? "messenger-primary" : ""}`} disabled={busy || !!pending.current || !input.trim()} aria-label="Send message"><ChatIcon name="send" /></button>
+            }} placeholder={hindi ? "यहाँ लिखें…" : wideLayout ? t("Ask about your money, or tell me what you’d like to do…") : t("Ask Nexa…")} aria-describedby="messenger-voice-hint" />
+            <button type="button" class={`messenger-icon messenger-mic ${input.trim() ? "" : "messenger-primary"}`} disabled={busy || !!pending.current} onClick={() => { setVoiceError(""); voice.start(language); }} aria-label={hindi ? "हिन्दी में बोलें" : t("Speak your message")}><ChatIcon name="mic" /><span lang={hindi ? "hi" : "en"}>{hindi ? "बोलें" : t("Speak")}</span></button>
+            <button type="submit" class={`messenger-icon messenger-send ${input.trim() ? "messenger-primary" : ""}`} disabled={busy || !!pending.current || !input.trim()} aria-label={t("Send message")}><ChatIcon name="send" /><span>{hindi ? "भेजें" : t("Send")}</span></button>
           </div>}
         </form>
-        <div class="messenger-composer-meta"><label>Speak in / <span lang="hi">बोलें</span> <select aria-label="Voice language / बोलने की भाषा" value={language} disabled={listening} onChange={(event) => setLanguage(event.currentTarget.value as "en-IN" | "hi-IN")}><option value="en-IN">English</option><option value="hi-IN" lang="hi">हिन्दी (Hindi)</option></select></label><details><summary>About voice</summary><p>Your browser may use a speech service to turn your voice into words. Nexa saves your request, not the audio. You can change the words before you send them.</p></details></div>
-        <p id="messenger-voice-hint" class="messenger-voice-hint" lang={hindi ? "hi" : "en"}>{hindi ? "हिन्दी में बोल सकते हैं। बैंकिंग के जवाब अभी अंग्रेज़ी में हैं। मदद के लिए ऊपर दिए बटन चुनें।" : "Tap Speak, then Stop to check your words. Hindi voice is available; banking replies are currently in English."}</p>
+        <div class="messenger-composer-meta"><label>{t("Language")} <select aria-label={t("Voice language / बोलने की भाषा")} value={language} disabled={listening} onChange={(event) => { const next = event.currentTarget.value as "en-IN" | "hi-IN"; setLocale(next); setLanguage(next); }}><option value="en-IN">English</option><option value="hi-IN" lang="hi">हिन्दी (Hindi)</option></select></label><button type="button" disabled={busy || listening || !!pending.current} onClick={() => { setVoiceError(""); voice.startDemo(language); }}>{t("Use suggested message")}</button><details><summary>{t("About voice")}</summary><p>{t("Review your words before sending. Speech recognition may use your browser’s speech service.")}</p></details></div>
+        <p id="messenger-voice-hint" class="messenger-voice-hint" lang={hindi ? "hi" : "en"}>{hindi ? "बोलें, फिर भेजने से पहले अपने शब्द जाँचें।" : t("Speak, then check your words before sending.")}</p>
       </footer>
     </main>
-    {!wideLayout && <div hidden={!historyModal} inert={!historyModal} class="messenger-drawer-backdrop" onClick={closeHistory}><aside ref={historyPanel} id="messenger-history" class="messenger-history" role="dialog" aria-modal="true" aria-labelledby="messenger-history-title" onClick={(event) => event.stopPropagation()}>{historyContents}</aside></div>}
+    <aside class="conversation-context" aria-label={t("Account context")}>{context}</aside>
+    {contextOpen && <Modal title={t("Your accounts")} onClose={() => setContextOpen(false)}>{context}</Modal>}
+    {!wideLayout && <div hidden={!historyModal} inert={!historyModal} class="messenger-drawer-backdrop" onClick={closeHistory}><aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history" role="dialog" aria-modal="true" aria-label={t("Banking navigation and history")} onClick={(event) => event.stopPropagation()}>{historyContents}</aside></div>}
   </div>;
 }

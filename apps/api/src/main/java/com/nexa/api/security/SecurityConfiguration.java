@@ -54,7 +54,11 @@ public class SecurityConfiguration {
                         "/api/journal-entries/**",
                         "/api/ledger-entries/**")
                     .hasRole("ADMIN")
-                    .requestMatchers("/api/v1/accounts/**", "/api/v1/conversations/**")
+                    .requestMatchers(
+                        "/api/v1/accounts/**",
+                        "/api/v1/conversations/**",
+                        "/api/v1/demo/**",
+                        "/api/v1/money-transfers/**")
                     .hasAnyRole("CUSTOMER", "ADMIN")
                     .anyRequest()
                     .authenticated())

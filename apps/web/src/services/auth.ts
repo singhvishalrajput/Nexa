@@ -54,7 +54,9 @@ async function request<T>(path: string, init: RequestInit = {}, accessToken?: st
   const controller = new AbortController();
   const abort = () => controller.abort();
   init.signal?.addEventListener("abort", abort, {once: true});
-  const timeout = window.setTimeout(abort, 20000);
+  // Local CPU inference needs more time; financial confirmations keep the normal timeout.
+  const chatTurn = init.method === "POST" && /^\/conversations\/[^/]+\/turns$/.test(path);
+  const timeout = window.setTimeout(abort, chatTurn ? 65000 : 20000);
   try {
     if (init.signal?.aborted) controller.abort();
     const response = await fetch((core ? API_BASE_URL.replace(/\/v1\/?$/, "") : API_BASE_URL) + path, {...init, headers, signal: controller.signal});
@@ -68,7 +70,7 @@ async function request<T>(path: string, init: RequestInit = {}, accessToken?: st
     if (!response.ok) {
       const fields = Array.isArray(body?.fieldErrors) ? body.fieldErrors.map(error => error.message).join(" ") : "";
       const fallback = response.status === 403 ? "You do not have access to this information." : response.status === 404 ? "This information could not be found." : response.status >= 500 ? "The bank could not complete this request. Please try again later." : "This request could not be completed. Check your details and try again.";
-      throw new ApiRequestError(response.status, fields || body?.detail || body?.error || fallback);
+      throw new ApiRequestError(response.status, response.status >= 500 ? fallback : fields || body?.detail || body?.error || fallback);
     }
     return body;
   } catch (error) {

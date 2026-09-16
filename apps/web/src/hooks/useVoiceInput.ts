@@ -7,6 +7,7 @@ export function useVoiceInput(onError: (message: string) => void) {
   const [phase, setPhase] = useState<VoicePhase>("idle");
   const [seconds, setSeconds] = useState(0);
   const [transcript, setTranscript] = useState("");
+  const [simulated, setSimulated] = useState(false);
   const recognition = useRef<any>(null);
   const generation = useRef(0);
 
@@ -17,6 +18,7 @@ export function useVoiceInput(onError: (message: string) => void) {
     setTranscript("");
     setSeconds(0);
     setPhase("idle");
+    setSimulated(false);
   };
 
   useEffect(() => {
@@ -82,5 +84,12 @@ export function useVoiceInput(onError: (message: string) => void) {
     recognition.current.stop();
   };
 
-  return { phase, seconds, transcript, start, stop, cancel, editTranscript: setTranscript };
+  const startDemo = (language: "en-IN" | "hi-IN") => {
+    cancel();
+    setSimulated(true);
+    setTranscript(language === "hi-IN" ? "मेरे खाते का बैलेंस बताइए" : "Please show my account balance");
+    setPhase("review");
+  };
+
+  return { phase, seconds, transcript, simulated, startDemo, start, stop, cancel, editTranscript: setTranscript };
 }

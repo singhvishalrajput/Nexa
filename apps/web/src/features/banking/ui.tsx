@@ -1,3 +1,4 @@
+import { t } from "../../services/locale";
 import { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { statusPresentation } from "../../services/banking-content";
@@ -22,28 +23,28 @@ export function State({ loading, error, empty, retry, children }: {
     children?: ComponentChildren;
 }) {
     if (loading)
-        return <div class="bank-state" role="status"><span class="bank-loader"/><strong>Loading your banking information</strong><span>Please wait a moment.</span></div>;
+        return <div class="bank-state" role="status"><span class="bank-loader"/><strong>{t("Loading your banking information")}</strong><span>{t("Please wait a moment.")}</span></div>;
     if (error)
-        return <div class="bank-state bank-error" role="alert"><strong>We couldn’t load this information</strong><p>{error}</p>{retry && <button class="bank-button" onClick={retry}>Try again</button>}</div>;
+        return <div class="bank-state bank-error" role="alert"><strong>{t("We couldn’t load this information")}</strong><p>{t(error)}</p>{retry && <button class="bank-button" onClick={retry}>{t("Try again")}</button>}</div>;
     if (empty)
-        return <div class="bank-state"><span class="bank-empty-icon" aria-hidden="true">◇</span><strong>{empty}</strong><span>Information will appear here when it’s available.</span></div>;
+        return <div class="bank-state"><span class="bank-empty-icon" aria-hidden="true">◇</span><strong>{t(empty)}</strong><span>{t("Information will appear here when it’s available.")}</span></div>;
     return <>{children}</>;
 }
 export function Status({ value }: {
     value: string;
 }) { const {tone, label} = statusPresentation(value); return <span class={"bank-status " + tone}><i aria-hidden="true"/>{label}</span>; }
-export function PageHeading({ eyebrow = "YOUR BANKING", title, description, action }: {
+export function PageHeading({ eyebrow = "Your banking", title, description, action }: {
     eyebrow?: string;
     title: string;
     description?: string;
     action?: ComponentChildren;
-}) { return <header class="bank-page-heading"><div><p class="bank-eyebrow">{eyebrow}</p><h1 tabIndex={-1}>{title}</h1>{description && <p>{description}</p>}</div>{action}</header>; }
+}) { return <header class="bank-page-heading"><div><p class="bank-eyebrow">{t(eyebrow)}</p><h1 tabIndex={-1}>{t(title)}</h1>{description && <p>{t(description)}</p>}</div>{action}</header>; }
 export function Panel({ title, action, children, className = "" }: {
     title?: string;
     action?: ComponentChildren;
     children: ComponentChildren;
     className?: string;
-}) { return <section class={"bank-panel " + className}>{title && <header class="bank-panel-heading"><h2>{title}</h2>{action}</header>}{children}</section>; }
+}) { return <section class={"bank-panel " + className}>{title && <header class="bank-panel-heading"><h2>{t(title)}</h2>{action}</header>}{children}</section>; }
 export function Modal({ title, onClose, children, locked = false }: {
     title: string;
     onClose: () => void;
@@ -53,10 +54,10 @@ export function Modal({ title, onClose, children, locked = false }: {
     const ref = useRef<HTMLDialogElement>(null);
     useEffect(() => { const previous = document.activeElement as HTMLElement; ref.current?.showModal(); return () => { ref.current?.close(); previous?.focus(); }; }, []);
     useEffect(() => { ref.current?.querySelector<HTMLElement>("h2")?.focus(); }, [title]);
-    return <dialog ref={ref} class="bank-dialog" aria-label={title} onCancel={e => { e.preventDefault(); if (!locked)
-        onClose(); }}><header><h2 tabIndex={-1}>{title}</h2><button class="bank-icon-button" aria-label="Close dialog" disabled={locked} onClick={onClose}>×</button></header>{children}</dialog>;
+    return <dialog ref={ref} class="bank-dialog" aria-label={t(title)} onCancel={e => { e.preventDefault(); if (!locked)
+        onClose(); }}><header><h2 tabIndex={-1}>{t(title)}</h2><button class="bank-icon-button" aria-label={t("Close dialog")} disabled={locked} onClick={onClose}>{t("Close ×")}</button></header>{children}</dialog>;
 }
 export function Detail({ label, children }: {
     label: string;
     children: ComponentChildren;
-}) { return <div class="bank-detail"><dt>{label}</dt><dd>{children ?? "—"}</dd></div>; }
+}) { return <div class="bank-detail"><dt>{t(label)}</dt><dd>{children ?? "—"}</dd></div>; }

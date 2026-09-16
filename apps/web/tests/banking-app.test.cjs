@@ -4,7 +4,7 @@ const fs=require('node:fs');const vm=require('node:vm');const ts=require('typesc
 function load(file,fetcher,stored){
  const map=new Map(stored?[['nexa-auth-session',JSON.stringify(stored)]]:[]);const events=[];
  const exports={};const window={NEXA_API_BASE_URL:'http://localhost:8088/api/v1',setTimeout,clearTimeout,dispatchEvent:e=>events.push(e.type),sessionStorage:{getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)}};
- vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2021}}).outputText,{exports,window,require:name=>{if(name.endsWith("banking-content"))return load("src/services/banking-content.ts").api;throw Error(name);},fetch:fetcher,Headers,Response,AbortController,Event,URLSearchParams,BigInt,setTimeout,clearTimeout});return {api:exports,map,events,window};
+ vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2021}}).outputText,{exports,window,require:name=>{if(name.endsWith("locale"))return load("src/services/locale.ts").api;if(name.endsWith("banking-content"))return load("src/services/banking-content.ts").api;throw Error(name);},fetch:fetcher,Headers,Response,AbortController,Event,URLSearchParams,BigInt,setTimeout,clearTimeout});return {api:exports,map,events,window};
 }
 const authFile='src/services/auth.ts';
 const session={accessToken:'old',refreshToken:'refresh',user:{id:'owner',email:'test@example.com',role:'CUSTOMER'}};
@@ -56,3 +56,5 @@ test('totals and display share rounding and do not hide invalid amounts',()=>{
  try { assert.match(format.formatDate('2026-09-11'),/^11 Sept/); }
  finally { if(previous===undefined)delete process.env.TZ;else process.env.TZ=previous; }
 });
+
+test('server failures show recovery guidance instead of internal error details',async()=>{const {api}=load(authFile,async()=>new Response(JSON.stringify({detail:'database stack trace',error:'internal exception'}),{status:503}),session);await assert.rejects(api.authenticatedRequest('/accounts','old'),e=>e.status===503 && /try again later/.test(e.message) && !/stack trace|exception/.test(e.message));});

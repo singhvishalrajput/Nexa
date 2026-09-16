@@ -17,3 +17,22 @@ test('historical, unavailable, expired and processing proposals cannot be confir
 test('completion renders the actual transaction reference and has no action buttons',()=>{const card=render({workflow:{...proposal,status:'COMPLETED',reference:'TX-123'}});assert.equal(buttons(card).length,0);assert.ok(nodes(card).some(n=>n.type==='a'&&n.props.href==='#/transactions/TX-123'));});
 test('structured choices emit IDs rather than labels or text parsing',()=>{let sent;const card=render({workflow:{...proposal,status:'COLLECTING',choices:[{id:'12',label:'Savings'}]},onAction:c=>sent=c});buttons(card)[0].props.onClick();assert.equal(sent.value,'12');assert.equal(sent.type,'SELECT');});
 test('workflow response dispatch is based on the versioned contract',()=>{assert.equal(AssistantResponse({turn:{workflow:proposal},accessToken:'test'}).type,WorkflowCard);assert.equal(render({workflow:{...proposal,version:2}}).type,'p');});
+
+test('banking replies retain context and never render internal state names',()=>{
+ for(const status of ['COLLECTING','REVIEW','COMPLETED','CANCELLED','UNAVAILABLE']) {
+  const message=status==='COLLECTING'?'For Electricity, which account should the money come from?':status==='COMPLETED'?'Your payment of INR 100 to Electricity has been accepted.':'Check the Electricity payment.';
+  const card=render({workflow:{...proposal,operation:'PAY_BILL',status,message}});
+  const visible=JSON.stringify(nodes(card).filter(n=>typeof n.type==='string').map(n=>n.props.children));
+  assert.ok(nodes(card).some(n=>n.type==='p'&&n.props.children===message));
+  assert.doesNotMatch(visible,/collecting|Request recorded|Open Payments|action not executed/i);
+ }
+});
+
+test('review buttons name the operation being confirmed',()=>{for(const [operation,label] of [['OWN_TRANSFER','Confirm transfer'],['PAY_BILL','Confirm payment'],['CARD_CONTROL','Confirm card change']]){let sent;const card=render({workflow:{...proposal,operation},onAction:c=>sent=c});const action=buttons(card).find(b=>b.props.children===label);assert.ok(action);assert.equal(sent,undefined);action.props.onClick();assert.equal(sent.type,'CONFIRM');}});
+
+test('a review expiring after render cannot emit a financial confirmation',()=>{
+ const original=Date.now;let sent;
+ const card=render({onAction:c=>sent=c});
+ try { Date.now=()=>Date.parse(proposal.expiresAt)+1;buttons(card).find(b=>b.props.children==='Confirm transfer').props.onClick();assert.equal(sent,undefined); }
+ finally { Date.now=original; }
+});

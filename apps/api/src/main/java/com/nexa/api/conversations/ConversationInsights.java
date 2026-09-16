@@ -3,6 +3,7 @@ package com.nexa.api.conversations;
 import com.nexa.api.accounts.AccountQueryService;
 import com.nexa.api.banking.SpendingQueryService;
 import java.time.*;
+import java.math.BigDecimal;
 import java.util.*;
 import org.springframework.stereotype.Service;
 
@@ -11,14 +12,17 @@ public class ConversationInsights {
   private final SpendingQueryService spending;
   private final AccountQueryService accounts;
   private final com.nexa.api.transactions.TransactionQueryService transactions;
+  private final com.nexa.api.transactions.NaturalLanguageTransactionQueryParser queryParser;
 
   public ConversationInsights(
       SpendingQueryService spending,
       AccountQueryService accounts,
-      com.nexa.api.transactions.TransactionQueryService transactions) {
+      com.nexa.api.transactions.TransactionQueryService transactions,
+      com.nexa.api.transactions.NaturalLanguageTransactionQueryParser queryParser) {
     this.spending = spending;
     this.accounts = accounts;
     this.transactions = transactions;
+    this.queryParser = queryParser;
   }
 
   public ConversationInterpreter.Interpretation interpret(String text) {
@@ -60,16 +64,23 @@ public class ConversationInsights {
               + " upcoming bills and your own buffer before choosing an amount.",
           BankingContent.balances(accounts.currentAccounts()));
     if (!t.matches(".*\\b(spend|spent|spending)\\b.*")) return null;
-    if (!t.contains("this month") && !t.contains("last month"))
-      return new ConversationInterpreter.Interpretation(
-          "GET_SPENDING",
-          "Spending period.",
-          "Would you like spending for this month or last month? Include the period in your"
-              + " request.");
-    LocalDate month = LocalDate.now(ZoneOffset.UTC).withDayOfMonth(1);
-    if (t.contains("last month")) month = month.minusMonths(1);
-    String category = t.matches(".*\\bfood\\b.*") ? "food" : null;
-    var categories = spending.spending(month, month.plusMonths(1), category);
+    var query = queryParser.parseSpending(text);
+    if (query == null) return null;
+    var result = transactions.query(query);
+    var categories = new ArrayList<Map<String, String>>();
+    var grouped = new LinkedHashMap<String, BigDecimal>();
+    var currencies = new HashMap<String, String>();
+    for (var row : result.transactions()) {
+      String category = row.category() == null ? "Uncategorised" : row.category();
+      String key = category + "\u0000" + row.currencyCode();
+      grouped.merge(key, row.amount().abs(), BigDecimal::add);
+      currencies.put(key, row.currencyCode());
+    }
+    for (var entry : grouped.entrySet()) {
+      String category = entry.getKey().substring(0, entry.getKey().indexOf('\u0000'));
+      categories.add(Map.of("category", category, "currency", currencies.get(entry.getKey()), "amount", entry.getValue().toPlainString()));
+    }
+    var scope = query.dateRange();
     var content =
         new BankingContent(1, "INSIGHTS", null, null, null, 0)
             .describe(
@@ -78,14 +89,14 @@ public class ConversationInsights {
                 Map.of(
                     "categories",
                     categories,
-                    "from",
-                    month.toString(),
-                    "to",
-                    month.plusMonths(1).minusDays(1).toString()));
+                    "from", scope.startDate().toString(),
+                    "to", scope.endDateInclusive().toString(),
+                    "query", query,
+                    "resolvedScope", Map.of("start", scope.start().toString(), "end", scope.end().toString(), "timezone", scope.start().getZone().getId())));
     return new ConversationInterpreter.Interpretation(
         "GET_SPENDING",
         "Monthly spending.",
-        categories.isEmpty()
+        result.transactions().isEmpty()
             ? "No matching completed outgoing transactions were recorded for this period."
             : "Here is your recorded spending by category. This includes withdrawals and excludes"
                   + " transfers between your own accounts. Uncategorised payments have no recorded"

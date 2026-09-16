@@ -1,6 +1,7 @@
+import { getLocale, t } from "../../services/locale";
 import { ComponentChildren } from "preact";
 
-export function ChatIcon({ name }: { name: "mic" | "send" | "history" | "back" | "more" | "close" | "down" | "stop" | "check" }) {
+export function ChatIcon({ name }: { name: "mic" | "send" | "history" | "back" | "more" | "close" | "down" | "stop" | "check" | "trash" }) {
   const paths = {
     mic: <><rect x="9" y="3" width="6" height="12" rx="3" /><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3M9 22h6" /></>,
     send: <><path d="m4 4 17 8-17 8 3-8-3-8ZM7 12h14" /></>,
@@ -10,7 +11,8 @@ export function ChatIcon({ name }: { name: "mic" | "send" | "history" | "back" |
     close: <path d="m6 6 12 12M6 18 18 6" />,
     down: <path d="m5 9 7 7 7-7" />,
     stop: <rect x="6" y="6" width="12" height="12" rx="2" />,
-    check: <path d="m5 12 4 4L19 6" />
+    check: <path d="m5 12 4 4L19 6" />,
+    trash: <><path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14M10 10v7M14 10v7" /></>
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -26,12 +28,12 @@ export function MessageBubble({ role, text, timestamp, voice, children, status, 
 
 }) {
   const date = timestamp ? new Date(timestamp) : null;
-  return <article class={`messenger-message from-${role}${animate ? " messenger-arrival" : ""}`} aria-label={role === "user" ? "Your message" : "Nexa’s message"}>
+  return <article class={`messenger-message from-${role}${animate ? " messenger-arrival" : ""}`} aria-label={role === "user" ? t("Your message") : t("Nexa’s message")}>
     <div class="messenger-bubble">
-      {voice && <span class="messenger-voice-label"><ChatIcon name="mic" />Understood from speech</span>}
-      {text && <p dir="auto">{text}</p>}
+      {voice && <span class="messenger-voice-label"><ChatIcon name="mic" />{t("Understood from speech")}</span>}
+      {text && <p dir="auto" lang={/[\u0900-\u097f]/.test(text) ? "hi-IN" : "en-IN"}>{text}</p>}
       {children}
-      {(date || status) && <footer>{date && <time dateTime={timestamp} title={date.toLocaleString()}>{date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>}{status && <span>{status}</span>}</footer>}
+      {(date || status) && <footer>{date && <time dateTime={timestamp} title={date.toLocaleString(getLocale())}>{date.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" })}</time>}{status && <span>{t(status)}</span>}</footer>}
     </div>
   </article>;
 }

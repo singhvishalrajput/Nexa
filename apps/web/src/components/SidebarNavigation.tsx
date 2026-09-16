@@ -1,0 +1,57 @@
+import { ComponentChildren } from "preact";
+import { BankingIcon, BankingIconName } from "./BankingIcon";
+import { Route } from "../features/banking/utils";
+import { t } from "../services/locale";
+
+type NavigationItem = { page: Route; label: string; icon: BankingIconName };
+export const primaryNavigation: NavigationItem[] = [
+  { page: "assistant", label: "Home", icon: "home" },
+  { page: "accounts", label: "Accounts", icon: "accounts" },
+  { page: "payments", label: "Payments", icon: "payments" },
+  { page: "cards", label: "Cards", icon: "cards" },
+  { page: "transactions", label: "Transactions", icon: "transactions" }
+];
+export const secondaryNavigation: NavigationItem[] = [
+  { page: "overview", label: "Overview", icon: "overview" },
+  { page: "send-money", label: "Send money", icon: "arrow" },
+  { page: "beneficiaries", label: "Payees", icon: "people" },
+  { page: "bills", label: "Bills", icon: "transactions" },
+  { page: "mandates", label: "Direct debits", icon: "repeat" },
+  { page: "scheduled-payments", label: "Scheduled payments", icon: "clock" },
+  { page: "loans", label: "Loans", icon: "accounts" }
+];
+
+export function SidebarBrand({ action }: { action?: ComponentChildren }) {
+  return <header class="sidebar-brand-row">
+    <a class="sidebar-brand" href="#/assistant" aria-label={t("Nexa chat")}>
+      <span class="sidebar-brand-mark" aria-hidden="true">n</span><span>nexa<span class="sidebar-brand-period">.</span></span>
+    </a>{action}
+  </header>;
+}
+
+export function SidebarNavigation({ page, admin = false, children }: {
+  page: string; admin?: boolean; children?: ComponentChildren;
+}) {
+  const secondary = admin ? [...secondaryNavigation, { page: "operations", label: "Banking operations", icon: "shield" } as NavigationItem] : secondaryNavigation;
+  const link = (item: NavigationItem) => <a key={item.page} class="sidebar-link" href={"#/" + item.page} aria-current={page === item.page ? "page" : undefined}>
+    <BankingIcon name={item.icon}/><span>{t(item.label)}</span>
+  </a>;
+  return <nav class="sidebar-navigation" aria-label={t("Main navigation")}>
+    <div class="sidebar-primary">{primaryNavigation.map(link)}{children}</div>
+    <details class="sidebar-more" key={page} open={secondary.some(item => item.page === page)}>
+      <summary><BankingIcon name="more"/><span>{t("More banking")}</span><BankingIcon name="chevron"/></summary>
+      <div class="sidebar-secondary">{secondary.map(link)}</div>
+    </details>
+  </nav>;
+}
+
+export function SidebarFooter({ page, onLogout, disabled, children }: {
+  page: string; onLogout: () => void | Promise<void>; disabled?: boolean; children?: ComponentChildren;
+}) {
+  return <footer class="sidebar-footer">
+    {children}
+    <a class="sidebar-link" href="#/settings" aria-current={page === "settings" ? "page" : undefined}><BankingIcon name="profile"/><span>{t("Profile & settings")}</span></a>
+    <a class="sidebar-link" href="#/security" aria-current={page === "security" ? "page" : undefined}><BankingIcon name="shield"/><span>{t("Security & session")}</span></a>
+    <div class="sidebar-session"><button class="sidebar-link" type="button" disabled={disabled} onClick={onLogout}><BankingIcon name="logout"/><span>{t("Sign out")}</span></button></div>
+  </footer>;
+}

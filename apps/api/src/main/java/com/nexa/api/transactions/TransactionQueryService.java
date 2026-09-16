@@ -12,6 +12,8 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.criteria.*;
+import java.math.BigDecimal;
 
 @Service
 @Transactional(readOnly = true)
@@ -49,6 +51,66 @@ public class TransactionQueryService {
   public PageResponse<TransactionResponse> transactions(
       String id, String category, LocalDate from, LocalDate to, int page, int size) {
     return transactions(id, category, from, to, page, size, null, null);
+  }
+
+  /** Shared execution path for conversational and API filtering. Boundaries are converted to UTC only here. */
+  public TransactionQueryResult query(TransactionQuery query) {
+    if (query.dateRange() == null)
+      throw new InvalidRequestException("A transaction query must include a resolved date range.");
+    Specification<BankTransaction> spec = (r, q, b) -> ownedPredicate(r, b, query.direction());
+    var range = query.dateRange();
+    LocalDateTime start = LocalDateTime.ofInstant(range.start().toInstant(), ZoneOffset.UTC);
+    LocalDateTime end = LocalDateTime.ofInstant(range.end().toInstant(), ZoneOffset.UTC);
+    spec = spec.and((r, q, b) -> b.greaterThanOrEqualTo(r.get("createdAt"), start))
+        .and((r, q, b) -> b.lessThan(r.get("createdAt"), end));
+    if (!query.statuses().isEmpty()) spec = spec.and((r, q, b) -> r.get("status").in(query.statuses()));
+    if (query.minAmount() != null) spec = spec.and((r, q, b) -> b.greaterThanOrEqualTo(r.get("amount"), query.minAmount()));
+    if (query.maxAmount() != null) spec = spec.and((r, q, b) -> b.lessThanOrEqualTo(r.get("amount"), query.maxAmount()));
+    // Core records use TRANSFER only for account-to-account movements; spending excludes those.
+    if (query.excludeOwnTransfers())
+      spec = spec.and((r, q, b) -> b.notEqual(r.get("transactionType"), TransactionType.TRANSFER));
+    if (query.condition() != null) spec = spec.and((r, q, b) -> condition(query.condition(), r, b));
+    var rows = transactions.findAll(spec, PageRequest.of(0, query.limit(), Sort.by(Sort.Direction.DESC, "createdAt", "id")));
+    var data = rows.map(t -> response(t, owned(t.getSourceAccount()) ? t.getSourceAccount() : t.getDestinationAccount())).toList();
+    BigDecimal total = data.stream().map(TransactionResponse::amount).map(BigDecimal::abs).reduce(BigDecimal.ZERO, BigDecimal::add);
+    return new TransactionQueryResult(query, data, total);
+  }
+
+  private Predicate ownedPredicate(Root<BankTransaction> r, CriteriaBuilder b, TransactionQuery.Direction direction) {
+    Predicate source = b.equal(r.get("sourceAccount").get("customer").get("userId"), user.userId());
+    Predicate destination = b.equal(r.get("destinationAccount").get("customer").get("userId"), user.userId());
+    return switch (direction) { case OUTGOING -> source; case INCOMING -> destination; case ANY -> b.or(source, destination); };
+  }
+
+  private Predicate condition(TransactionQuery.Condition node, Root<BankTransaction> r, CriteriaBuilder b) {
+    if (node instanceof TransactionQuery.Group group) {
+      Predicate[] children = group.children().stream().map(c -> condition(c, r, b)).toArray(Predicate[]::new);
+      return group.join() == TransactionQuery.Join.AND ? b.and(children) : b.or(children);
+    }
+    var p = (TransactionQuery.Predicate) node;
+    if (p.field() == TransactionQuery.Field.LOCATION)
+      throw new InvalidRequestException("Location filtering is not available for transaction records.");
+    Path<?> field = switch (p.field()) {
+      case MERCHANT -> r.get("merchantName");
+      case CATEGORY -> r.get("category");
+      case PAYMENT_METHOD -> r.get("paymentMethod");
+      case STATUS -> r.get("status");
+      case ACCOUNT -> r.get("sourceAccount").get("id");
+      case AMOUNT -> r.get("amount");
+      case LOCATION -> throw new IllegalStateException();
+    };
+    if (p.field() == TransactionQuery.Field.AMOUNT) {
+      BigDecimal value = new BigDecimal(p.values().get(0));
+      @SuppressWarnings("unchecked") Expression<BigDecimal> amount = (Expression<BigDecimal>) field;
+      return switch (p.operator()) { case GT -> b.greaterThan(amount, value); case GTE -> b.greaterThanOrEqualTo(amount, value); case LT -> b.lessThan(amount, value); case LTE -> b.lessThanOrEqualTo(amount, value); case EQ -> b.equal(amount, value); case NE -> b.notEqual(amount, value); default -> throw new InvalidRequestException("Amount supports comparison operators only."); };
+    }
+    Expression<String> value = b.lower(field.as(String.class));
+    List<String> values = p.values().stream().map(v -> v.toLowerCase(Locale.ROOT)).toList();
+    return switch (p.operator()) {
+      case EQ -> b.equal(value, values.get(0)); case NE -> b.notEqual(value, values.get(0));
+      case IN -> value.in(values); case NOT_IN -> b.not(value.in(values));
+      default -> throw new InvalidRequestException("Unsupported text comparison.");
+    };
   }
 
   public PageResponse<TransactionResponse> transactions(

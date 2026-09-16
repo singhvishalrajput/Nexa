@@ -1,4 +1,4 @@
-:root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f7f3; color: #192b2a; }
+:root { color-scheme: light; font-family: var(--nexa-font); background: var(--nexa-background); color: var(--nexa-text); }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
 button, input, select, textarea { font: inherit; }

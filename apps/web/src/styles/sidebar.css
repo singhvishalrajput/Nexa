@@ -1,0 +1,79 @@
+/* Shared navigation contract for banking, conversation and their mobile drawers. */
+.nexa-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 0;
+  padding: var(--space-lg) var(--space-md);
+  background: var(--nexa-surface);
+  color: var(--nexa-text-secondary);
+  font: var(--text-sm)/1.5 var(--nexa-font);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.nexa-sidebar .sidebar-brand-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+:is(.bank-app, .nexa-messenger) .sidebar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 var(--space-sm);
+  color: var(--nexa-text);
+  font: 700 26px/1 var(--nexa-font);
+  letter-spacing: -.04em;
+  text-decoration: none;
+}
+.sidebar-brand-mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-sm); background: var(--nexa-action); color: var(--nexa-on-action); font-size: 23px; font-weight: 500; }
+.sidebar-brand-period { color: var(--nexa-action); }
+.sidebar-navigation, .sidebar-primary, .sidebar-secondary { display: grid; gap: 4px; }
+:is(.bank-app, .nexa-messenger) .nexa-sidebar :is(.sidebar-link, .sidebar-more > summary) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 0;
+  border-inline-start: 3px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--nexa-text-secondary);
+  font: 400 var(--text-sm)/1.5 var(--nexa-font);
+  text-align: start;
+  text-decoration: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: background-color var(--nexa-duration) var(--nexa-motion), color var(--nexa-duration) var(--nexa-motion);
+}
+.nexa-sidebar :is(.sidebar-link, .sidebar-more > summary) svg { width: 20px; height: 20px; flex: 0 0 20px; }
+:is(.bank-app, .nexa-messenger) .nexa-sidebar :is(.sidebar-link, .sidebar-more > summary):hover:not(:disabled) { background: var(--nexa-hover); color: var(--nexa-text); }
+:is(.bank-app, .nexa-messenger) .nexa-sidebar :is(.sidebar-link, .sidebar-more > summary):active:not(:disabled) { background: var(--nexa-pressed); }
+:is(.bank-app, .nexa-messenger) .nexa-sidebar .sidebar-link[aria-current="page"],
+:is(.bank-app, .nexa-messenger) .nexa-sidebar .sidebar-link[aria-current="page"]:hover:not(:disabled) {
+  border-inline-start-color: var(--nexa-action);
+  background: var(--nexa-selected);
+  color: var(--nexa-selected-text);
+  font-weight: 650;
+}
+.sidebar-more { margin-top: var(--space-sm); }
+.sidebar-more > summary { list-style: none; }
+.sidebar-more > summary::-webkit-details-marker { display: none; }
+.sidebar-more > summary > svg:last-child { margin-inline-start: auto; width: 16px; flex-basis: 16px; }
+.sidebar-more[open] > summary > svg:last-child { transform: rotate(180deg); }
+.sidebar-secondary { margin-top: 4px; }
+.nexa-sidebar .sidebar-footer { margin-top: auto; padding-top: var(--space-md); border-top: 1px solid var(--nexa-border); }
+.sidebar-session { margin-top: var(--space-sm); padding-top: var(--space-sm); border-top: 1px solid var(--nexa-border); }
+:is(.bank-app, .nexa-messenger) .nexa-sidebar :focus-visible { outline: 3px solid var(--nexa-focus); outline-offset: 2px; }
+.nexa-sidebar .sidebar-history-heading h2 { margin: 0 12px; font: 600 var(--text-sm)/1.5 var(--nexa-font); color: var(--nexa-text-muted); }
+.bank-sidebar { position: fixed; inset: 0 auto 0 0; width: var(--nexa-sidebar-width); border-right: 1px solid var(--nexa-border); z-index: 10; }
+.nexa-messenger .messenger-history { height: 100%; width: min(var(--nexa-sidebar-width), 90vw); border-right: 1px solid var(--nexa-border); padding-top: calc(var(--space-lg) + env(safe-area-inset-top)); }
+.bank-mobile-nav { width: 100%; }
+.bank-mobile-tabs svg { width: 20px; height: 20px; }
+@media (max-width: 899px) { .bank-sidebar { display: none; } }
+@media (prefers-reduced-motion: reduce) { .nexa-sidebar * { transition: none !important; animation: none !important; } }
+@media (forced-colors: active) {
+  .nexa-sidebar .sidebar-link[aria-current="page"], .nexa-sidebar .messenger-history-item.is-current { border-inline-start-color: Highlight !important; }
+}

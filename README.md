@@ -1,5 +1,7 @@
 # Nexa
 
+This is a learning showcase. See [showcase flows and simulation boundaries](docs/SHOWCASE.md) for confirmed demo payments, card controls, saved receipts and microphone-free voice demonstrations.
+
 One banking application with an Oracle JET web client and a Java 17 / Spring Boot 4.1.1 API.
 
 - `apps/api/src/main/java/com/nexa/api/core`: authoritative customers, accounts, transactions, journals, ledger entries and management APIs.
@@ -17,5 +19,7 @@ See [frontend implementation and verification](docs/FRONTEND_IMPLEMENTATION.md) 
 See the [frontend audit results](docs/FRONTEND_AUDIT.md) for the subsequent cleanup, regression checks and release-build verification.
 
 See [chat-first banking architecture and verification](docs/CHAT_FIRST_BANKING.md) for conversational workflows, confirmed own-account transfers, safety guarantees and integration boundaries.
+
+See [conversation context and follow-up handling](docs/CONVERSATION_CONTEXT.md) for Hindi/Hinglish requests, corrections, cancellations, read follow-ups and payment confirmation behavior.
 
 New teammate? Run `.\scripts\setup-db.ps1` from PowerShell 7 to provision the local Oracle schema and apply migrations. See [database setup prerequisites and commands](apps/api/docs/local-oracle-setup.md).

@@ -37,6 +37,6 @@ public class NlpConfiguration {
   @Bean
   @ConditionalOnMissingBean
   public EntityExtractor entityExtractor() {
-    return new BasicEntityExtractor(Clock.systemUTC());
+    return new BasicEntityExtractor(Clock.system(java.time.ZoneId.of("Asia/Kolkata")));
   }
 }

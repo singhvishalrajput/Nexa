@@ -24,10 +24,54 @@ class ConversationInterpreterTest {
   }
 
   @Test
+  void simpleBalanceRequestsNeverCallOllamaEvenWithHistory() {
+    var ollama = mock(com.nexa.api.nlp.OllamaInterpreter.class);
+    interpreter.setOllama(ollama);
+    when(accounts.currentAccounts()).thenReturn(List.of());
+    for (String text :
+        List.of(
+            "balance",
+            "Show my balance",
+            "Please tell me my balance!",
+            "What's my available balance?",
+            "Can you show me my savings account balance please?")) {
+      assertThat(
+              interpreter
+                  .interpret(
+                      text,
+                      List.of(new com.nexa.api.nlp.OllamaInterpreter.Message("user", "last month")))
+                  .intent())
+          .as(text)
+          .isEqualTo("GET_BALANCE");
+    }
+    verifyNoInteractions(ollama);
+    verify(accounts, times(5)).currentAccounts();
+  }
+
+  @Test
+  void filteredAmbiguousAndFollowupRequestsStillReachOllama() {
+    var ollama = mock(com.nexa.api.nlp.OllamaInterpreter.class);
+    interpreter.setOllama(ollama);
+    when(accounts.currentAccounts()).thenReturn(List.of());
+    for (String text :
+        List.of(
+            "only the savings one",
+            "balance yesterday",
+            "don't show my balance",
+            "balance and bills",
+            "transactions above 500",
+            "balance for account 123")) {
+      assertThat(interpreter.isFastRequest(text)).as(text).isFalse();
+      interpreter.interpret(text);
+      verify(ollama).interpret(text, List.of());
+    }
+  }
+
+  @Test
   void preservesTransferAmountAndRecipientButDoesNotClaimExecution() {
     var result = interpreter.interpret("Please send ₹5,000 to Rahul");
     assertThat(result.essence()).isEqualTo("Request to transfer INR 5000 to rahul.");
-    assertThat(result.reply()).contains("No money has moved");
+    assertThat(result.reply()).isEqualTo("Who would you like to pay?");
     verifyNoInteractions(accounts, transactions);
   }
 

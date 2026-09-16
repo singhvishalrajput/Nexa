@@ -1,0 +1,56 @@
+/* Shared design tokens. Breakpoints: compact <600px; rail >=900px; context >=1280px. */
+:root {
+  --nexa-action: #176B61;
+  --nexa-action-hover: #10564E;
+  --nexa-action-active: #0B453F;
+  --nexa-on-action: #FFFFFF;
+  --nexa-on-action-soft: #E0EEEA;
+  --nexa-inverse-surface: #174D46;
+  --nexa-inverse-border: #81AAA2;
+  --nexa-surface: #ffffff;
+  --nexa-background: #F7F8F5;
+  --nexa-text: #1D302E;
+  --nexa-text-secondary: #435B57;
+  --nexa-text-muted: #596B68;
+
+  --nexa-border: #DDE5E1;
+  --nexa-border-control: #758A84;
+  --nexa-soft: #E8F2EE;
+  --nexa-hover: #EFF4F1;
+  --nexa-selected: var(--nexa-soft);
+  --nexa-selected-text: var(--nexa-action);
+  --nexa-pressed: #D5E6DF;
+  --nexa-disabled-bg: #EDF0ED;
+  --nexa-disabled-text: var(--nexa-text-muted);
+  --nexa-success: #2E7D32;
+  --nexa-success-bg: #EDF6EC;
+  --nexa-warning: #705117;
+  --nexa-warning-bg: #f5eedb;
+  --nexa-error: #873c29;
+  --nexa-error-bg: #f3e5dd;
+  --nexa-error-hover: #6D2F20;
+  --nexa-backdrop: rgb(29 48 46 / 38%);
+  --nexa-sidebar-width: 256px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --nexa-control-radius: var(--radius-md);
+  --nexa-duration: 120ms;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --nexa-shadow: 0 16px 48px rgb(29 48 46 / 10%);
+  --nexa-shadow-card: 0 2px 8px rgb(29 48 46 / 4%);
+  --nexa-shadow-hover: 0 4px 16px rgb(29 48 46 / 8%);
+  --nexa-focus: var(--nexa-action);
+  --nexa-focus-inverse: var(--nexa-on-action);
+  --nexa-scroll-thumb: var(--nexa-border-control);
+  --nexa-scroll-hover: var(--nexa-text-secondary);
+  --nexa-scroll-track: transparent;
+  --nexa-font: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Nirmala UI", sans-serif;
+  --nexa-motion: ease-out;
+  --space-xl: 32px;
+  --text-sm: .875rem;
+  --text-md: 1rem;
+}

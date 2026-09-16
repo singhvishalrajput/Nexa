@@ -39,6 +39,16 @@ test('bills and scheduled payments are registered and empty bills explain their 
   assert.equal(empty.props.title, 'Your bills');
 });
 
+test('empty banking responses keep the specific translated message', () => {
+  const { setLocale, t } = require('../src/services/locale.ts');
+  setLocale('hi-IN');
+  try {
+    const empty = BillList({ content: { version: 1, type: 'BILLS', bills: [] } });
+    const rendered = empty.type(empty.props);
+    assert.equal(rendered.props.children[1].props.children, t('No bills to show.'));
+  } finally { setLocale('en-IN'); }
+});
+
 test('clarification and error envelopes remain readable chat messages', () => {
   for (const type of ['TEXT', 'ERROR', 'ACTION_REQUIRED']) {
     const result = AssistantResponse({ turn: { ...turn, banking: { version: 1, type } }, accessToken: 'test' });
@@ -49,11 +59,11 @@ test('clarification and error envelopes remain readable chat messages', () => {
 });
 
 const { collectionLayout } = require('../src/components/chat/BankingCollection.tsx');
-test('single objects stay direct and multiple substantial objects browse horizontally', () => {
+test('single objects stay direct and multiple substantial objects use a responsive comparison grid', () => {
   for (const type of ['ACCOUNTS', 'CARDS', 'LOANS']) {
     assert.equal(collectionLayout(type, 1), 'direct');
-    assert.equal(collectionLayout(type, 2), 'horizontal');
-    assert.equal(collectionLayout(type, 20), 'horizontal');
+    assert.equal(collectionLayout(type, 2), 'comparison');
+    assert.equal(collectionLayout(type, 20), 'comparison');
   }
 });
 test('row records and future types use vertical collections; empty results stay direct', () => {

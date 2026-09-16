@@ -1,0 +1,56 @@
+/* Shared interaction contract for both banking and conversation surfaces. */
+:is(.bank-app, .nexa-messenger) :is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--nexa-focus);
+  outline-offset: 3px;
+}
+.bank-app :is(.bank-balance-hero, .bank-payment-card) :focus-visible {
+  outline-color: var(--nexa-focus-inverse) !important;
+}
+:is(.bank-app, .nexa-messenger) :is(input, select, textarea) {
+  color: var(--nexa-text);
+  accent-color: var(--nexa-action);
+}
+:is(.bank-app, .nexa-messenger) :is(input, textarea)::placeholder { color: var(--nexa-text-muted); opacity: 1; }
+.bank-app .nexa-language-select select { border-color: var(--nexa-border-control); }
+.bank-app :is(input, select, textarea):hover:not(:disabled) { border-color: var(--nexa-text-secondary); }
+.bank-app :is(input, select, textarea):focus-visible { border-color: var(--nexa-focus); }
+:is(.bank-app, .nexa-messenger) :is(.bank-button, .nexa-auth-submit, .nexa-account-actions button, .messenger-primary, .conversation-confirm) {
+  background: var(--nexa-action);
+  color: var(--nexa-on-action) !important;
+  border-color: var(--nexa-action);
+}
+:is(.bank-app, .nexa-messenger) :is(.bank-button, .nexa-auth-submit, .nexa-account-actions button, .messenger-primary, .conversation-confirm):hover:not(:disabled) {
+  background: var(--nexa-action-hover);
+  border-color: var(--nexa-action-hover);
+  color: var(--nexa-on-action) !important;
+}
+:is(.bank-app, .nexa-messenger) :is(.bank-button, .nexa-auth-submit, .nexa-account-actions button, .messenger-primary, .conversation-confirm):active:not(:disabled) {
+  background: var(--nexa-action-active);
+  border-color: var(--nexa-action-active);
+}
+.bank-app.bank-app :is(.bank-button.secondary, .bank-button.bank-white) {
+  background: var(--nexa-surface);
+  color: var(--nexa-action) !important;
+  border-color: var(--nexa-border-control);
+}
+.bank-app.bank-app :is(.bank-button.secondary, .bank-button.bank-white):hover:not(:disabled) { background: var(--nexa-hover); }
+.bank-app.bank-app :is(.bank-button.secondary, .bank-button.bank-white):active:not(:disabled) { background: var(--nexa-pressed); }
+:is(.bank-app, .nexa-messenger) :is(.bank-icon-button, .bank-pagination button):hover:not(:disabled) {
+  background: var(--nexa-hover); color: var(--nexa-action);
+}
+.bank-app :is(.bank-icon-button, .bank-pagination button):active:not(:disabled),
+.nexa-messenger button:active:not(:disabled):not(.messenger-primary):not(.conversation-confirm) { background: var(--nexa-pressed); }
+.bank-app .nexa-session-action button:hover:not(:disabled) { background: var(--nexa-error-hover); color: var(--nexa-on-action); }
+
+.bank-app .bank-mobile-tabs a.active { background: var(--nexa-selected); }
+:is(.bank-app.bank-app, .nexa-messenger.nexa-messenger) button:disabled {
+  color: var(--nexa-disabled-text) !important;
+  background: var(--nexa-disabled-bg);
+  border-color: var(--nexa-border);
+  opacity: 1;
+  cursor: not-allowed;
+}
+@media (forced-colors: active) {
+  :is(.bank-app, .nexa-messenger) :focus-visible { outline-color: Highlight !important; }
+  :is(.bank-app, .nexa-messenger) [aria-current="page"] { border-inline-start: 3px solid Highlight; }
+}

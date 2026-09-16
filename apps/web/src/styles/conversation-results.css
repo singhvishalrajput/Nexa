@@ -1,0 +1,103 @@
+/* Structured banking surfaces shared within the conversation. */
+/* Banking results are independent surfaces in the conversation timeline. */
+.nexa-messenger .messenger-banking-response { width: 100%; margin: 0 0 24px; min-width: 0; }
+.nexa-messenger .messenger-banking-intro { margin: 0 0 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.nexa-messenger .messenger-banking-surface { padding: 16px 0; border-top: 1px solid var(--nexa-border); overflow-wrap: anywhere; min-width: 0; }
+.nexa-messenger .bank-response { margin-top: 0; min-width: 0; }
+.nexa-messenger .bank-response h3, .nexa-messenger .bank-response h4 { margin: 0; color: var(--nexa-text); font-family: inherit; line-height: 1.45; letter-spacing: normal; }
+.nexa-messenger .bank-response h3 { font-size: 16px; font-weight: 600; }
+.nexa-messenger .bank-response h4 { font-size: 15px; font-weight: 600; }
+.nexa-messenger .bank-response .bank-secondary, .nexa-messenger .bank-response small { color: var(--nexa-text-muted); font-size: 12px; line-height: 1.5; }
+.nexa-messenger .bank-response .bank-money { display: block; font-size: 17px; font-variant-numeric: tabular-nums; line-height: 1.4; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.nexa-messenger .bank-section-header { margin: 0 0 12px; }
+.nexa-messenger .bank-response .bank-section-header p { margin: 2px 0 0; font-size: 12px; color: var(--nexa-text-muted); }
+.nexa-messenger .bank-account { padding: 8px 0 14px; }
+.nexa-messenger .bank-account + .bank-account { padding-top: 16px; border-top: 1px solid var(--nexa-border); }
+.nexa-messenger .bank-account > .bank-secondary { display: block; margin: 10px 0 3px; }
+.nexa-messenger .bank-account > .bank-money { font-size: clamp(25px, 5vw, 32px); font-weight: 500; }
+.nexa-messenger .bank-account-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.nexa-messenger .bank-status { display: inline-block; width: fit-content; padding: 0; color: var(--nexa-text-muted); font-size: 12px; font-weight: 600; line-height: 1.6; }
+.nexa-messenger .bank-status.good { color: var(--nexa-success); background: transparent; }
+.nexa-messenger .bank-status.bad { color: var(--nexa-error); background: transparent; }
+.nexa-messenger .bank-transactions ul { margin: 0; padding: 0; list-style: none; }
+.nexa-messenger .bank-response .bank-date-heading { margin: 16px 0 5px; font-size: 12px; color: var(--nexa-text-muted); font-weight: 500; }
+.nexa-messenger .bank-transaction-row { width: 100%; padding: 12px 2px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 42%); gap: 10px; text-align: left; border-radius: 10px; align-items: start; }
+.nexa-messenger .bank-transaction-name { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+.nexa-messenger .bank-transaction-name > strong { font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.nexa-messenger .bank-transaction-name small { overflow-wrap: anywhere; }
+.nexa-messenger .bank-transaction-amount { text-align: right; min-width: 0; }
+.nexa-messenger .bank-transaction-amount .bank-money { font-size: 16px; }
+.nexa-messenger .bank-transaction-amount small { display: block; margin-top: 4px; font-size: 12px; }
+.nexa-messenger .bank-inline-action { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 8px 6px; color: var(--nexa-action); font-size: 13px; border-radius: 8px; text-align: left; line-height: 1.5; }
+.nexa-messenger .bank-view-all { margin-top: 6px; }
+.nexa-messenger .bank-pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.nexa-messenger .bank-pagination > span { font-size: 12px; color: var(--nexa-text-muted); }
+.nexa-messenger .bank-transaction-detail > h3 { margin: 12px 0 4px; }
+.nexa-messenger .bank-transaction-detail > .bank-money { font-size: 30px; margin: 0 0 8px; }
+.nexa-messenger .bank-response dl { margin: 16px 0; }
+.nexa-messenger .bank-detail { display: grid; grid-template-columns: minmax(90px, 35%) minmax(0, 1fr); gap: 12px; padding: 7px 0; border-bottom: 0; align-items: normal; font-size: 13px; line-height: 1.5; }
+.nexa-messenger .bank-detail dt { color: var(--nexa-text-muted); }
+.nexa-messenger .bank-detail dd { text-align: left; margin: 0; overflow-wrap: anywhere; }
+.nexa-messenger .bank-reference { margin: 8px 0; font-size: 12px; }
+.nexa-messenger .bank-reference summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: var(--nexa-text-muted); }
+.nexa-messenger .bank-reference code { display: block; user-select: all; overflow-wrap: anywhere; font-size: 12px; background: var(--nexa-soft); padding: 10px; border-radius: 6px; }
+.nexa-messenger .bank-reference [role=status] { display: block; }
+.nexa-messenger .bank-response .bank-help { font-size: 13px; margin: 8px 0; color: var(--nexa-text-muted); }
+.nexa-messenger .bank-response .bank-as-of { margin: 12px 0 0; font-size: 12px; color: var(--nexa-text-muted); }
+.nexa-messenger .bank-summary-item { padding: 12px 0; }
+.nexa-messenger .bank-summary-item + .bank-summary-item { margin-top: 8px; border-top: 1px solid var(--nexa-border); }
+.nexa-messenger .bank-item-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.nexa-messenger .bank-summary-item > .bank-money { font-size: 24px; margin-top: 4px; }
+.nexa-messenger .bank-beneficiary { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; }
+.nexa-messenger .bank-response .bank-beneficiary p { font-size: 12px; margin: 3px 0; }
+@media (max-width: 420px) {
+  .nexa-messenger .messenger-banking-surface { padding: 12px 0; }
+  .nexa-messenger .bank-transaction-row { grid-template-columns: minmax(0, 1fr) minmax(0, 43%); gap: 7px; }
+  .nexa-messenger .bank-transaction-amount .bank-money { font-size: 14px; }
+  .nexa-messenger .bank-detail { grid-template-columns: minmax(80px, 34%) minmax(0, 1fr); gap: 8px; }
+}
+
+/* Motion belongs only to the conversation. History does not replay arrivals. */
+.nexa-messenger .messenger-arrival,
+.nexa-messenger .messenger-options,
+.nexa-messenger .bank-transaction-detail,
+.nexa-messenger .bank-help,
+.nexa-messenger .messenger-error,
+.nexa-messenger .messenger-loading,
+.nexa-messenger .messenger-voice-session,
+.nexa-messenger details[open] > :not(summary) {
+  animation: chat-arrive 180ms var(--nexa-motion) both;
+}
+.nexa-messenger button,
+.nexa-messenger select {
+  transition: background-color 140ms var(--nexa-motion), color 140ms var(--nexa-motion), opacity 140ms var(--nexa-motion);
+}
+.nexa-messenger .messenger-composer { transition: border-color 160ms var(--nexa-motion); }
+.nexa-messenger .messenger-composer:focus-within { border-color: var(--nexa-action); }
+.nexa-messenger .messenger-drawer-backdrop {
+  opacity: 1;
+  transition: opacity 160ms var(--nexa-motion), display 160ms allow-discrete;
+}
+.nexa-messenger .messenger-drawer-backdrop .messenger-history {
+  transform: translateX(0);
+  transition: transform 180ms var(--nexa-motion);
+}
+.nexa-messenger .messenger-drawer-backdrop[hidden] { display: none; opacity: 0; pointer-events: none; }
+.nexa-messenger .messenger-drawer-backdrop[hidden] .messenger-history { transform: translateX(-12px); }
+@starting-style {
+  .nexa-messenger .messenger-drawer-backdrop { opacity: 0; }
+  .nexa-messenger .messenger-drawer-backdrop .messenger-history { transform: translateX(-12px); }
+}
+@keyframes chat-arrive {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nexa-messenger *, .nexa-messenger *::before, .nexa-messenger *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.nexa-messenger .bank-status i { display: none; }

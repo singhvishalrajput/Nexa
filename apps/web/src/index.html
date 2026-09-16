@@ -5,47 +5,32 @@
  as shown at https://oss.oracle.com/licenses/upl/
  -->
 
-<!-- ************************ IMPORTANT INFORMATION ************************************
-  This web basic template is provided as an example of how to configure
-  a JET web application.  It contains the Oracle JET framework and a default
-  requireJS configuration file to show how JET can be setup in a common application.
-  This project template can be used in conjunction with demo code from the JET
-  website to test JET component behavior and interactions.
-
-  Any CSS styling with the prefix "demo-" is for demonstration only and is not
-  provided as part of the JET framework.
-
-  Please see the demos under Cookbook/Patterns/App Shell: Web and the CSS documentation
-  under Support/API Docs/Non-Component Styling on the JET website for more information on how to use
-  the best practice patterns shown in this template.
-
-  Aria Landmark role attributes are added to the different sections of the application
-  for accessibility compliance. If you change the type of content for a specific
-  section from what is defined, you should also change the role value for that
-  section to represent the appropriate content type.
-  ***************************** IMPORTANT INFORMATION ************************************ -->
-<html lang="en-us">
+<html lang="en-IN">
   <head>
     <title>Nexa</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1"/>
     <meta name="description" content="Nexa personal banking — accounts, transactions and your financial workspace." />
-    <link rel="icon" href="styles/images/JET-Favicon-Red-32x32.png" type="image/x-icon" />
-    <!-- This is injects main css file for the default theme -->
+    <link rel="icon" href="styles/images/nexa.svg" type="image/svg+xml" />
+    <!-- Oracle JET theme injection -->
 		<!-- injector:theme -->
 		<!-- endinjector -->
-    <!-- This contains icon fonts used by the starter template -->
+    <!-- Oracle JET framework font injection -->
 		<!-- injector:font -->
 		<!-- endinjector:font -->
-    <!-- This is where you would add any app specific styling -->
+    <!-- Application styles; shared control states load last. -->
+    <link rel="stylesheet" href="styles/tokens.css" type="text/css" />
     <link rel="stylesheet" href="styles/app.css" type="text/css" />
     <link rel="stylesheet" href="styles/profile.css" type="text/css" />
     <link rel="stylesheet" href="styles/auth.css" type="text/css" />
     <link rel="stylesheet" href="styles/conversation-first.css" type="text/css" />
-  <link rel="stylesheet" href="styles/banking.css" type="text/css" />
-    <link rel="stylesheet" href="styles/usability.css" type="text/css" />
+    <link rel="stylesheet" href="styles/banking.css" type="text/css" />
+    <link rel="stylesheet" href="styles/controls.css" type="text/css" />
+    <link rel="stylesheet" href="styles/sidebar.css" type="text/css" />
   </head>
   <body class="oj-web-applayout-body" data-oj-binding-provider="none">
+    <div id="nexa-boot" role="status"><h1>Opening Nexa…</h1><p>Please wait while we connect to your banking.</p><details><summary>Taking longer than expected?</summary><p>Check your internet connection, then <a href="">reload Nexa</a>.</p></details></div>
+    <noscript><p>Enable JavaScript in your browser settings to use Nexa.</p></noscript>
     <app-root></app-root>
     <!-- This injects script tags for the main javascript files -->
 		<!-- injector:scripts -->

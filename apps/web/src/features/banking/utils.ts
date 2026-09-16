@@ -3,7 +3,7 @@ export function validAmount(value: string): boolean {
     return /^(?:0|[1-9]\d{0,12})(?:\.\d{1,2})?$/.test(value) && Number(value) > 0;
 }
 export function initials(name: string): string { return name.trim().split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase(); }
-export const routes = ["overview", "accounts", "transactions", "payments", "beneficiaries", "cards", "bills", "mandates", "scheduled-payments", "loans", "settings", "security", "assistant", "operations"] as const;
+export const routes = ["send-money", "overview", "accounts", "transactions", "payments", "beneficiaries", "cards", "bills", "mandates", "scheduled-payments", "loans", "settings", "security", "assistant", "operations"] as const;
 export type Route = typeof routes[number];
 export function parseRoute(hash: string): {
     page: Route | "login" | "register" | "not-found";

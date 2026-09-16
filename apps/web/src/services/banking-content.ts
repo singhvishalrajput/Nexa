@@ -1,3 +1,4 @@
+import { getLocale, t } from "./locale";
 export type Money = string | number;
 export type AccountSnapshot = {
   id: string; displayName: string; accountNumberMasked: string; accountType: string;
@@ -59,9 +60,9 @@ export function moneyInMinorUnits(value: Money): bigint | null {
 }
 export function formatMoney(value: Money, currency = "INR", signed = false): string {
   const units = moneyInMinorUnits(value);
-  if (units === null) return "Amount unavailable";
+  if (units === null) return t("Amount unavailable");
   const paise = units < BigInt(0) ? -units : units;
-  const whole = (paise / BigInt(100)).toLocaleString("en-IN");
+  const whole = (paise / BigInt(100)).toLocaleString(getLocale());
   const decimals = String(paise % BigInt(100)).padStart(2, "0");
   const prefix = paise === BigInt(0) ? "" : units < BigInt(0) ? "− " : signed ? "+ " : "";
   return `${prefix}${currency === "INR" ? "₹" : currency + " "}${whole}${decimals === "00" ? "" : "." + decimals}`;
@@ -69,42 +70,42 @@ export function formatMoney(value: Money, currency = "INR", signed = false): str
 
 export const safeMask = (value: string) => {
   const tail = value.replace(/\D/g, "").slice(-4);
-  return tail ? `•••• ${tail}` : "Number unavailable";
+  return tail ? `•••• ${tail}` : t("Number unavailable");
 };
-export const humanize = (value: string) => value.replace(/_/g, " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
+export const humanize = (value: string) => t(value.replace(/_/g, " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase()));
 export const completedStatuses = ["SUCCESS", "POSTED", "COMPLETED", "PAID"];
 export function statusPresentation(value: string) {
   const label = value === "PAID" ? "Paid" : completedStatuses.includes(value) ? "Completed" : value === "PREPARED" ? "Details checked" : value === "PENDING_VERIFICATION" ? "Awaiting verification" : humanize(value);
   const tone = completedStatuses.includes(value) || value === "ACTIVE" ? "good" : ["FAILED", "OVERDUE", "BLOCKED", "ACTION_REQUIRED"].includes(value) ? "bad" : ["PENDING", "DUE", "UPCOMING", "SCHEDULED", "PROCESSING", "PREPARED", "PENDING_VERIFICATION"].includes(value) ? "pending" : "neutral";
-  return { label, tone };
+  return { label: t(label), tone };
 }
 function calendarDate(value: string): Date {
   return new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? value + "T00:00:00" : value);
 }
 export function transactionDirection(item: Pick<TransactionSnapshot, "amount" | "status">): string {
-  if (["FAILED", "CANCELLED", "EXPIRED"].includes(item.status)) return "Not completed";
-  if (Number(item.amount) === 0) return "No money moved";
+  if (["FAILED", "CANCELLED", "EXPIRED"].includes(item.status)) return t("Not completed");
+  if (Number(item.amount) === 0) return t("No money moved");
   const completed = completedStatuses.includes(item.status);
-  return Number(item.amount) > 0 ? completed ? "Received" : "Incoming" : completed ? "Spent" : "Outgoing";
+  return t(Number(item.amount) > 0 ? completed ? "Received" : "Incoming" : completed ? "Spent" : "Outgoing");
 }
 export function dueLabel(value: string, now = new Date()): string {
   const date = calendarDate(value);
   const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
-  if (date.toDateString() === now.toDateString()) return "Due today";
-  if (date.toDateString() === tomorrow.toDateString()) return "Due tomorrow";
-  return `Due ${formatDate(value)}`;
+  if (date.toDateString() === now.toDateString()) return t("Due today");
+  if (date.toDateString() === tomorrow.toDateString()) return t("Due tomorrow");
+  return `${t("Due")} ${formatDate(value)}`;
 }
 export const formatDate = (value: string, time = false) => {
   const date = calendarDate(value);
-  return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleString("en-IN", time
+  return Number.isNaN(date.getTime()) ? t("Date unavailable") : date.toLocaleString(getLocale(), time
     ? { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }
     : { day: "numeric", month: "short", year: "numeric" });
 };
 export function dayLabel(value: string, now = new Date()): string {
   const date = calendarDate(value);
-  if (Number.isNaN(date.getTime())) return "Date unavailable";
+  if (Number.isNaN(date.getTime())) return t("Date unavailable");
   const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-  if (date.toDateString() === now.toDateString()) return "Today";
-  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  if (date.toDateString() === now.toDateString()) return t("Today");
+  if (date.toDateString() === yesterday.toDateString()) return t("Yesterday");
   return formatDate(value);
 }

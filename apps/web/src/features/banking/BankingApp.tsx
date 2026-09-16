@@ -1,3 +1,9 @@
+import { SidebarBrand, SidebarNavigation, SidebarFooter, primaryNavigation, secondaryNavigation } from "../../components/SidebarNavigation";
+import { BankingIcon } from "../../components/BankingIcon";
+import { LanguageSelect } from "../../components/LanguageSelect";
+import { getLocale, t } from "../../services/locale";
+import { MoneyTransfer } from "./MoneyTransfer";
+import { ConnectionNotice } from "../../components/ConnectionNotice";
 import { confirmNavigation, hasUnsavedWork } from "../../hooks/useNavigationGuard";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { AuthSession, restoreSession, logout } from "../../services/auth";
@@ -9,17 +15,10 @@ import { Overview, AccountsPage, TransactionsPage } from "./Accounts";
 import { ProductsPage, productNames } from "./Products";
 import { PaymentsPage, OperationsPage } from "./Payments";
 import { PageHeading, Panel, State, Modal, Detail, useLoad } from "./ui";
-import { go, initials, parseRoute, Route } from "./utils";
-const navigation: Array<{
-    label: string;
-    page: Route;
-    icon: string;
-    group?: string;
-}> = [
-    { label: "Chat", page: "assistant", icon: "✧", group: "WORKSPACE" }, { label: "Overview", page: "overview", icon: "◫", group: "WORKSPACE" }, { label: "Accounts", page: "accounts", icon: "▤" }, { label: "Transactions", page: "transactions", icon: "⇄" }, { label: "Payments", page: "payments", icon: "↗" }, { label: "Payees", page: "beneficiaries", icon: "♧" },
-    { label: "Cards", page: "cards", icon: "▰", group: "YOUR FINANCES" }, { label: "Bills", page: "bills", icon: "▥" }, { label: "Direct debits", page: "mandates", icon: "⟳" }, { label: "Scheduled payments", page: "scheduled-payments", icon: "◷" }, { label: "Loans", page: "loans", icon: "◇" }
-];
+import { go, initials, parseRoute } from "./utils";
 export function BankingApp() {
+    const [locale, updateLocale] = useState(getLocale);
+    useEffect(() => { document.documentElement.lang = locale; const update = () => updateLocale(getLocale()); window.addEventListener("nexa-language-change", update); return () => window.removeEventListener("nexa-language-change", update); }, [locale]);
     const [session, setSession] = useState<AuthSession | null>(null);
     const [starting, setStarting] = useState(true);
     const [error, setError] = useState("");
@@ -49,12 +48,12 @@ export function BankingApp() {
         setNotice("You have been signed out.");
     }
     catch {
-        setNotice("Signed out on this device. The server could not confirm session revocation.");
+        setNotice("Signed out on this device. We couldn’t reach the bank to finish signing out. Close this page if you are using a shared device.");
     } }
     if (starting || error)
-        return <div class="bank-app bank-start"><span class="bank-wordmark">nexa<span>®</span></span><State loading={starting} error={error} retry={restore}/></div>;
+        return <div class="bank-app bank-start"><ConnectionNotice/><span class="bank-wordmark">nexa<span>®</span></span><State loading={starting} error={error} retry={restore}/></div>;
     if (!session)
-        return <div class="bank-app bank-auth">{notice && <div class="bank-session-notice" role="status">{notice}</div>}<AuthPage mode={route.page === "register" ? "register" : "login"} onBack={() => go("login")} onSwitch={mode => go(mode)} onAuthenticated={s => { setSession(s); setNotice(""); if (["login", "register", "not-found"].includes(route.page))
+        return <div class="bank-app bank-auth"><ConnectionNotice/>{notice && <div class="bank-session-notice" role="status">{notice}</div>}<AuthPage mode={route.page === "register" ? "register" : "login"} onBack={() => go("login")} onSwitch={mode => go(mode)} onAuthenticated={s => { setSession(s); setNotice(""); if (["login", "register", "not-found"].includes(route.page))
             go("assistant"); }}/></div>;
     return <Workspace key={session.user.id} session={session} setSession={setSession} signOut={signOut} route={route}/>;
 }
@@ -70,12 +69,12 @@ function Workspace({ session, setSession, signOut, route }: {
     const data = useLoad(() => bankApi.accounts(session.accessToken), [session.user.id, route.page]);
     const accounts = data.data || [];
     const page = route.page === "login" || route.page === "register" ? "assistant" : route.page;
-    const pageTitle = navigation.find(n => n.page === page)?.label || ({settings: "Profile & settings", security: "Security & session", assistant: "Chat", operations: "Banking operations"} as Record<string, string>)[page] || "Page not found";
+    const pageTitle = [...primaryNavigation, ...secondaryNavigation].find(n => n.page === page)?.label || ({settings: "Profile & settings", security: "Security & session", assistant: "Chat", operations: "Banking operations"} as Record<string, string>)[page] || "Page not found";
     useEffect(() => { setMenu(false); window.scrollTo(0, 0); document.title = pageTitle + " · Nexa"; heading.current?.querySelector<HTMLElement>("h1")?.focus(); }, [page, route.id, data.loading]);
     const endSession = async () => { if (signingOut)
         return; setSigningOut(true); try { await signOut(); } finally { setSigningOut(false); } };
     if (page === "assistant")
-        return <ConversationWorkspace session={session} onClose={() => go("overview")} onLogout={endSession}/>;
+        return <ConversationWorkspace session={session} onClose={() => go("overview")} onLogout={endSession} accounts={accounts} accountsLoading={data.loading} accountsError={data.error} onRefreshAccounts={data.reload}/>;
     const accountPage = ["overview", "accounts", "transactions", "payments"].includes(page);
     function content() {
         if (accountPage && (data.loading || data.error))
@@ -86,18 +85,20 @@ function Workspace({ session, setSession, signOut, route }: {
             return <AccountsPage token={session.accessToken} id={route.id} accounts={accounts} reload={data.reload}/>;
         if (page === "transactions")
             return <TransactionsPage key={route.id || route.account || "history"} token={session.accessToken} id={route.id} accounts={accounts} initialAccount={route.account}/>;
+        if (page === "send-money")
+            return <MoneyTransfer token={session.accessToken} userId={session.user.id}/>;
         if (page === "payments")
             return <PaymentsPage token={session.accessToken} accounts={accounts}/>;
         if (page in productNames)
             return <ProductsPage key={page} token={session.accessToken} kind={page as ProductKind} id={route.id}/>;
         if (page === "settings")
-            return <><PageHeading title="Profile & settings" description="Keep your personal banking details up to date."/><AccountSettings session={session} account={accounts[0]} onBack={() => go("accounts")} onLogout={endSession} onProfileUpdated={profile => setSession({ ...session, profile })}/></>;
+            return <><PageHeading title={t("Profile & settings")} description={t("Keep your personal banking details up to date.")}/><AccountSettings session={session} account={accounts[0]} onBack={() => go("accounts")} onLogout={endSession} onProfileUpdated={profile => setSession({ ...session, profile })}/></>;
         if (page === "security")
-            return <><PageHeading title="Security & session" description="Understand and manage your current sign-in."/><div class="bank-detail-grid"><Panel title="Your current session"><div class="bank-form"><span class="bank-tile-symbol">⊡</span><h3>Signed in to Nexa</h3><dl><Detail label="Email">{session.profile.email}</Detail><Detail label="Account status">{session.profile.status}</Detail><Detail label="Access">{session.user.role.replace(/_/g, " ").toLowerCase()}</Detail></dl><p>Signing out clears this device’s session and requests revocation of its refresh token.</p><button class="bank-button" disabled={signingOut} onClick={endSession}>Sign out of this session</button></div></Panel><Panel title="Keep your banking private"><div class="bank-form"><p>Never share your password or session tokens. Always sign out on a shared device.</p><p>Online password changes, multi-factor authentication controls, device management and security alerts are not available in this application. Contact your bank for help with these services.</p></div></Panel></div></>;
+            return <><PageHeading title={t("Security & session")} description={t("Understand and manage your current sign-in.")}/><div class="bank-detail-grid"><Panel title={t("Your current session")}><div class="bank-form"><span class="bank-tile-symbol">⊡</span><h3>{t("Signed in to Nexa")}</h3><dl><Detail label={t("Email")}>{session.profile.email}</Detail><Detail label={t("Account status")}>{session.profile.status}</Detail><Detail label={t("Access")}>{session.user.role.replace(/_/g, " ").toLowerCase()}</Detail></dl><p>{t("Sign out when you finish banking, especially on a shared phone or computer.")}</p><button class="bank-button" disabled={signingOut} onClick={endSession}>{t("Sign out of this session")}</button></div></Panel><Panel title={t("Keep your banking private")}><div class="bank-form"><p>{t("Never share your password or sign-in details. Always sign out on a shared device.")}</p><p>{t("Online password changes, multi-factor authentication controls, device management and security alerts are not available in this application. Contact your bank for help with these services.")}</p></div></Panel></div></>;
         if (page === "operations" && session.user.role === "ADMIN")
             return <OperationsPage token={session.accessToken}/>;
-        return <><PageHeading title={page === "operations" ? "Administrator access required" : "Page not found"} description="This page is not available for your session."/><a class="bank-button" href="#/overview">Back to overview</a></>;
+        return <><PageHeading title={page === "operations" ? "Administrator access required" : "Page not found"} description={t("This page is not available for your session.")}/><a class="bank-button" href="#/overview">{t("Back to overview")}</a></>;
     }
-    const nav = <><a class="bank-wordmark" href="#/assistant" aria-label="Nexa chat">nexa<span>®</span></a><span class="bank-workspace-label">PERSONAL BANKING</span><nav aria-label="Main navigation">{navigation.map(n => <div key={n.page}>{n.group && <p class="bank-nav-group">{n.group}</p>}<a class={page === n.page ? "active" : ""} aria-current={page === n.page ? "page" : undefined} href={"#/" + n.page} onClick={() => setMenu(false)}><span aria-hidden="true">{n.icon}</span>{n.label}{page === n.page && <i />}</a></div>)}{session.user.role === "ADMIN" && <a class={page === "operations" ? "active" : ""} href="#/operations"><span>↔</span>Banking operations</a>}</nav><div class="bank-sidebar-bottom"><a href="#/assistant"><span>✧</span> Ask Nexa <span>↗</span></a><a href="#/settings">Profile & settings</a><a href="#/security">Security & session</a><button onClick={endSession} disabled={signingOut}>Sign out <span>↗</span></button></div></>;
-    return <div class="bank-app"><a class="bank-skip" href="#bank-main" onClick={e => { e.preventDefault(); heading.current?.focus(); }}>Skip to main content</a><aside class="bank-sidebar">{nav}</aside>{menu && <Modal title="Navigation" onClose={() => setMenu(false)}><div class="bank-mobile-nav">{nav}</div></Modal>}<div class="bank-workspace"><header class="bank-topbar"><div><button class="bank-icon-button bank-menu-toggle" aria-label="Open navigation" onClick={() => setMenu(true)}>☰</button><span>Personal banking <b>/</b> <strong>{pageTitle}</strong></span></div><div><a class="bank-assistant-link" href="#/assistant" aria-label="Ask Nexa — type or speak for help">✧ Ask Nexa</a><a class="bank-profile-link" href="#/settings"><span class="bank-avatar">{initials(session.profile.fullName)}</span><span>{session.profile.fullName}<small>{session.user.role === "ADMIN" ? "Administrator" : "Personal account"}</small></span></a></div></header><main id="bank-main" ref={heading} tabIndex={-1} class="bank-main">{content()}<footer class="bank-footer"><span>nexa <span>·</span> Your everyday banking, connected.</span><a href="#/security">Security & session ↗</a></footer></main><nav class="bank-mobile-tabs" aria-label="Quick navigation">{navigation.slice(0, 4).map(n => <a href={"#/" + n.page} aria-current={page === n.page ? "page" : undefined} class={page === n.page ? "active" : ""}><span aria-hidden="true">{n.icon}</span>{n.page === "transactions" ? "History" : n.label}</a>)}<button onClick={() => setMenu(true)}><span>☰</span>More</button></nav></div></div>;
+    const nav = <><SidebarBrand/><SidebarNavigation page={page} admin={session.user.role === "ADMIN"}/><SidebarFooter page={page} onLogout={endSession} disabled={signingOut}/></>;
+    return <div class="bank-app"><a class="bank-skip" href="#bank-main" onClick={e => { e.preventDefault(); heading.current?.focus(); }}>{t("Skip to main content")}</a><aside class="nexa-sidebar bank-sidebar" aria-label={t("Banking navigation")}>{nav}</aside>{menu && <Modal title={t("Navigation")} onClose={() => setMenu(false)}><div class="nexa-sidebar bank-mobile-nav">{nav}</div></Modal>}<div class="bank-workspace"><header class="bank-topbar"><div><button class="bank-icon-button bank-menu-toggle" aria-label={t("Open navigation")} aria-expanded={menu} onClick={() => setMenu(true)}>{t("☰ Menu")}</button><span>{t("Personal banking")}<b>/</b> <strong>{t(pageTitle)}</strong></span></div><div><LanguageSelect/><a class="bank-assistant-link" href="#/assistant" aria-label={t("Ask Nexa — type or speak for help")}>{t("✧ Ask Nexa")}</a><a class="bank-profile-link" href="#/settings"><span class="bank-avatar">{initials(session.profile.fullName)}</span><span>{session.profile.fullName}<small>{session.user.role === "ADMIN" ? "Administrator" : "Personal account"}</small></span></a></div></header><main id="bank-main" ref={heading} tabIndex={-1} class="bank-main"><ConnectionNotice/>{content()}<footer class="bank-footer"><span>nexa <span>·</span>{t("Your everyday banking, connected.")}</span><a href="#/security">{t("Security & session ↗")}</a></footer></main><nav class="bank-mobile-tabs" aria-label={t("Quick navigation")}>{primaryNavigation.filter(n => n.page !== "cards").map(n => <a href={"#/" + n.page} aria-current={page === n.page ? "page" : undefined} class={page === n.page ? "active" : ""}><BankingIcon name={n.icon}/>{t(n.label)}</a>)}<button onClick={() => setMenu(true)}><span>☰</span>{t("More")}</button></nav></div></div>;
 }

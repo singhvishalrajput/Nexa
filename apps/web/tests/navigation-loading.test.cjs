@@ -29,7 +29,7 @@ function harness(file, browser = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2021, jsx: ts.JsxEmit.ReactJSX, jsxImportSource: 'preact'}
-  }).outputText, {exports, window: browser, require: name => name === 'preact/hooks' ? hooks : {}});
+  }).outputText, {exports, window: browser, navigator: browser.navigator, require: name => name === 'preact/hooks' ? hooks : name === 'preact/jsx-runtime' ? {jsx: (type, props) => ({type, props}), jsxs: (type, props) => ({type, props})} : {}});
   return {
     api: exports,
     render(fn) { cursor = 0; return fn(exports); },
@@ -83,4 +83,13 @@ test('changed resource keys hide old data immediately and discard late responses
   const next = app.render(api => api.useLoad(() => Promise.resolve('third'), ['third']));
   assert.equal(next.data, undefined);
   assert.equal(next.loading, true);
+});
+
+test('offline notice follows connectivity and removes listeners without replaying requests', () => {
+  const events = new Map(); const navigator = {onLine: false};
+  const app = harness('src/components/ConnectionNotice.tsx', {navigator, addEventListener: (name, fn) => events.set(name, fn), removeEventListener: name => events.delete(name)});
+  assert.equal(app.render(api => api.ConnectionNotice()).props.role, 'status'); app.flush();
+  navigator.onLine = true; events.get('online')(); assert.equal(app.render(api => api.ConnectionNotice()), null);
+  navigator.onLine = false; events.get('offline')(); assert.equal(app.render(api => api.ConnectionNotice()).props.role, 'status');
+  app.dispose(); assert.equal(events.size, 0);
 });

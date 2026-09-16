@@ -38,6 +38,8 @@ class ConversationServiceTest {
 
   @Test
   void voicePersistsOnlyEssenceWhileTypedMessagesKeepTheirText() {
+    when(interpreter.usesLocalModel()).thenReturn(true);
+    when(interpreter.isFastRequest("please tell me my balance")).thenReturn(true);
     when(db.queryForList(anyString(), eq(String.class), eq("chat"), eq("owner")))
         .thenReturn(List.of("chat"));
     when(interpreter.interpret("please tell me my balance"))
@@ -57,6 +59,11 @@ class ConversationServiceTest {
             isNull(),
             isNull());
     service.append("chat", "t1", "TEXT", "please tell me my balance");
+    verify(db, never())
+        .query(
+            contains("FETCH NEXT 4 ROWS ONLY"),
+            org.mockito.ArgumentMatchers.<RowMapper<ConversationService.Turn>>any(),
+            eq("chat"));
     verify(db)
         .update(
             startsWith("INSERT INTO conversation_turns"),
@@ -87,5 +94,41 @@ class ConversationServiceTest {
         .isSameAs(original);
     verifyNoInteractions(interpreter);
     verify(db, never()).update(anyString(), any(Object[].class));
+  }
+
+  @Test
+  void localModelReceivesOnlyRecentOwnedConversationContext() {
+    when(db.queryForList(anyString(), eq(String.class), eq("chat"), eq("owner")))
+        .thenReturn(List.of("chat"));
+    when(interpreter.usesLocalModel()).thenReturn(true);
+    when(db.query(
+            contains("FETCH NEXT 4 ROWS ONLY"),
+            org.mockito.ArgumentMatchers.<RowMapper<ConversationService.Turn>>any(),
+            eq("chat")))
+        .thenReturn(
+            List.of(
+                new ConversationService.Turn(
+                    "2", "p", "TEXT", "PRIVACY", "redacted", "privacy warning", null, null),
+                new ConversationService.Turn(
+                    "1",
+                    "a",
+                    "TEXT",
+                    "GET_BALANCE",
+                    "show balances",
+                    "Here are your balances.",
+                    null,
+                    null)));
+    when(interpreter.interpret(eq("only savings"), anyList()))
+        .thenReturn(
+            new ConversationInterpreter.Interpretation(
+                "GET_BALANCE", "Check balances.", "Savings balances."));
+    service.append("chat", "new", "TEXT", "only savings");
+    verify(interpreter)
+        .interpret(
+            "only savings",
+            List.of(
+                new com.nexa.api.nlp.OllamaInterpreter.Message("user", "show balances"),
+                new com.nexa.api.nlp.OllamaInterpreter.Message(
+                    "assistant", "Here are your balances.")));
   }
 }

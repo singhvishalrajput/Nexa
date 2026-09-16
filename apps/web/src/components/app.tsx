@@ -21,6 +21,7 @@ export const App = registerCustomElement(
   "app-root",
   () => {
     useEffect(() => {
+      document.getElementById("nexa-boot")?.remove();
       Context.getPageContext()
         .getBusyContext()
         .applicationBootstrapComplete();

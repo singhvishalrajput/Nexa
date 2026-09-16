@@ -16,6 +16,12 @@ public class BasicIntentClassifier implements IntentClassifier {
   }
 
   public Match classify(String input) {
+    var conversational = BankingLanguage.intent(input);
+    if (conversational != null
+        && (BankingLanguage.operation(input) != null
+            || input.matches(".*[\\u0900-\\u097f].*")
+            || input.matches("(?i).*\\b(karo|batao|bhejo|dikhao)\\b.*")))
+      return new Match(conversational, 1);
     String text = input.toLowerCase(Locale.ROOT).replace("’", "'");
     // Never discard negation, conditional instructions or compound requests.
     if (text.matches(".*\\b(dont|don't|not|never|unless|if|and|then|tomorrow|every)\\b.*")

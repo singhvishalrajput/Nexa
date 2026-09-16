@@ -1,12 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const ts = require('typescript');
-const source = fs.readFileSync(path.join(__dirname, '../src/services/banking-content.ts'), 'utf8');
-const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2021 } }).outputText;
-const exported = {};
-new Function('exports', compiled)(exported);
+const exported = require('./source-loader.cjs').loadSource('services/banking-content.ts');
 const { formatMoney, safeMask, transactionDirection, dayLabel, dueLabel } = exported;
 
 test('Indian grouping preserves paise, signs and large decimal amounts', () => {

@@ -1,3 +1,4 @@
+import { t } from "../../services/locale";
 import { useNavigationGuard } from "../../hooks/useNavigationGuard";
 import { formatMoney } from "../../services/banking-content";
 import { Status } from "../../features/banking/ui";
@@ -47,7 +48,7 @@ export function AccountSettings({ session, account, onBack, onLogout, onProfileU
       setSaved(true);
       onProfileUpdated(updated);
     } catch (cause) {
-      setError(cause instanceof ApiRequestError ? cause.message : "Could not update your profile.");
+      setError(cause instanceof ApiRequestError ? cause.message : "We couldn’t save your details. Your entries are still here. Try Save changes again.");
     } finally {
       submissionLock.current = false;
       setSaving(false);
@@ -55,30 +56,29 @@ export function AccountSettings({ session, account, onBack, onLogout, onProfileU
   };
 
   return <section class="nexa-account-view">
-    <div class="nexa-account-heading"><p>Your Nexa profile</p><h1>Account settings</h1><span>Manage the personal details linked to your secure Nexa session.</span></div>
     <form class="nexa-account-form" onSubmit={save}><fieldset disabled={saving}>
       <div class="nexa-settings-group">
-        <div><strong>Personal information</strong><span>Your name, address and phone number are stored with your customer profile.</span></div>
+        <div><strong>{t("Personal information")}</strong><span>{t("Your name, address and phone number are stored with your customer profile.")}</span></div>
         <div class="nexa-settings-fields">
-          <label>Full name<input required maxLength={160} value={fullName} onInput={(event) => { setFullName(event.currentTarget.value); setSaved(false); }} /></label>
-          <label>Login email<input class="is-readonly" type="email" value={session.profile.email} readOnly aria-readonly="true" /></label>
-          <label>Address<input maxLength={255} value={address} required={!!account} onInput={(event) => { setAddress(event.currentTarget.value); setSaved(false); }} /></label>
-          <label>Phone number<input type="tel" autocomplete="tel" maxLength={32} value={phoneNumber} placeholder="Optional" onInput={(event) => { setPhoneNumber(event.currentTarget.value); setSaved(false); }} /></label>
+          <label>{t("Full name")}<input required maxLength={160} value={fullName} onInput={(event) => { setFullName(event.currentTarget.value); setSaved(false); }} /></label>
+          <label>{t("Login email")}<input class="is-readonly" type="email" value={session.profile.email} readOnly aria-readonly="true" /></label>
+          <label>{t("Address")}<input maxLength={255} value={address} required={!!account} onInput={(event) => { setAddress(event.currentTarget.value); setSaved(false); }} /></label>
+          <label>{t("Phone number")}<input type="tel" autocomplete="tel" maxLength={32} value={phoneNumber} placeholder={t("Optional")} onInput={(event) => { setPhoneNumber(event.currentTarget.value); setSaved(false); }} /></label>
         </div>
       </div>
       <div class="nexa-settings-group">
-        <div><strong>Nexa bank account</strong><span>Live account information from your Nexa banking record.</span></div>
+        <div><strong>{t("Nexa bank account")}</strong><span>{t("Live account information from your Nexa banking record.")}</span></div>
         {account ? <div class="nexa-account-record">
-          <header><div><span>{account.accountType} ACCOUNT</span><strong>{account.displayName}</strong></div><Status value={account.status} /></header>
-          <dl><div><dt>Account number</dt><dd>{account.accountNumberMasked}</dd></div><div><dt>Available balance</dt><dd>{formatMoney(account.availableBalance, account.currencyCode)}</dd></div><div><dt>Ledger balance</dt><dd>{formatMoney(account.ledgerBalance, account.currencyCode)}</dd></div><div><dt>Currency</dt><dd>{account.currencyCode}</dd></div></dl>
-        </div> : <div class="nexa-account-record is-empty"><strong>No Nexa account yet</strong><span>Open an account from Accounts to see its balance and details here.</span><button type="button" onClick={onBack}>View accounts</button></div>}
+          <header><div><span>{account.accountType} {t("ACCOUNT")}</span><strong>{account.displayName}</strong></div><Status value={account.status} /></header>
+          <dl><div><dt>{t("Account number")}</dt><dd>{account.accountNumberMasked}</dd></div><div><dt>{t("Available balance")}</dt><dd>{formatMoney(account.availableBalance, account.currencyCode)}</dd></div><div><dt>{t("Ledger balance")}</dt><dd>{formatMoney(account.ledgerBalance, account.currencyCode)}</dd></div><div><dt>{t("Currency")}</dt><dd>{account.currencyCode}</dd></div></dl>
+        </div> : <div class="nexa-account-record is-empty"><strong>{t("No Nexa account yet")}</strong><span>{t("Open an account from Accounts to see its balance and details here.")}</span><button type="button" onClick={onBack}>{t("View accounts")}</button></div>}
       </div>
       <div class="nexa-settings-group nexa-session-settings">
-        <div><strong>Session</strong><span>Sign out securely when you have finished using Nexa.</span></div>
-        <div class="nexa-session-action"><span>Signed in as <b>{session.profile.email}</b></span><button type="button" onClick={onLogout}>Sign out</button></div>
+        <div><strong>{t("Session")}</strong><span>{t("Sign out securely when you have finished using Nexa.")}</span></div>
+        <div class="nexa-session-action"><span>{t("Signed in as")}<b>{session.profile.email}</b></span><button type="button" onClick={onLogout}>{t("Sign out")}</button></div>
       </div>
       {error && <p class="nexa-settings-error" role="alert">{error}</p>}
-      <div class="nexa-account-actions"><span role="status">{saved ? "Profile updated in Nexa" : "Your name, address and phone number can be changed here."}</span><button type="submit" disabled={saving || !fullName.trim()}>{saving ? "Saving…" : saved ? "Saved" : "Save changes"}</button></div>
+      <div class="nexa-account-actions"><span role="status">{saved ? "Profile updated in Nexa" : "Your name, address and phone number can be changed here."}</span><button type="submit" disabled={saving || !fullName.trim()}>{saving ? "Saving…" : saved ? t("Saved") : "Save changes"}</button></div>
     </fieldset></form>
   </section>;
 }

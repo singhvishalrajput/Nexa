@@ -19,13 +19,14 @@ public class BasicEntityExtractor implements EntityExtractor {
   }
 
   public Entities extract(String input, Intent intent) {
-    String text = input.toLowerCase(Locale.ROOT);
+    String text = BankingLanguage.normalize(input);
     String amount = match(text, "(?:₹|rs\\.?|inr|amount)\\s*([0-9,]+(?:\\.[0-9]+)?)");
     if (amount == null
         && (intent == Intent.START_TRANSFER
             || intent == Intent.PAY_BILL
             || intent == Intent.PAY_CARD))
       amount = match(text, "(?:send|transfer|pay)\\s+([0-9,]+(?:\\.[0-9]+)?)");
+    if (amount == null) amount = match(text, "([0-9,]+(?:\\.[0-9]+)?)\\s*(?:rupees?|inr|rs)\\b");
     String account = match(input, "\\b(acc_[a-z0-9_]+)\\b");
     if (account == null) account = match(input, "\\baccount (?:id )?([0-9]+)\\b");
     if (Pattern.compile("\\bacc_[a-z0-9_]+\\b", Pattern.CASE_INSENSITIVE)
@@ -53,6 +54,22 @@ public class BasicEntityExtractor implements EntityExtractor {
           LocalDate.now(clock)
               .with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
       to = from.plusDays(6);
+    }
+    if (text.contains("yesterday")) {
+      from = LocalDate.now(clock).minusDays(1);
+      to = from;
+    }
+    if (text.contains("last week")) {
+      to = LocalDate.now(clock).with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusDays(1);
+      from = to.minusDays(6);
+    }
+    if (text.contains("this weekend")) {
+      from = LocalDate.now(clock).with(java.time.temporal.TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+      to = from.plusDays(1);
+    }
+    if (text.contains("last weekend")) {
+      to = LocalDate.now(clock).with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SATURDAY)).minusDays(1);
+      from = to.minusDays(1);
     }
     if (text.contains("last month")) {
       var month = LocalDate.now(clock).minusMonths(1);
