@@ -1,0 +1,15 @@
+package com.ofss.beans;
+
+public enum ChatIntentType {
+	GREETING,
+	HELP,
+	SHOW_ACCOUNTS,
+	SHOW_BALANCE,
+	SHOW_TRANSACTIONS,
+	DEPOSIT,
+	WITHDRAWAL,
+	TRANSFER,
+	CONFIRM,
+	CANCEL,
+	UNKNOWN
+}
