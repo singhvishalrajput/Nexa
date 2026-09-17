@@ -2,6 +2,7 @@ package com.ofss.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,9 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Autowired
     LedgerEntryDao ledgerEntryDao;
+
+    @Autowired
+    AccountLockService accountLockService;
 
     @Override
     public List<BankTransaction> getAll() {
@@ -55,8 +59,11 @@ public class TransactionServiceImpl implements TransactionService {
     public BankTransaction deposit(TransactionRequest request) {
         validateAmount(request.getAmount());
 
-        Account destinationAccount = getActiveAccount(request.getDestinationAccountId());
-        Account cashAccount = getCashAccount();
+        Long cashAccountId = getCashAccountId();
+        List<Account> lockedAccounts = accountLockService.lockAccounts(
+                Arrays.asList(request.getDestinationAccountId(), cashAccountId));
+        Account destinationAccount = getActiveAccount(lockedAccounts, request.getDestinationAccountId());
+        Account cashAccount = getCashAccount(lockedAccounts, cashAccountId);
 
         BankTransaction transaction = new BankTransaction();
         transaction.setTransactionType(TransactionType.DEPOSIT);
@@ -83,8 +90,11 @@ public class TransactionServiceImpl implements TransactionService {
     public BankTransaction withdraw(TransactionRequest request) {
         validateAmount(request.getAmount());
 
-        Account sourceAccount = getActiveAccount(request.getSourceAccountId());
-        Account cashAccount = getCashAccount();
+        Long cashAccountId = getCashAccountId();
+        List<Account> lockedAccounts = accountLockService.lockAccounts(
+                Arrays.asList(request.getSourceAccountId(), cashAccountId));
+        Account sourceAccount = getActiveAccount(lockedAccounts, request.getSourceAccountId());
+        Account cashAccount = getCashAccount(lockedAccounts, cashAccountId);
 
         if (sourceAccount.getBalance().compareTo(request.getAmount()) < 0) {
             throw new BadRequestException("Insufficient customer balance");
@@ -119,8 +129,10 @@ public class TransactionServiceImpl implements TransactionService {
     public BankTransaction transfer(TransactionRequest request) {
         validateAmount(request.getAmount());
 
-        Account sourceAccount = getActiveAccount(request.getSourceAccountId());
-        Account destinationAccount = getActiveAccount(request.getDestinationAccountId());
+        List<Account> lockedAccounts = accountLockService.lockAccounts(
+                Arrays.asList(request.getSourceAccountId(), request.getDestinationAccountId()));
+        Account sourceAccount = getActiveAccount(lockedAccounts, request.getSourceAccountId());
+        Account destinationAccount = getActiveAccount(lockedAccounts, request.getDestinationAccountId());
 
         if (sourceAccount.getId().equals(destinationAccount.getId())) {
             throw new BadRequestException("Source and destination accounts must be different");
@@ -151,12 +163,8 @@ public class TransactionServiceImpl implements TransactionService {
         return transaction;
     }
 
-    private Account getActiveAccount(Long accountId) {
-        if (accountId == null) {
-            throw new BadRequestException("Account id is required");
-        }
-
-        Account account = accountDao.findById(accountId)
+    private Account getActiveAccount(List<Account> lockedAccounts, Long accountId) {
+        Account account = lockedAccounts.stream().filter(a -> a.getId().equals(accountId)).findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountId));
 
         if (account.getStatus() != AccountStatus.ACTIVE) {
@@ -166,9 +174,13 @@ public class TransactionServiceImpl implements TransactionService {
         return account;
     }
 
-    private Account getCashAccount() {
-        Account cashAccount = accountDao
-                .findByAccountCategoryAndAccountType(AccountCategory.SYSTEM, AccountType.CASH)
+    private Long getCashAccountId() {
+        return accountDao.findSystemCashAccountId()
+                .orElseThrow(() -> new ResourceNotFoundException("System cash account not found"));
+    }
+
+    private Account getCashAccount(List<Account> lockedAccounts, Long cashAccountId) {
+        Account cashAccount = lockedAccounts.stream().filter(a -> a.getId().equals(cashAccountId)).findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("System cash account not found"));
 
         if (cashAccount.getStatus() != AccountStatus.ACTIVE) {

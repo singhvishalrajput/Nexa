@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.ofss.beans.*;
 import com.ofss.exep.*;
 import com.ofss.repository.*;
@@ -21,6 +22,9 @@ public class AccountServiceImpl implements AccountService {
 
 	@Autowired
 	TransactionDao transactions;
+
+	@Autowired
+	AccountLockService accountLockService;
 
 	public Account create(Account a) {
 		if (accounts.existsByAccountNumber(a.getAccountNumber()))
@@ -58,8 +62,9 @@ public class AccountServiceImpl implements AccountService {
 		return accounts.findByStatus(s);
 	}
 
+	@Transactional
 	public Account update(Long id, Account input) {
-		Account a = getById(id);
+		Account a = accountLockService.lockAccount(id);
 		a.setAccountName(input.getAccountName());
 		a.setStatus(input.getStatus());
 		return accounts.save(a);
