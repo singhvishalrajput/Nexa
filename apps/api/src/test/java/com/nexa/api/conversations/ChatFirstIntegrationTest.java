@@ -1,14 +1,11 @@
 package com.nexa.api.conversations;
-import com.nexa.api.beans.Account;
-import com.nexa.api.beans.AccountType;
-import com.nexa.api.beans.Customer;
-import com.nexa.api.service.Workflow;
-
 
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.nexa.api.service.Workflow;
+import db.migration.V17__migrate_banking_products;
 import java.util.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,19 +43,11 @@ public class ChatFirstIntegrationTest {
   @BeforeAll
   void schema() {
     new ResourceDatabasePopulator(
-            new ClassPathResource("db/migration/V7__create_conversation_history.sql"),
+            new ClassPathResource("six-table-chat.sql"),
             new ClassPathResource("db/migration/V8__add_structured_conversation_content.sql"),
             new ClassPathResource("db/migration/V12__conversation_workflows.sql"),
-            new ClassPathResource("db/migration/V13__conversation_action_audit.sql"),
-            new ClassPathResource("db/migration/V15__showcase_actions.sql"))
+            new ClassPathResource("db/migration/V13__conversation_action_audit.sql"))
         .execute(db.getDataSource());
-    db.execute("ALTER TABLE beneficiaries ADD bank_name VARCHAR2(160)");
-    db.execute(
-        "CREATE TABLE banking_products (id VARCHAR2(80) PRIMARY KEY, user_id VARCHAR2(26), kind"
-            + " VARCHAR2(24), account_id NUMBER, payload CLOB)");
-    db.execute(
-        "CREATE ALIAS IF NOT EXISTS JSON_VALUE FOR"
-            + " 'com.nexa.api.conversations.ChatFirstIntegrationTest.jsonValue'");
   }
 
   public static String jsonValue(String payload, String path) {
@@ -71,16 +60,9 @@ public class ChatFirstIntegrationTest {
 
   String namedProduct(String kind, String name) {
     String id = demoProduct(kind);
-    var payload =
-        (tools.jackson.databind.node.ObjectNode)
-            json.readTree(
-                db.queryForObject(
-                    "SELECT payload FROM banking_products WHERE id=?", String.class, id));
-    payload.put(
-        kind.equals("BILL") ? "billerName" : kind.equals("MANDATE") ? "payee" : "displayName",
-        name);
-    db.update(
-        "UPDATE banking_products SET payload=? WHERE id=?", json.writeValueAsString(payload), id);
+    if (kind.equals("CARD"))
+      db.update("UPDATE accounts SET account_name=? WHERE product_id=?", name, id);
+    else db.update("UPDATE transactions SET display_name=? WHERE id=?", name, id);
     return id;
   }
 
@@ -93,9 +75,9 @@ public class ChatFirstIntegrationTest {
             source);
     db.update(
         "INSERT INTO"
-            + " beneficiaries(id,user_id,display_name,beneficiary_type,account_holder_name,destination_account_masked,destination_account_hash,status,created_at,updated_at,version,bank_name)"
+            + " transactions(id,user_id,display_name,beneficiary_type,recipient_name,destination_masked,destination_hash,status,created_at,updated_at,record_kind,bank_name)"
             + " VALUES"
-            + " (?,?,?,'BANK_ACCOUNT',?,'1234',?,'ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,0,'Nexa')",
+            + " (?,?,?,'BANK_ACCOUNT',?,'1234',?,'ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'BENEFICIARY','Nexa')",
         id,
         owner,
         name,
@@ -195,7 +177,7 @@ public class ChatFirstIntegrationTest {
       assertThat(say(followup).get("workflow").get("status").asText()).isEqualTo("REVIEW");
     assertThat(
             db.queryForObject(
-                "SELECT COUNT(*) FROM showcase_actions WHERE status='SIMULATED' AND target_id=?",
+                "SELECT COUNT(*) FROM transactions WHERE status='SIMULATED' AND target_id=?",
                 Integer.class,
                 electricity))
         .isZero();
@@ -522,6 +504,15 @@ public class ChatFirstIntegrationTest {
         400);
   }
 
+  String productSnapshot(String kind, String id) {
+    return json.writeValueAsString(
+        db.queryForMap(
+            kind.equals("CARD")
+                ? "SELECT * FROM accounts WHERE product_id=?"
+                : "SELECT * FROM transactions WHERE id=?",
+            id));
+  }
+
   String demoProduct(String kind) {
     String id = UUID.randomUUID().toString();
     String owner =
@@ -539,13 +530,11 @@ public class ChatFirstIntegrationTest {
       payload.put("outstanding", "500");
     }
     if (kind.equals("BILL")) payload.put("amount", "100");
-    db.update(
-        "INSERT INTO banking_products(id,user_id,kind,account_id,payload) VALUES (?,?,?,?,?)",
-        id,
-        owner,
-        kind,
-        source,
-        json.writeValueAsString(payload));
+    payload.put("displayName", "Test product");
+    payload.put("creditLimit", "1000");
+    payload.put("minimumPayment", "10");
+    V17__migrate_banking_products.importProduct(
+        db, owner, kind, Long.parseLong(source), json.valueToTree(payload));
     return id;
   }
 
@@ -564,9 +553,7 @@ public class ChatFirstIntegrationTest {
               ? "BILL"
               : operation.equals("CANCEL_MANDATE") ? "MANDATE" : "CARD";
       String target = demoProduct(kind);
-      String before =
-          db.queryForObject(
-              "SELECT payload FROM banking_products WHERE id=?", String.class, target);
+      String before = productSnapshot(kind, target);
       var review =
           postJson(
               "/api/v1/demo/actions/prepare",
@@ -582,16 +569,14 @@ public class ChatFirstIntegrationTest {
       mvc.perform(get(path).header("Authorization", auth))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.reference").value(receipt.get("reference").asText()));
-      assertThat(
-              db.queryForObject(
-                  "SELECT payload FROM banking_products WHERE id=?", String.class, target))
-          .isEqualTo(before);
+      assertThat(productSnapshot(kind, target)).isEqualTo(before);
     }
     assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source))
         .isEqualTo(10000);
     assertThat(
             db.queryForObject(
-                "SELECT COUNT(*) FROM transactions WHERE source_account_id=?",
+                "SELECT COUNT(*) FROM transactions WHERE record_kind='PAYMENT' AND"
+                    + " source_account_id=?",
                 Integer.class,
                 source))
         .isZero();
@@ -629,7 +614,7 @@ public class ChatFirstIntegrationTest {
     postJson(path + "/confirm", Map.of(), 400);
     id = postJson("/api/v1/demo/actions/prepare", request, 200).get("id").asText();
     db.update(
-        "UPDATE showcase_actions SET expires_at=? WHERE id=?",
+        "UPDATE transactions SET expires_at=? WHERE id=?",
         java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(1)),
         id);
     postJson("/api/v1/demo/actions/" + id + "/confirm", Map.of(), 400);
@@ -720,9 +705,9 @@ public class ChatFirstIntegrationTest {
     for (String suffix : List.of("Sharma", "Verma")) {
       db.update(
           "INSERT INTO"
-              + " beneficiaries(id,user_id,display_name,beneficiary_type,account_holder_name,destination_account_masked,destination_account_hash,status,created_at,updated_at,version,bank_name)"
+              + " transactions(id,user_id,display_name,beneficiary_type,recipient_name,destination_masked,destination_hash,status,created_at,updated_at,record_kind,bank_name)"
               + " VALUES"
-              + " (?,?,?,'BANK_ACCOUNT',?,'1234',?,'ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,0,'Nexa')",
+              + " (?,?,?,'BANK_ACCOUNT',?,'1234',?,'ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'BENEFICIARY','Nexa')",
           "ben_" + suffix,
           owner,
           "Rahul " + suffix,

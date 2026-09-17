@@ -11,5 +11,9 @@ nexa:
       secret: ${NEXA_JWT_SECRET:nexa-local-development-secret-change-before-deployment}
 
 spring:
+  datasource:
+    hikari:
+      connection-init-sql: "ALTER SESSION SET TIME_ZONE='UTC'"
+      schema: ${BANKING_DB_SCHEMA:${BANKING_DB_USERNAME:${NEXA_DB_USERNAME:NEXA_APP}}}
   flyway:
     locations: classpath:db/migration,classpath:db/local-migration

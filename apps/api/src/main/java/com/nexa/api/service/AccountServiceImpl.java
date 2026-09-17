@@ -1,9 +1,9 @@
 package com.nexa.api.service;
+
 import com.nexa.api.beans.Account;
 import com.nexa.api.beans.AccountCategory;
 import com.nexa.api.beans.AccountStatus;
 import com.nexa.api.beans.BankTransaction;
-import com.nexa.api.beans.Customer;
 import com.nexa.api.beans.LedgerEntry;
 import com.nexa.api.exep.InvalidRequestException;
 import com.nexa.api.exep.ResourceNotFoundException;
@@ -11,7 +11,6 @@ import com.nexa.api.repository.AccountDao;
 import com.nexa.api.repository.CustomerDao;
 import com.nexa.api.repository.LedgerEntryDao;
 import com.nexa.api.repository.TransactionDao;
-
 import java.time.LocalDateTime;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +27,11 @@ public class AccountServiceImpl implements AccountService {
   @Autowired TransactionDao transactions;
 
   public Account create(Account a) {
+    if (a.getBalance() != null && a.getBalance().signum() != 0)
+      throw new InvalidRequestException("Open with zero balance, then use a posted deposit");
+    if (a.getAccountType() == com.nexa.api.beans.AccountType.LOAN
+        || a.getAccountType() == com.nexa.api.beans.AccountType.CARD)
+      throw new InvalidRequestException("Use the product workflow to create this account");
     if (accounts.existsByAccountNumber(a.getAccountNumber()))
       throw new InvalidRequestException("Account number already exists");
     if (a.getAccountCategory() == null)

@@ -1,57 +1,72 @@
 package com.nexa.api.beans;
 
-
-import java.time.OffsetDateTime;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.OffsetDateTime;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "AUTH_REFRESH_TOKENS")
+@Table(name = "CUSTOMER_CREDENTIALS")
+@org.hibernate.annotations.SQLRestriction("credential_type = 'REFRESH'")
 public class RefreshTokenEntity {
 
-    @Id
-    @Column(name = "ID", length = 26, nullable = false)
-    private String id;
+  @Column(name = "CREDENTIAL_TYPE", nullable = false)
+  private String credentialType = "REFRESH";
 
-    @Column(name = "USER_ID", length = 26, nullable = false)
-    private String userId;
+  @Column(name = "PASSWORD_HASH", length = 100)
+  private String passwordHash;
 
-    @Column(name = "TOKEN_HASH", length = 64, nullable = false, unique = true)
-    @JdbcTypeCode(SqlTypes.CHAR)
-    private String tokenHash;
+  @Id
+  @Column(name = "ID", length = 26, nullable = false)
+  private String id;
 
-    @Column(name = "EXPIRES_AT", nullable = false)
-    private OffsetDateTime expiresAt;
+  @Column(name = "USER_ID", length = 26, nullable = false)
+  private String userId;
 
-    @Column(name = "REVOKED_AT")
-    private OffsetDateTime revokedAt;
+  @Column(name = "TOKEN_HASH", length = 64, unique = true)
+  @JdbcTypeCode(SqlTypes.CHAR)
+  private String tokenHash;
 
-    @Column(name = "CREATED_AT", nullable = false)
-    private OffsetDateTime createdAt;
+  @Column(name = "EXPIRES_AT")
+  private OffsetDateTime expiresAt;
 
-    protected RefreshTokenEntity() {
-    }
+  @Column(name = "REVOKED_AT")
+  private OffsetDateTime revokedAt;
 
-    public RefreshTokenEntity(String id, String userId, String tokenHash, OffsetDateTime expiresAt, OffsetDateTime now) {
-        this.id = id;
-        this.userId = userId;
-        this.tokenHash = tokenHash;
-        this.expiresAt = expiresAt;
-        this.createdAt = now;
-    }
+  @Column(name = "CREATED_AT", nullable = false)
+  private OffsetDateTime createdAt;
 
-    public String getUserId() { return userId; }
-    public String getTokenHash() { return tokenHash; }
-    public OffsetDateTime getExpiresAt() { return expiresAt; }
-    public OffsetDateTime getRevokedAt() { return revokedAt; }
+  protected RefreshTokenEntity() {}
 
-    public void revoke(OffsetDateTime now) {
-        this.revokedAt = now;
-    }
+  public RefreshTokenEntity(
+      String id, String userId, String tokenHash, OffsetDateTime expiresAt, OffsetDateTime now) {
+    this.id = id;
+    this.userId = userId;
+    this.tokenHash = tokenHash;
+    this.expiresAt = expiresAt;
+    this.createdAt = now;
+  }
+
+  public String getUserId() {
+    return userId;
+  }
+
+  public String getTokenHash() {
+    return tokenHash;
+  }
+
+  public OffsetDateTime getExpiresAt() {
+    return expiresAt;
+  }
+
+  public OffsetDateTime getRevokedAt() {
+    return revokedAt;
+  }
+
+  public void revoke(OffsetDateTime now) {
+    this.revokedAt = now;
+  }
 }
-

@@ -53,7 +53,7 @@ function Reveal-Password([Security.SecureString]$Secret) {
 try {
     # Reuse the JDBC/Flyway versions in the application POM. No SQL*Plus installation required.
     $mavenArgs = @('-B', '-ntp', '-f', (Join-Path $apiRoot 'pom.xml'),
-        'org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath',
+        '-DskipTests', 'compile', 'org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath',
         '-DincludeScope=runtime', "-Dmdep.outputFile=$classpathFile")
     if ($MavenRepository) { $mavenArgs += "-Dmaven.repo.local=$MavenRepository" }
     if ($IsWindows) { & $wrapper @mavenArgs } else { & sh $wrapper @mavenArgs }
@@ -71,7 +71,7 @@ try {
     $start.UseShellExecute = $false
     $start.CreateNoWindow = $true
     $start.ArgumentList.Add('--class-path')
-    $start.ArgumentList.Add((Get-Content -LiteralPath $classpathFile -Raw).Trim())
+    $start.ArgumentList.Add((Join-Path $target 'classes') + [IO.Path]::PathSeparator + (Get-Content -LiteralPath $classpathFile -Raw).Trim())
     $start.ArgumentList.Add((Join-Path $PSScriptRoot 'java/SetupDatabase.java'))
     # Passwords are passed only in the child environment, never command arguments or files.
     $start.Environment['NEXA_SETUP_URL'] = $jdbcUrl

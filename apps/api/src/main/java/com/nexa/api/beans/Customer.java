@@ -1,6 +1,5 @@
 package com.nexa.api.beans;
 
-
 import jakarta.persistence.*;
 import java.time.*;
 
@@ -22,6 +21,12 @@ public class Customer {
   public void setUserId(String value) {
     userId = value;
   }
+
+  @Column(nullable = false)
+  private String status = "ACTIVE";
+
+  @Column(nullable = false)
+  private String role = "CUSTOMER";
 
   private String fullName;
   private String email;

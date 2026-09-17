@@ -1,20 +1,13 @@
 package com.nexa.api.service;
+
 import com.nexa.api.beans.Account;
 import com.nexa.api.beans.AccountCategory;
 import com.nexa.api.beans.AccountStatus;
-import com.nexa.api.beans.Customer;
 import com.nexa.api.beans.TransactionRequest;
 import com.nexa.api.controller.MoneyTransferController;
 import com.nexa.api.exep.InvalidRequestException;
 import com.nexa.api.exep.ResourceNotFoundException;
 import com.nexa.api.repository.AccountDao;
-
-import com.nexa.api.service.AccountQueryService;
-import com.nexa.api.repository.AccountDao;
-import com.nexa.api.service.TransactionService;
-import com.nexa.api.service.CurrentUserProvider;
-import com.nexa.api.exep.InvalidRequestException;
-import com.nexa.api.exep.ResourceNotFoundException;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -86,9 +79,9 @@ public class MoneyTransferService {
     Instant now = Instant.now();
     String id = UUID.randomUUID().toString();
     db.update(
-        "INSERT INTO money_transfer_requests"
-            + " (id,user_id,source_account_id,destination_account_id,source_name,source_masked,recipient_name,destination_masked,amount,currency_code,status,created_at,expires_at)"
-            + " VALUES (?,?,?,?,?,?,?,?,?,?,'READY',?,?)",
+        "INSERT INTO transactions"
+            + " (record_kind,id,user_id,source_account_id,destination_account_id,source_name,source_masked,recipient_name,destination_masked,amount,currency_code,status,created_at,expires_at)"
+            + " VALUES ('TRANSFER_REVIEW',?,?,?,?,?,?,?,?,?,?,'READY',?,?)",
         id,
         user.userId(),
         source.getId(),
@@ -142,7 +135,7 @@ public class MoneyTransferService {
     var transaction = transactions.transfer(request);
     entities.flush(); // Make the referenced transaction visible to the JDBC receipt update.
     db.update(
-        "UPDATE money_transfer_requests SET"
+        "UPDATE transactions SET"
             + " status='COMPLETED',transaction_reference=?,completed_at=? WHERE id=?",
         transaction.getId(),
         Timestamp.from(Instant.now()),
@@ -178,7 +171,7 @@ public class MoneyTransferService {
   private Stored find(String id, boolean lock) {
     var rows =
         db.query(
-            "SELECT * FROM money_transfer_requests WHERE id=? AND user_id=?"
+            "SELECT * FROM transactions WHERE record_kind='TRANSFER_REVIEW' AND id=? AND user_id=?"
                 + (lock ? " FOR UPDATE" : ""),
             (r, n) -> read(r),
             id,

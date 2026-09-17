@@ -1,10 +1,9 @@
 package com.nexa.api.repository;
 
-
 import java.util.List;
 import java.util.Optional;
 
-/** Replace this read-model adapter with a bank integration without changing domain APIs. */
+/** Stable product DTO boundary over the six-table relational banking model. */
 public interface BankingProductRepository {
   enum Kind {
     MANDATE,

@@ -1,15 +1,10 @@
 package com.nexa.api.service;
+
 import com.nexa.api.beans.Account;
 import com.nexa.api.beans.AccountBalanceResponse;
 import com.nexa.api.beans.AccountResponse;
 import com.nexa.api.exep.ResourceNotFoundException;
 import com.nexa.api.repository.AccountDao;
-
-
-import com.nexa.api.beans.Account;
-import com.nexa.api.repository.AccountDao;
-import com.nexa.api.service.CurrentUserProvider;
-import com.nexa.api.exep.ResourceNotFoundException;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -28,6 +23,10 @@ public class AccountQueryService {
 
   public List<AccountResponse> currentAccounts() {
     return accounts.findByCustomerUserIdOrderByCreatedAtAsc(user.userId()).stream()
+        .filter(
+            a ->
+                a.getAccountType() == com.nexa.api.beans.AccountType.SAVINGS
+                    || a.getAccountType() == com.nexa.api.beans.AccountType.CURRENT)
         .map(AccountQueryService::toResponse)
         .toList();
   }

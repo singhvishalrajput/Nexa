@@ -1,5 +1,4 @@
 package com.nexa.api.banking;
-import com.nexa.api.beans.AccountType;
 
 
 import static org.assertj.core.api.Assertions.*;
@@ -13,10 +12,8 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.*;
 
@@ -42,11 +39,7 @@ class MoneyTransferIntegrationTest {
   String auth, otherAuth, source, ownDestination, destination, number;
 
   @BeforeAll
-  void schema() {
-    new ResourceDatabasePopulator(
-            new ClassPathResource("db/migration/V14__money_transfer_requests.sql"))
-        .execute(db.getDataSource());
-  }
+  void schema() {}
 
   @BeforeEach
   void fixture() throws Exception {
@@ -252,9 +245,7 @@ class MoneyTransferIntegrationTest {
     db.update("UPDATE accounts SET status='BLOCKED' WHERE id=?", destination);
     confirm(id, 400);
     db.update("UPDATE accounts SET status='ACTIVE' WHERE id=?", destination);
-    db.update(
-        "UPDATE money_transfer_requests SET expires_at=TIMESTAMP '2000-01-01 00:00:00' WHERE id=?",
-        id);
+    db.update("UPDATE transactions SET expires_at=TIMESTAMP '2000-01-01 00:00:00' WHERE id=?", id);
     confirm(id, 400);
     mvc.perform(get("/api/v1/money-transfers/" + id).header("Authorization", auth))
         .andExpect(jsonPath("$.status").value("EXPIRED"));
@@ -283,13 +274,12 @@ class MoneyTransferIntegrationTest {
     }
     assertThat(balance(source)).isEqualByComparingTo("1000");
     assertThat(balance(destination)).isEqualByComparingTo("0");
-    assertThat(
-            db.queryForObject(
-                "SELECT status FROM money_transfer_requests WHERE id=?", String.class, id))
+    assertThat(db.queryForObject("SELECT status FROM transactions WHERE id=?", String.class, id))
         .isEqualTo("READY");
     assertThat(
             db.queryForObject(
-                "SELECT COUNT(*) FROM transactions WHERE source_account_id=?",
+                "SELECT COUNT(*) FROM transactions WHERE record_kind='PAYMENT' AND"
+                    + " source_account_id=?",
                 Integer.class,
                 source))
         .isZero();

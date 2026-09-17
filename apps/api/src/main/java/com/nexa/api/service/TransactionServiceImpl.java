@@ -1,10 +1,10 @@
 package com.nexa.api.service;
+
 import com.nexa.api.beans.Account;
 import com.nexa.api.beans.AccountCategory;
 import com.nexa.api.beans.AccountStatus;
 import com.nexa.api.beans.AccountType;
 import com.nexa.api.beans.BankTransaction;
-import com.nexa.api.beans.Customer;
 import com.nexa.api.beans.JournalEntry;
 import com.nexa.api.beans.JournalEntryStatus;
 import com.nexa.api.beans.JournalEntryType;
@@ -19,9 +19,6 @@ import com.nexa.api.repository.AccountDao;
 import com.nexa.api.repository.JournalEntryDao;
 import com.nexa.api.repository.LedgerEntryDao;
 import com.nexa.api.repository.TransactionDao;
-
-import com.nexa.api.exep.InvalidRequestException;
-import com.nexa.api.exep.ResourceNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -65,6 +62,8 @@ public class TransactionServiceImpl implements TransactionService {
 
     Account destinationAccount = getActiveAccount(request.getDestinationAccountId());
     Account cashAccount = getCashAccount();
+    if (!cashAccount.getCurrencyCode().equals(destinationAccount.getCurrencyCode()))
+      throw new InvalidRequestException("Cash and customer currencies must match");
 
     BankTransaction transaction = new BankTransaction();
     transaction.setTransactionType(TransactionType.DEPOSIT);
@@ -94,6 +93,8 @@ public class TransactionServiceImpl implements TransactionService {
 
     Account sourceAccount = getActiveAccount(request.getSourceAccountId());
     Account cashAccount = getCashAccount();
+    if (!cashAccount.getCurrencyCode().equals(sourceAccount.getCurrencyCode()))
+      throw new InvalidRequestException("Cash and customer currencies must match");
 
     if (sourceAccount.getBalance().compareTo(request.getAmount()) < 0) {
       throw new InvalidRequestException("Insufficient customer balance");
@@ -180,6 +181,9 @@ public class TransactionServiceImpl implements TransactionService {
             .findLockedById(accountId)
             .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountId));
 
+    if (account.getAccountType() == AccountType.LOAN
+        || account.getAccountType() == AccountType.CARD)
+      throw new InvalidRequestException("Use the product payment endpoint for this account");
     if (account.getStatus() != AccountStatus.ACTIVE) {
       throw new InvalidRequestException("Account must be ACTIVE");
     }

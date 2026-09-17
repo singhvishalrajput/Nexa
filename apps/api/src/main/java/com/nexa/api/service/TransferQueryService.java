@@ -1,10 +1,6 @@
 package com.nexa.api.service;
-import com.nexa.api.beans.BankingModels;
-import com.nexa.api.exep.ResourceNotFoundException;
-
 
 import com.nexa.api.beans.BankingModels.Transfer;
-import com.nexa.api.service.CurrentUserProvider;
 import com.nexa.api.exep.ResourceNotFoundException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -23,8 +19,9 @@ public class TransferQueryService {
     return db
         .query(
             "SELECT"
-                + " id,source_account_id,beneficiary_id,transfer_reference,amount,currency_code,status"
-                + " FROM transfers WHERE user_id = ? AND id = ?",
+                + " id,source_account_id,target_id,transaction_reference,amount,currency_code,status"
+                + " FROM transactions WHERE record_kind='LEGACY_TRANSFER' AND user_id = ? AND id ="
+                + " ?",
             (r, n) ->
                 new Transfer(
                     r.getString(1),

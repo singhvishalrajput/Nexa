@@ -1,10 +1,5 @@
 package com.nexa.api.service;
-import com.nexa.api.beans.Account;
-import com.nexa.api.exep.InvalidRequestException;
-import com.nexa.api.exep.ResourceNotFoundException;
 
-
-import com.nexa.api.service.CurrentUserProvider;
 import com.nexa.api.exep.InvalidRequestException;
 import com.nexa.api.exep.ResourceNotFoundException;
 import java.math.BigDecimal;
@@ -52,8 +47,7 @@ public class ShowcaseService {
   private void validate(String operation, String account, String target, String amount) {
     if (Set.of("FREEZE_CARD", "UNFREEZE_CARD", "REPLACE_CARD").contains(operation)) {
       var card = cards.detail(target); // Ownership is checked even for simulated actions.
-      if ("CLOSED".equals(card.status()))
-        throw new InvalidRequestException("Choose an open card.");
+      if ("CLOSED".equals(card.status())) throw new InvalidRequestException("Choose an open card.");
     } else {
       preparation.prepare(
           operation, account, target, amount == null ? null : new BigDecimal(amount));
@@ -73,9 +67,9 @@ public class ShowcaseService {
     }
     String id = UUID.randomUUID().toString();
     db.update(
-        "INSERT INTO showcase_actions"
-            + " (id,user_id,operation,account_id,target_id,amount,currency_code,status,expires_at)"
-            + " VALUES (?,?,?,?,?,?,?,'REVIEW',?)",
+        "INSERT INTO transactions"
+            + " (record_kind,id,user_id,operation,source_account_id,target_id,amount,currency_code,status,expires_at)"
+            + " VALUES ('SIMULATION',?,?,?,?,?,?,?,'REVIEW',?)",
         id,
         user.userId(),
         operation,
@@ -95,7 +89,7 @@ public class ShowcaseService {
       throw new InvalidRequestException("This request is closed. Start a new request.");
     validate(receipt.operation(), receipt.accountId(), receipt.targetId(), receipt.amount());
     db.update(
-        "UPDATE showcase_actions SET status='SIMULATED',completed_at=? WHERE id=?",
+        "UPDATE transactions SET status='SIMULATED',completed_at=? WHERE id=?",
         Timestamp.from(Instant.now()),
         id);
     return read(id, false);
@@ -105,7 +99,7 @@ public class ShowcaseService {
   public Receipt cancel(String id) {
     Receipt receipt = read(id, true);
     if (receipt.status().equals("REVIEW"))
-      db.update("UPDATE showcase_actions SET status='CANCELLED' WHERE id=?", id);
+      db.update("UPDATE transactions SET status='CANCELLED' WHERE id=?", id);
     return read(id, false);
   }
 
@@ -116,8 +110,8 @@ public class ShowcaseService {
   public List<Receipt> history() {
     return db
         .query(
-            "SELECT id FROM showcase_actions WHERE user_id=? ORDER BY expires_at DESC"
-                + " FETCH NEXT 30 ROWS ONLY",
+            "SELECT id FROM transactions WHERE record_kind='SIMULATION' AND user_id=? ORDER BY"
+                + " expires_at DESC FETCH NEXT 30 ROWS ONLY",
             (r, n) -> r.getString(1),
             user.userId())
         .stream()
@@ -128,7 +122,8 @@ public class ShowcaseService {
   private Receipt read(String id, boolean lock) {
     var rows =
         db.query(
-            "SELECT * FROM showcase_actions WHERE id=? AND user_id=?" + (lock ? " FOR UPDATE" : ""),
+            "SELECT * FROM transactions WHERE record_kind='SIMULATION' AND id=? AND user_id=?"
+                + (lock ? " FOR UPDATE" : ""),
             (r, n) -> {
               Instant expiry = r.getTimestamp("expires_at").toInstant();
               String state = r.getString("status");
@@ -137,7 +132,7 @@ public class ShowcaseService {
               return new Receipt(
                   r.getString("id"),
                   r.getString("operation"),
-                  r.getString("account_id"),
+                  r.getString("source_account_id"),
                   r.getString("target_id"),
                   r.getString("amount"),
                   r.getString("currency_code"),

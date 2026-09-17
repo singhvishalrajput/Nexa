@@ -1,6 +1,5 @@
 package com.nexa.api.beans;
 
-
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.*;
@@ -24,6 +23,31 @@ public class Account {
   public void setCurrencyCode(String value) {
     currencyCode = value;
   }
+
+  @Column(unique = true)
+  private String productId;
+
+  private Long fundingAccountId;
+
+  @Column(precision = 19, scale = 2)
+  private BigDecimal principalAmount;
+
+  @Column(precision = 9, scale = 6)
+  private BigDecimal interestRate;
+
+  private String productStatus;
+  private String productType;
+  private String numberMasked;
+  private String dueAt;
+
+  @Column(precision = 19, scale = 2)
+  private BigDecimal periodicPayment;
+
+  @Column(precision = 19, scale = 2)
+  private BigDecimal creditLimit;
+
+  @Column(precision = 19, scale = 2)
+  private BigDecimal minimumPayment;
 
   private String accountNumber;
 

@@ -1,10 +1,6 @@
 package com.nexa.api.service;
-import com.nexa.api.beans.BankingModels;
-import com.nexa.api.exep.ResourceNotFoundException;
-
 
 import com.nexa.api.beans.BankingModels.Beneficiary;
-import com.nexa.api.service.CurrentUserProvider;
 import com.nexa.api.exep.ResourceNotFoundException;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,9 +30,9 @@ public class BeneficiaryQueryService {
 
   private List<Beneficiary> query(String id) {
     return db.query(
-        "SELECT id, display_name, bank_name, destination_account_masked, status FROM beneficiaries"
-            + " WHERE user_id = ? AND (? IS NULL OR id = ?) ORDER BY display_name FETCH NEXT 100"
-            + " ROWS ONLY",
+        "SELECT id, display_name, bank_name, destination_masked, status FROM transactions WHERE"
+            + " record_kind='BENEFICIARY' AND user_id = ? AND (? IS NULL OR id = ?) ORDER BY"
+            + " display_name FETCH NEXT 100 ROWS ONLY",
         (r, n) ->
             new Beneficiary(
                 r.getString(1), r.getString(2), r.getString(3), r.getString(4), r.getString(5)),

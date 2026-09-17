@@ -1,5 +1,7 @@
 # Nexa
 
+Banking now uses six domain tables. See [the final schema, mandate/loan workflows, migration and validation](docs/SIX_TABLE_BANKING.md).
+
 This is a learning showcase. See [showcase flows and simulation boundaries](docs/SHOWCASE.md) for confirmed demo payments, card controls, saved receipts and microphone-free voice demonstrations.
 
 One banking application with an Oracle JET web client and a Java 17 / Spring Boot 4.1.1 API.
