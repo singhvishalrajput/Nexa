@@ -47,3 +47,14 @@ test('Hindi navigation keeps route identifiers and localizes the disclosure and 
     assert.equal(account.props.children[1].props.children, t('Accounts'));
   } finally { setLocale('en-IN'); }
 });
+
+test('workspace branding opens the public landing page while banking routes remain available', () => {
+  const {SidebarBrand} = require('../src/components/SidebarNavigation.tsx');
+  const {WorkspaceRail} = require('../src/components/design/WorkspaceRail.tsx');
+  assert.equal(nodes(SidebarBrand({})).find(n => n.type === 'a').props.href, '#home');
+  for (const admin of [false, true]) {
+    const links = nodes(WorkspaceRail({page: admin ? 'admin' : 'assistant', name: 'Test Customer', admin})).filter(n => n.type === 'a');
+    assert.ok(links.some(n => n.props.href === '#home' && n.props['aria-label'] === 'Nexa home'));
+    assert.ok(links.some(n => n.props.href === (admin ? '#/admin' : '#/assistant')));
+  }
+});

@@ -1,3 +1,6 @@
+import "ojs/ojbutton";
+import "ojs/ojinputtext";
+import "ojs/ojselectcombobox";
 import { t } from "../../services/locale";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { useNavigationGuard } from "../../hooks/useNavigationGuard";
@@ -47,8 +50,8 @@ export function MoneyTransfer({token, userId}: {token: string; userId: string}) 
       else setError("We couldn’t check your previous transfer. Try again before starting another one.");
     } finally { lock.current = false; setBusy(false); }
   }
-  async function review(event: Event) {
-    event.preventDefault(); if (lock.current || !valid) return;
+  async function review(event?: Event) {
+    event?.preventDefault(); if (lock.current || !valid) return;
     lock.current = true; setBusy(true); setError("");
     try {
       const result = await moneyTransfers.prepare(token, {sourceAccountId: source, amount,
@@ -81,27 +84,27 @@ export function MoneyTransfer({token, userId}: {token: string; userId: string}) 
   }
   function reset() { remember(null); setReceipt(undefined); setUncertain(false); setError(""); setAmount(""); setDestination(""); }
   return <><PageHeading title={t("Send money")} description={t("Transfer Indian rupees to another Nexa account.")}/>
-    {restoring ? <Panel title={t("Checking your previous transfer")}><div class="bank-form" aria-busy={busy}><p>{t("We’ll check the saved request before you send money again.")}</p>{error && <p role="alert" class="bank-error">{error}</p>}<button class="bank-button" disabled={busy} onClick={restore}>{busy ? "Checking transfer…" : "Check previous transfer"}</button></div></Panel>
+    {restoring ? <Panel title={t("Checking your previous transfer")}><div class="bank-form" aria-busy={busy}><p>{t("We’ll check the saved request before you send money again.")}</p>{error && <p role="alert" class="bank-error">{error}</p>}<oj-button chroming="callToAction" class="nexa-action transfer-action" disabled={busy} onojAction={restore}>{busy ? "Checking transfer…" : "Check previous transfer"}</oj-button></div></Panel>
     : receipt ? <div ref={title} class="bank-narrow"><Panel><div class="bank-form" aria-busy={busy}>
       <h2 tabIndex={-1}>{receipt.status === "COMPLETED" ? t("✓ Money sent") : receipt.status === "EXPIRED" ? t("This review has expired") : t("Check before you send")}</h2>
       <dl><Detail label={t("From")}>{receipt.sourceName} · {receipt.sourceMasked}</Detail><Detail label={t("Recipient")}>{receipt.recipientName}</Detail><Detail label={t("To Nexa account")}>{receipt.destinationMasked}</Detail><Detail label={t("Amount")}>{formatMoney(receipt.amount, receipt.currencyCode)}</Detail>{receipt.reference && <Detail label={t("Reference")}>{receipt.reference}</Detail>}</dl>
-      {receipt.status === "COMPLETED" ? <><p role="status">{t("Your transfer is complete. The money has been added to the recipient’s Nexa account.")}</p><a class="bank-button" href={"#/transactions/" + encodeURIComponent(receipt.reference!)}>{t("View transaction")}</a><button class="bank-button secondary" onClick={reset}>{t("Make another transfer")}</button></>
-      : receipt.status === "EXPIRED" ? <><p>{t("No money was sent by this request. Review the details again to create a new transfer.")}</p><button class="bank-button" onClick={reset}>{t("Start a new review")}</button></>
+      {receipt.status === "COMPLETED" ? <><p role="status">{t("Your transfer is complete. The money has been added to the recipient’s Nexa account.")}</p><a class="bank-button" href={"#/transactions/" + encodeURIComponent(receipt.reference!)}>{t("View transaction")}</a><oj-button chroming="outlined" class="nexa-action transfer-action" onojAction={reset}>{t("Make another transfer")}</oj-button></>
+      : receipt.status === "EXPIRED" ? <><p>{t("No money was sent by this request. Review the details again to create a new transfer.")}</p><oj-button chroming="callToAction" class="nexa-action transfer-action" onojAction={reset}>{t("Start a new review")}</oj-button></>
       : <><p>{t("Check the recipient and amount carefully. Sending moves money immediately. This review is valid for 5 minutes.")}</p>{error && <p role="alert" class="bank-error">{error}</p>}
-        {uncertain && <button class="bank-button secondary" disabled={busy} onClick={checkStatus}>{t("Check transfer status")}</button>}
-        <button class="bank-button" disabled={busy} onClick={send}>{busy ? t("Please wait…") : uncertain ? "Send this transfer again" : "Send " + formatMoney(receipt.amount, receipt.currencyCode)}</button>
-        {!uncertain && <button class="bank-button secondary" disabled={busy} onClick={() => { remember(null); setReceipt(undefined); setError(""); }}>{t("Edit details")}</button>}</>}
+        {uncertain && <oj-button chroming="outlined" class="nexa-action transfer-action" disabled={busy} onojAction={checkStatus}>{t("Check transfer status")}</oj-button>}
+        <oj-button chroming="callToAction" class="nexa-action transfer-action" disabled={busy} onojAction={send}>{busy ? t("Please wait…") : uncertain ? "Send this transfer again" : "Send " + formatMoney(receipt.amount, receipt.currencyCode)}</oj-button>
+        {!uncertain && <oj-button chroming="outlined" class="nexa-action transfer-action" disabled={busy} onojAction={() => { remember(null); setReceipt(undefined); setError(""); }}>{t("Edit details")}</oj-button>}</>}
     </div></Panel></div>
     : <div class="bank-narrow"><Panel title={t("Transfer details")}><State loading={accounts.loading} error={accounts.error} retry={accounts.reload} empty={!accounts.loading && !accounts.error && !active.length ? "You need an active INR account to send money" : undefined}>
-      <form class="bank-form" onSubmit={review} aria-busy={busy}><fieldset disabled={busy} class="bank-transfer-fields">
-        <label>{t("From account")}<select required value={source} onChange={e => { setSource(e.currentTarget.value); if (own) setDestination(""); }}><option value="">{t("Choose an account")}</option>{active.map(a => <option key={a.id} value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}</select></label>
+      <form class="bank-form experience-transfer-form" onSubmit={review} aria-busy={busy} onKeyDown={event => { if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT") { event.preventDefault(); void review(); } }}><fieldset disabled={busy} class="bank-transfer-fields">
+        <oj-select-one labelHint={t("From account")} labelEdge="inside" required disabled={busy} value={source} onvalueChanged={event => { if (event.detail.updatedFrom !== "internal" || event.detail.value === source) return; setSource(event.detail.value || ""); if (own) setDestination(""); }} options={active.map(a => ({value:a.id,label:a.displayName + " · " + a.accountNumberMasked}))}/>
         {from && <p>{t("Available:")}<strong>{formatMoney(from.availableBalance, "INR")}</strong></p>}
-        <label>{t("Who are you sending to?")}<select value={own ? "own" : "other"} onChange={e => { setOwn(e.currentTarget.value === "own"); setDestination(""); }}><option value="other">{t("Another Nexa account")}</option><option value="own">{t("One of my Nexa accounts")}</option></select></label>
-        {own ? <label>{t("To account")}<select required value={destination} onChange={e => setDestination(e.currentTarget.value)}><option value="">{t("Choose another account")}</option>{active.filter(a => a.id !== source).map(a => <option key={a.id} value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}</select>{active.length < 2 && <small>{t("You need two active INR accounts for this option.")}</small>}</label>
-        : <label>{t("Recipient’s Nexa account number")}<input required inputMode="numeric" autocomplete="off" pattern="[0-9]{6,30}" maxLength={30} value={destination} onInput={e => setDestination(e.currentTarget.value.replace(/\s/g, ""))} aria-describedby="recipient-help"/><small id="recipient-help">{t("Ask the recipient for their full account number. You’ll see their name before sending.")}</small></label>}
-        <label>{t("Amount (₹)")}<input required inputMode="decimal" value={amount} maxLength={16} placeholder={t("For example, 500")} aria-invalid={tooMuch || (!!amount && !validAmount(amount))} aria-describedby="transfer-amount-help" onInput={e => setAmount(e.currentTarget.value)}/><small id="transfer-amount-help">{tooMuch ? t("This is more than your available balance.") : t("Enter an amount above ₹0, with up to two decimal places.")}</small></label>
+        <oj-select-one labelHint={t("Who are you sending to?")} labelEdge="inside" disabled={busy} value={own ? "own" : "other"} onvalueChanged={event => { if (event.detail.updatedFrom !== "internal" || (event.detail.value === "own") === own) return; setOwn(event.detail.value === "own"); setDestination(""); }} options={[{value:"other",label:t("Another Nexa account")},{value:"own",label:t("One of my Nexa accounts")}]}/>
+        {own ? <div><oj-select-one labelHint={t("To account")} labelEdge="inside" required disabled={busy} value={destination} placeholder={t("Choose another account")} onvalueChanged={event => { if (event.detail.updatedFrom === "internal") setDestination(event.detail.value || ""); }} options={active.filter(a => a.id !== source).map(a => ({value:a.id,label:a.displayName + " · " + a.accountNumberMasked}))}/>{active.length < 2 && <small>{t("You need two active INR accounts for this option.")}</small>}</div>
+        : <div><oj-input-text labelHint={t("Recipient’s Nexa account number")} labelEdge="inside" required disabled={busy} virtualKeyboard="number" autocomplete="off" length={{max:30}} value={destination} onrawValueChanged={event => setDestination((event.detail.value || "").replace(/\s/g, ""))} describedBy="recipient-help"/><small id="recipient-help">{t("Ask the recipient for their full account number. You’ll see their name before sending.")}</small></div>}
+        <div><oj-input-text labelHint={t("Amount (₹)")} labelEdge="inside" required disabled={busy} virtualKeyboard="number" value={amount} length={{max:16}} placeholder={t("For example, 500")} describedBy="transfer-amount-help" onrawValueChanged={event => setAmount(event.detail.value || "")}/><small id="transfer-amount-help" role={tooMuch ? "alert" : undefined}>{tooMuch ? t("This is more than your available balance.") : t("Enter an amount above ₹0, with up to two decimal places.")}</small></div>
         <p>{t("Transfers are currently available between Nexa accounts. Other-bank and UPI transfers are not supported.")}</p>
-        {error && <p role="alert" class="bank-error">{error}</p>}<button class="bank-button" disabled={busy || !valid}>{busy ? t("Checking recipient…") : t("Review transfer")}</button>
+        {error && <p role="alert" class="bank-error">{error}</p>}<oj-button chroming="callToAction" class="nexa-action transfer-action" disabled={busy || !valid} onojAction={() => void review()}>{busy ? t("Checking recipient…") : t("Review transfer")}</oj-button>
       </fieldset></form>
     </State></Panel><a href="#/payments">{t("Review bills and other payments →")}</a></div>}
   </>;

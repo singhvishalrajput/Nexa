@@ -3,8 +3,8 @@ import { demoApi, DemoReceipt, DemoRequest } from "./demo-api";
 import { Detail, Modal, Panel, State, useLoad } from "./ui";
 import { formatMoney, humanize } from "../../services/banking-content";
 
-const requestStatus = (status: string) => status === "SIMULATED" ? "Recorded" : humanize(status);
-const referenceLabel = (reference: string) => reference.replace(/^DEMO-/, "REQ-");
+const requestStatus = (status: string) => status === "SIMULATED" ? "Simulation — no money moved" : humanize(status);
+const referenceLabel = (reference: string) => reference;
 
 export function DemoConfirmation({token, receipt, onClose}: {token: string; receipt: DemoReceipt; onClose: () => void}) {
   const [current, setCurrent] = useState(receipt);
@@ -18,9 +18,11 @@ export function DemoConfirmation({token, receipt, onClose}: {token: string; rece
     catch (e) { setError((e as Error).message); }
     finally { lock.current = false; setBusy(false); }
   }
-  return <Modal title={current.status === "SIMULATED" ? "Request saved" : "Request · " + requestStatus(current.status)} locked={busy} onClose={onClose}><div class="bank-form">
+  return <Modal title={current.status === "COMPLETED" ? "Money sent" : current.status === "SIMULATED" ? "Simulation saved" : "Request · " + requestStatus(current.status)} locked={busy} onClose={onClose}><div class="bank-form">
     <dl><Detail label="Action">{humanize(current.operation)}</Detail><Detail label="Record">{current.targetId}</Detail>{current.amount && <Detail label="Amount">{formatMoney(current.amount, current.currencyCode)}</Detail>}<Detail label="Status">{requestStatus(current.status)}</Detail>{current.reference && <Detail label="Reference">{referenceLabel(current.reference)}</Detail>}</dl>
-    {current.status === "SIMULATED" && <p role="status">Request recorded.</p>}
+    {current.status === "SIMULATED" && <p role="status">Simulation recorded. No money moved.</p>}
+    {current.status === "COMPLETED" && <p role="status">Money sent. Both account balances and the ledger have been updated.</p>}
+    {current.status === "REVIEW" && <p>{current.simulated ? "This is a provider simulation. Confirming will not move money." : "Confirming sends money immediately to the reviewed Nexa payee."}</p>}
     {error && <p class="bank-error" role="alert">{error}</p>}
     {current.status === "REVIEW" ? <><small>Review expires {new Date(current.expiresAt).toLocaleTimeString()}.</small><div class="bank-form-actions"><button disabled={busy} onClick={() => act(true)}>Cancel</button><button class="bank-button" disabled={busy || Date.parse(current.expiresAt) <= Date.now()} onClick={() => act(false)}>{busy ? "Processing…" : "Confirm request"}</button></div></> : <button class="bank-button" onClick={onClose}>Done</button>}
   </div></Modal>;

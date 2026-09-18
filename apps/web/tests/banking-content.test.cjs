@@ -16,6 +16,8 @@ test('only the final four digits can be displayed', () => {
   assert.equal(safeMask('1234567812345678'), '•••• 5678');
   assert.equal(safeMask('•••• 1234'), '•••• 1234');
   assert.equal(safeMask(''), 'Number unavailable');
+  assert.equal(safeMask(null), 'Number unavailable');
+  assert.equal(safeMask(undefined), 'Number unavailable');
 });
 test('pending and failed transactions never claim completed spending', () => {
   assert.equal(transactionDirection({amount:'-500', status:'POSTED'}), 'Spent');

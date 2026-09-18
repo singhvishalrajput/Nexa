@@ -94,4 +94,31 @@ Object.assign(hindi, {
   "Your Nexa profile": "आपकी Nexa प्रोफ़ाइल", "Account settings": "खाते की सेटिंग्स", "Check or change your personal details.": "अपना व्यक्तिगत विवरण जाँचें या बदलें।", "Personal information": "व्यक्तिगत जानकारी", "Your name, address and phone number are stored with your customer profile.": "आपका नाम, पता और फ़ोन नंबर ग्राहक प्रोफ़ाइल में सहेजे जाते हैं।", "Login email": "लॉग इन ईमेल", "Nexa bank account": "Nexa बैंक खाता", "Live account information from your Nexa banking record.": "आपके Nexa बैंकिंग रिकॉर्ड से खाते की जानकारी।", "ACCOUNT": "खाता", "No Nexa account yet": "अभी Nexa खाता नहीं है", "Open an account from Accounts to see its balance and details here.": "यहाँ बैलेंस और विवरण देखने के लिए खाते सेक्शन में खाता खोलें।", "Session": "सत्र", "Sign out securely when you have finished using Nexa.": "Nexa का इस्तेमाल पूरा होने पर सुरक्षित रूप से साइन आउट करें।", "Signed in as": "इस रूप में साइन इन है"
 });
 Object.assign(hindi, { "More banking": "और बैंकिंग सेवाएँ", "Banking navigation": "बैंकिंग नेविगेशन", "Banking navigation and history": "बैंकिंग नेविगेशन और बातचीत का इतिहास" });
+Object.assign(hindi, {
+  "Your conversation": "आपकी बातचीत", "Your money.": "आपका पैसा।", "Your conversation.": "आपकी बातचीत।",
+  "A LITTLE MORE HUMAN.": "बैंकिंग, आपके करीब।", "A little more human.": "बैंकिंग, आपके करीब।",
+  "A question, a plan, a little peace of mind.": "एक सवाल, एक योजना, थोड़ी निश्चिंतता।",
+  "Whatever’s on your mind, start here.": "जो भी पूछना चाहें, यहाँ से शुरू करें।", "Here for you": "आपकी मदद के लिए",
+  "Search conversations": "बातचीत खोजें", "No matching conversations.": "कोई मिलती-जुलती बातचीत नहीं मिली।",
+  "Back to home": "होम पर वापस जाएँ", "Welcome back": "फिर से स्वागत है", "Your space.": "आपकी जगह।",
+  "A new beginning.": "एक नई शुरुआत।", "One hello away.": "बस एक नमस्ते की दूरी पर।",
+  "Log in to continue your conversation with Nexa.": "Nexa से बातचीत जारी रखने के लिए लॉग इन करें।",
+  "Start with the basics. Your next chapter starts here.": "अपनी जानकारी भरें। आपकी नई शुरुआत यहीं से होती है।",
+  "Phone number (optional)": "फ़ोन नंबर (वैकल्पिक)", "New to Nexa?": "Nexa पर नए हैं?",
+  "Already have an account?": "पहले से खाता है?", "Create an account": "खाता बनाएँ",
+  "Your money. Your words. Your way.": "आपका पैसा। आपके शब्द। आपका तरीका।", "Nexa workspace": "Nexa कार्यक्षेत्र"
+});
+Object.assign(hindi, {
+  "Transaction": "लेन-देन", "Amount / status": "राशि / स्थिति", "Latest": "नवीनतम", "transaction": "लेन-देन", "transactions": "लेन-देन",
+  "More filters": "और फ़िल्टर", "active": "लागू",
+  "Spending by category": "श्रेणी के अनुसार खर्च", "Share of money out": "कुल खर्च में हिस्सा", "Uncategorized": "बिना श्रेणी", "Other categories": "अन्य श्रेणियाँ",
+  "Completed transactions only. Pending and failed payments are excluded.": "केवल पूरे हुए लेन-देन। लंबित और असफल भुगतान शामिल नहीं हैं।",
+  "No completed spending in these transactions.": "इन लेन-देन में कोई खर्च पूरा नहीं हुआ है।",
+  "Choose an account to see its activity.": "गतिविधि देखने के लिए खाता चुनें।",
+  "This activity summary is unavailable. View transaction history for details.": "गतिविधि का सार उपलब्ध नहीं है। विवरण के लिए लेन-देन का इतिहास देखें।"
+});
+Object.assign(hindi, {
+  "How can I help?": "मैं कैसे मदद कर सकता हूँ?", "Transfer between accounts": "खातों के बीच पैसे भेजें",
+  "Speech recognition may use your browser’s speech service.": "वाक् पहचान आपके ब्राउज़र की स्पीच सेवा का उपयोग कर सकती है।"
+});
 export function t(text: string): string { return locale === "hi-IN" ? hindi[text] || text : text; }

@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/loans")
 public class LoanController {
   @org.springframework.beans.factory.annotation.Autowired
+  private com.nexa.api.service.LoanCalculationService calculation;
+
+  @org.springframework.beans.factory.annotation.Autowired
   private com.nexa.api.service.CreditMandateService operations;
 
   private final LoanQueryService service;
@@ -31,15 +34,43 @@ public class LoanController {
   }
 
   @GetMapping("/{id}/payments")
-  public List<BankingModels.Payment> payments(@PathVariable String id) {
-    var rows = service.detail(id).paymentHistory();
+  public List<?> payments(@PathVariable String id) {
+    var loan = service.detail(id);
+    if (loan.terms() != null && loan.terms().tenureMonths() != null)
+      return operations.loanPayments(id);
+    var rows = loan.paymentHistory();
     return rows == null ? List.of() : rows;
   }
 
   @PostMapping
-  public java.util.Map<String, Object> create(
+  public org.springframework.http.ResponseEntity<?> create(
       @RequestBody com.nexa.api.service.CreditMandateService.LoanRequest request) {
-    return operations.createLoan(request);
+    var result = operations.createLoan(request);
+    return org.springframework.http.ResponseEntity.status(request.scheduled() ? 201 : 200)
+        .body(request.scheduled() ? service.detail(result.get("PRODUCT_ID").toString()) : result);
+  }
+
+  @PostMapping("/quote")
+  public com.nexa.api.beans.LoanModels.Quote quote(
+      @RequestBody com.nexa.api.beans.LoanModels.QuoteRequest request) {
+    return calculation.quote(request);
+  }
+
+  @PostMapping("/{id}/accept")
+  public BankingModels.Loan accept(@PathVariable String id) {
+    operations.disburse(id);
+    return service.detail(id);
+  }
+
+  @GetMapping("/{id}/schedule")
+  public List<com.nexa.api.beans.LoanModels.Installment> schedule(@PathVariable String id) {
+    return operations.schedule(id);
+  }
+
+  @PostMapping("/{id}/installments/{installmentId}/pay")
+  public com.nexa.api.beans.LoanModels.Payment pay(
+      @PathVariable String id, @PathVariable String installmentId) {
+    return operations.payInstallment(id, installmentId);
   }
 
   @GetMapping("/{id}/account")

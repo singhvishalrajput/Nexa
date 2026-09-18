@@ -36,6 +36,7 @@ public class TransactionServiceImpl implements TransactionService {
   @Autowired JournalEntryDao journalEntryDao;
 
   @Autowired LedgerEntryDao ledgerEntryDao;
+  @Autowired jakarta.persistence.EntityManager entities;
 
   @Override
   public List<BankTransaction> getAll() {
@@ -60,8 +61,8 @@ public class TransactionServiceImpl implements TransactionService {
   public BankTransaction deposit(TransactionRequest request) {
     validateAmount(request.getAmount());
 
+    Account cashAccount = lockCashAndCustomer(request.getDestinationAccountId());
     Account destinationAccount = getActiveAccount(request.getDestinationAccountId());
-    Account cashAccount = getCashAccount();
     if (!cashAccount.getCurrencyCode().equals(destinationAccount.getCurrencyCode()))
       throw new InvalidRequestException("Cash and customer currencies must match");
 
@@ -91,8 +92,8 @@ public class TransactionServiceImpl implements TransactionService {
   public BankTransaction withdraw(TransactionRequest request) {
     validateAmount(request.getAmount());
 
+    Account cashAccount = lockCashAndCustomer(request.getSourceAccountId());
     Account sourceAccount = getActiveAccount(request.getSourceAccountId());
-    Account cashAccount = getCashAccount();
     if (!cashAccount.getCurrencyCode().equals(sourceAccount.getCurrencyCode()))
       throw new InvalidRequestException("Cash and customer currencies must match");
 
@@ -180,6 +181,7 @@ public class TransactionServiceImpl implements TransactionService {
         accountDao
             .findLockedById(accountId)
             .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountId));
+    entities.refresh(account);
 
     if (account.getAccountType() == AccountType.LOAN
         || account.getAccountType() == AccountType.CARD)
@@ -202,6 +204,19 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     return cashAccount;
+  }
+
+  private Account lockCashAndCustomer(Long customerId) {
+    if (customerId == null) throw new InvalidRequestException("Account id is required");
+    Account cash = getCashAccount();
+    if (cash.getId().equals(customerId))
+      throw new InvalidRequestException("Choose a customer deposit account");
+    getActiveAccount(Math.min(cash.getId(), customerId));
+    getActiveAccount(Math.max(cash.getId(), customerId));
+    Account customer = getActiveAccount(customerId);
+    if (customer.getAccountCategory() != AccountCategory.CUSTOMER)
+      throw new InvalidRequestException("Choose a customer deposit account");
+    return cash;
   }
 
   private void validateAmount(BigDecimal amount) {

@@ -1,12 +1,7 @@
 package com.nexa.api.service;
-import com.nexa.api.beans.Account;
+
 import com.nexa.api.beans.BankingLanguage;
 import com.nexa.api.beans.Intent;
-import com.nexa.api.exep.InvalidRequestException;
-import com.nexa.api.exep.ResourceNotFoundException;
-
-import com.nexa.api.service.AccountQueryService;
-import com.nexa.api.service.BeneficiaryQueryService;
 import com.nexa.api.exep.InvalidRequestException;
 import com.nexa.api.exep.ResourceNotFoundException;
 import java.math.BigDecimal;
@@ -31,6 +26,8 @@ public class WorkflowService {
   private final ShowcaseService showcase;
   private final CardQueryService cards;
   private final MandateQueryService mandates;
+  private final LoanQueryService loans;
+  private final CreditMandateService credit;
   private final com.nexa.api.service.CurrentUserProvider user;
 
   public WorkflowService(
@@ -46,6 +43,8 @@ public class WorkflowService {
       ShowcaseService showcase,
       CardQueryService cards,
       MandateQueryService mandates,
+      LoanQueryService loans,
+      CreditMandateService credit,
       com.nexa.api.service.CurrentUserProvider user) {
     this.db = db;
     this.json = json;
@@ -59,6 +58,8 @@ public class WorkflowService {
     this.showcase = showcase;
     this.cards = cards;
     this.mandates = mandates;
+    this.loans = loans;
+    this.credit = credit;
     this.user = user;
   }
 
@@ -129,9 +130,14 @@ public class WorkflowService {
           String reference =
               old.operation().equals("OWN_TRANSFER")
                   ? transfers.execute(old.accountId(), old.targetId(), new BigDecimal(old.amount()))
-                  : showcase.confirm(old.reference()).reference();
+                  : old.operation().equals("REPAY_LOAN")
+                      ? credit.repay(
+                          old.targetId(),
+                          new CreditMandateService.Execution(
+                              new BigDecimal(old.amount()), old.id()))
+                      : showcase.confirm(old.reference()).reference();
           String outcome =
-              old.operation().equals("OWN_TRANSFER")
+              Set.of("OWN_TRANSFER", "START_TRANSFER").contains(old.operation())
                   ? "Transferred "
                       + old.currency()
                       + " "
@@ -139,21 +145,31 @@ public class WorkflowService {
                       + " to "
                       + name(old.targetLabel())
                       + "."
-                  : old.operation().equals("CANCEL_MANDATE")
-                      ? "Your cancellation for " + name(old.targetLabel()) + " has been accepted."
-                      : cardControl(old)
-                          ? "Your "
-                              + noun(old)
-                              + " for "
+                  : old.operation().equals("REPAY_LOAN")
+                      ? "Loan repayment posted: "
+                          + old.currency()
+                          + " "
+                          + old.amount()
+                          + " to "
+                          + name(old.targetLabel())
+                          + "."
+                      : old.operation().equals("CANCEL_MANDATE")
+                          ? "Your cancellation for "
                               + name(old.targetLabel())
                               + " has been accepted."
-                          : "Your payment of "
-                              + old.currency()
-                              + " "
-                              + old.amount()
-                              + " to "
-                              + name(old.targetLabel())
-                              + " has been accepted.";
+                          : cardControl(old)
+                              ? "Your "
+                                  + noun(old)
+                                  + " for "
+                                  + name(old.targetLabel())
+                                  + " has been accepted."
+                              : "Simulation recorded; no money moved. Payment of "
+                                  + old.currency()
+                                  + " "
+                                  + old.amount()
+                                  + " to "
+                                  + name(old.targetLabel())
+                                  + " has been accepted.";
           return save(conversation, copy(old, "COMPLETED", null, outcome, List.of(), reference));
         }
         if (command != null) {
@@ -289,7 +305,7 @@ public class WorkflowService {
   }
 
   private void closeProviderReview(Workflow w) {
-    if (w.reference() != null && !w.operation().equals("OWN_TRANSFER"))
+    if (w.reference() != null && !Set.of("OWN_TRANSFER", "REPAY_LOAN").contains(w.operation()))
       showcase.cancel(w.reference());
   }
 
@@ -315,6 +331,11 @@ public class WorkflowService {
 
   private List<Workflow.Choice> targets(Workflow w) {
     return switch (w.operation()) {
+      case "REPAY_LOAN" ->
+          loans.list(null, 0, 100).stream()
+              .filter(l -> Set.of("ACTIVE", "OVERDUE").contains(l.status()))
+              .map(l -> new Workflow.Choice(l.id(), l.displayName()))
+              .toList();
       case "OWN_TRANSFER" ->
           accounts.currentAccounts().stream()
               .filter(a -> "ACTIVE".equals(a.status()))
@@ -578,7 +599,7 @@ public class WorkflowService {
     String amountText = null;
     var amountMatch =
         java.util.regex.Pattern.compile(
-                "(?:^|\\b(?:amount|pay|send|transfer|make"
+                "(?:^|\\b(?:amount|repay|pay|send|transfer|make"
                     + " it|instead|inr|rs)\\s+|₹)([+-]?[0-9][0-9,]*(?:\\.[0-9]+)?)(?:$|\\s)")
             .matcher(text);
     if (amountMatch.find()
@@ -589,7 +610,7 @@ public class WorkflowService {
     // Explicit currency or amount verbs remain unambiguous even alongside named accounts/payees.
     var explicit =
         java.util.regex.Pattern.compile(
-                "(?:\\b(?:amount|pay|send|transfer|make"
+                "(?:\\b(?:amount|repay|pay|send|transfer|make"
                     + " it|inr|rs)\\s+|₹)([+-]?[0-9][0-9,]*(?:\\.[0-9]+)?)(?![\\p{L}\\p{N}.,])|([+-]?[0-9][0-9,]*(?:\\.[0-9]+)?)\\s*(?:inr|rupees?)\\b")
             .matcher(text);
     if (explicit.find())
@@ -626,7 +647,7 @@ public class WorkflowService {
     String targetHint =
         targetText
             .replaceAll(
-                "\\b(pay|payment|bill|send|transfer|money|my|the|please|do|it|karo|kar|to|ko|actually|instead|from|inr|rs)\\b|[0-9.,₹]",
+                "\\b(repay|repayment|loan|pay|payment|bill|send|transfer|money|my|the|please|do|it|karo|kar|to|ko|actually|instead|from|inr|rs)\\b|[0-9.,₹]",
                 " ")
             .trim();
     if (targetMatches.isEmpty()
@@ -680,6 +701,13 @@ public class WorkflowService {
   private Workflow progress(String conversation, Workflow w) {
     if (w.targetId() == null) return save(conversation, prompt(w, "target", targets(w)));
     String account = w.accountId(), accountLabel = w.accountLabel(), amount = w.amount();
+    if (w.operation().equals("REPAY_LOAN")) {
+      var loan = loans.detail(w.targetId());
+      account = loan.accountId();
+      accountLabel = null;
+      if (amount == null && loan.terms() != null && loan.terms().tenureMonths() != null)
+        amount = loan.nextEmi();
+    }
     if (w.operation().equals("CANCEL_MANDATE") && account == null)
       account = mandates.detail(w.targetId()).accountId();
     if (cardControl(w) && account == null) account = cards.detail(w.targetId()).accountId();
@@ -699,7 +727,23 @@ public class WorkflowService {
     try {
       if (w.operation().equals("OWN_TRANSFER"))
         transfers.validate(account, w.targetId(), new BigDecimal(amount));
-      else
+      else if (w.operation().equals("REPAY_LOAN")) {
+        var loan = loans.detail(w.targetId());
+        var funding = accounts.requireOwnedAccount(account);
+        BigDecimal payment = new BigDecimal(amount);
+        boolean scheduledLoan = loan.terms() != null && loan.terms().tenureMonths() != null;
+        if (scheduledLoan && (loan.nextEmi() == null || payment.compareTo(new BigDecimal(loan.nextEmi())) != 0))
+          throw new InvalidRequestException("Repay the exact next EMI amount: " + loan.nextEmi());
+        if (payment.signum() <= 0
+            || payment.scale() > 2
+            || payment.precision() - payment.scale() > 13
+            || !scheduledLoan && payment.compareTo(new BigDecimal(loan.outstanding())) > 0
+            || payment.compareTo(funding.availableBalance()) > 0)
+          throw new InvalidRequestException(
+              "Enter a positive repayment within the loan outstanding and available funds.");
+        if (!"ACTIVE".equals(funding.status()))
+          throw new InvalidRequestException("The linked account must be active.");
+      } else
         reference =
             showcase
                 .prepare(
@@ -777,15 +821,17 @@ public class WorkflowService {
     String message =
         switch (field) {
           case "target" ->
-              w.operation().equals("OWN_TRANSFER")
-                  ? "Which account should receive the money?"
-                  : w.operation().equals("PAY_BILL")
-                      ? "Which bill would you like to pay?"
-                      : w.operation().equals("CANCEL_MANDATE")
-                          ? "Which direct debit would you like to cancel?"
-                          : cardControl(w) || w.operation().equals("PAY_CARD")
-                              ? "Which card would you like to use?"
-                              : "Who would you like to pay?";
+              w.operation().equals("REPAY_LOAN")
+                  ? "Which loan would you like to repay?"
+                  : w.operation().equals("OWN_TRANSFER")
+                      ? "Which account should receive the money?"
+                      : w.operation().equals("PAY_BILL")
+                          ? "Which bill would you like to pay?"
+                          : w.operation().equals("CANCEL_MANDATE")
+                              ? "Which direct debit would you like to cancel?"
+                              : cardControl(w) || w.operation().equals("PAY_CARD")
+                                  ? "Which card would you like to use?"
+                                  : "Who would you like to pay?";
           case "account" ->
               (w.targetLabel() == null ? "" : "For " + name(w.targetLabel()) + ", ")
                   + "which account should the money come from?";

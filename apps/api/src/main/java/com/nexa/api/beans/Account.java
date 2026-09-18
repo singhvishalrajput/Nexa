@@ -13,6 +13,10 @@ public class Account {
 
   @Version @com.fasterxml.jackson.annotation.JsonIgnore private Long version;
 
+  public Long getVersion() {
+    return version;
+  }
+
   @Column(length = 3)
   private String currencyCode = "INR";
 
@@ -39,6 +43,18 @@ public class Account {
   private String productType;
   private String numberMasked;
   private String dueAt;
+
+  @Column(length = 80)
+  private String applicationKey;
+  @Column(length = 200)
+  private String loanPurpose;
+  private Integer tenureMonths;
+  private LocalDateTime approvedAt;
+  private LocalDateTime closedAt;
+  private String reviewedBy;
+  @Column(length = 500)
+  private String reviewReason;
+  private LocalDateTime reviewedAt;
 
   @Column(precision = 19, scale = 2)
   private BigDecimal periodicPayment;

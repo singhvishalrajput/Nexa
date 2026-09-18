@@ -47,3 +47,14 @@ test('component styles cannot reintroduce private palettes or missing semantic t
     }
   }
 });
+
+test('reference peach, gray and coral surfaces have readable semantic foregrounds', () => {
+  for (const bg of ['reference-ffebe4', 'reference-eeeeec', 'reference-eeede9']) {
+    check('text-muted', bg, 4.5);
+    check('text', bg, 4.5);
+    check('accent-text', bg, 4.5);
+  }
+  check('text', 'coral', 4.5);
+  check('text', 'soft', 4.5);
+  check('text', 'pressed', 4.5);
+});

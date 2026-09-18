@@ -1,5 +1,5 @@
 import { getLocale, Locale, setLocale, t } from "../services/locale";
-
+import "ojs/ojselectcombobox";
 export function LanguageSelect() {
-  return <label class="nexa-language-select">{t("Language")}<select aria-label="Language / भाषा" value={getLocale()} onChange={event => setLocale(event.currentTarget.value as Locale)}><option value="en-IN">English</option><option value="hi-IN" lang="hi">हिन्दी</option></select></label>;
+  return <oj-select-one class="experience-language" labelHint={t("Language")} labelEdge="inside" value={getLocale()} onvalueChanged={event => { if (event.detail.value && event.detail.value !== getLocale()) setLocale(event.detail.value as Locale); }} options={[{value:"en-IN",label:"English"},{value:"hi-IN",label:"हिन्दी"}]}/>;
 }

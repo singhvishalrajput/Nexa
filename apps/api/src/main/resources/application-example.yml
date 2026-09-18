@@ -18,3 +18,7 @@ spring:
 
 server:
   port: 8088
+
+app:
+  loans:
+    annual-interest-rate: 14.50

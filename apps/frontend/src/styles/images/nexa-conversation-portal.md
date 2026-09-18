@@ -1,0 +1,10 @@
+# Nexa authentication artwork
+
+Asset: `nexa-conversation-portal.png`
+
+Created using the built-in image-generation tool, September 18, 2026.
+Use case: stylized-concept. Used on both login and registration with distinct HTML headlines.
+
+## Final prompt
+
+Create a premium editorial 3D artwork for the authentication screen of Nexa, a sophisticated conversational banking brand. Portrait composition 4:5. A single beautifully crafted monumental open speech-bubble shaped doorway, made of satin coral-orange lacquer (#ff6248), stands on a pale warm ivory floor. Its opening is genuinely hollow: through it a second thinner warm-white speech bubble frame is visible a little further back, evoking an invitation into a personal conversation. Foreground a small thin charcoal banking card, rounded corners, unbranded with a tiny brushed-metal chip and three understated embossed dots, leans elegantly against the coral doorway at the lower right, visibly subordinate to the sculpture. A single small brushed-aluminium sphere sits nearby on the floor. Sophisticated product design photography, architectural art direction, tactile materials, precise bevels, ambient occlusion, gentle long studio shadows, a subtle soft peach light falling from upper left. Front three-quarter camera, slightly elevated, natural 70mm perspective. The artwork fills the central 70% of frame with generous ivory negative space above and at edges. Background seamless warm ivory (#eeede9), absolutely no gradients of rainbow colors, no people, no plants, no coins, no dollar signs, no padlocks, no floating UI, no words or typography, no logos, no watermark, no decorative rings or sparkles. The speech silhouette should be unmistakable yet elegant, with softly rounded rectangular top and an architectural angular tail at bottom left integrated into its sturdy base. Gallery-quality physical sculpture, credible commercial brand campaign, restrained luxurious contemporary fintech aesthetic. Crisp high quality render, not cartoon, not plastic toy, not clay illustration.

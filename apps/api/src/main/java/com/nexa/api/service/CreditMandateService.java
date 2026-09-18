@@ -1,5 +1,6 @@
 package com.nexa.api.service;
 
+import com.nexa.api.beans.LoanModels;
 import com.nexa.api.exep.*;
 import java.math.BigDecimal;
 import java.time.*;
@@ -14,10 +15,24 @@ import org.springframework.transaction.annotation.Transactional;
 public class CreditMandateService {
   private final JdbcTemplate db;
   private final CurrentUserProvider user;
+  private final LoanCalculationService calculation;
+  private final Clock clock;
+  private final BusinessDateResolver dates;
+  private final LoanSettlementService settlement;
 
-  public CreditMandateService(JdbcTemplate db, CurrentUserProvider user) {
+  public CreditMandateService(
+      JdbcTemplate db,
+      CurrentUserProvider user,
+      LoanCalculationService calculation,
+      Clock clock,
+      BusinessDateResolver dates,
+      LoanSettlementService settlement) {
     this.db = db;
     this.user = user;
+    this.calculation = calculation;
+    this.clock = clock;
+    this.dates = dates;
+    this.settlement = settlement;
   }
 
   public record MandateRequest(
@@ -30,7 +45,23 @@ public class CreditMandateService {
       LocalDate endDate) {}
 
   public record LoanRequest(
-      long accountId, String displayName, BigDecimal principal, BigDecimal interestRate) {}
+      long accountId,
+      String displayName,
+      BigDecimal principal,
+      BigDecimal interestRate,
+      String applicationKey,
+      String purpose,
+      BigDecimal amount,
+      Integer tenureMonths) {
+    public LoanRequest(
+        long accountId, String displayName, BigDecimal principal, BigDecimal interestRate) {
+      this(accountId, displayName, principal, interestRate, null, null, null, null);
+    }
+
+    public boolean scheduled() {
+      return applicationKey != null || purpose != null || amount != null || tenureMonths != null;
+    }
+  }
 
   public record Execution(BigDecimal amount, String requestId) {}
 
@@ -225,6 +256,8 @@ public class CreditMandateService {
   }
 
   public Map<String, Object> createLoan(LoanRequest r) {
+    if (r == null) throw new InvalidRequestException("Loan details are required");
+    if (r.scheduled()) return applyLoan(r);
     money(r.principal);
     A funding = account(r.accountId, false);
     owned(funding);
@@ -248,7 +281,7 @@ public class CreditMandateService {
         "INSERT INTO"
             + " accounts(product_id,account_number,customer_id,account_name,account_type,account_category,currency_code,balance,status,created_at,updated_at,version,funding_account_id,principal_amount,interest_rate,product_status,product_type)"
             + " SELECT"
-            + " ?,?,customer_id,?,'LOAN','CUSTOMER','INR',0,'ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,0,id,?,?,'CREATED','PERSONAL'"
+            + " ?,?,customer_id,?,'LOAN','CUSTOMER','INR',0,'ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,0,id,?,?,'PENDING_APPROVAL','PERSONAL'"
             + " FROM accounts WHERE id=?",
         id,
         "LN" + UUID.randomUUID().toString().replace("-", "").substring(0, 26),
@@ -275,9 +308,9 @@ public class CreditMandateService {
     var preview = loan(id, false);
     long loanId = ((Number) preview.get("ID")).longValue(),
         funding = ((Number) preview.get("FUNDING_ACCOUNT_ID")).longValue();
-    lockPair(loanId, funding);
+    lockLoanAccounts(loanId, funding);
     var l = loan(id, false);
-    if ("ACTIVE".equals(value(l, "PRODUCT_STATUS"))) {
+    if (Set.of("ACTIVE", "PAID", "CLOSED", "OVERDUE").contains(value(l, "PRODUCT_STATUS"))) {
       var prior =
           db.queryForList(
               "SELECT id FROM transactions WHERE target_id=? AND operation='LOAN_DISBURSEMENT'",
@@ -285,13 +318,15 @@ public class CreditMandateService {
               id);
       if (!prior.isEmpty()) return prior.get(0);
     }
-    if (!"CREATED".equals(value(l, "PRODUCT_STATUS")) || !"ACTIVE".equals(value(l, "STATUS")))
-      throw new InvalidRequestException("Loan is not awaiting disbursement");
+    if (!"APPROVED".equals(value(l, "PRODUCT_STATUS")) || !"ACTIVE".equals(value(l, "STATUS")))
+      throw new InvalidRequestException(
+          "An administrator must approve the loan before disbursement");
     A a = account(funding, false);
     owned(a);
     depositAccount(a);
     BigDecimal amount = (BigDecimal) l.get("PRINCIPAL_AMOUNT");
     money(amount);
+    settlement.requireFunds(amount);
     String tx = id("TX-");
     post(
         tx,
@@ -306,7 +341,37 @@ public class CreditMandateService {
         funding);
     change(loanId, amount);
     change(funding, amount);
+    settlement.settle(tx, amount, true);
     db.update("UPDATE accounts SET product_status='ACTIVE' WHERE id=?", loanId);
+    if (l.get("TENURE_MONTHS") != null) {
+      var schedule =
+          calculation.schedule(
+              amount,
+              (BigDecimal) l.get("INTEREST_RATE"),
+              ((Number) l.get("TENURE_MONTHS")).intValue(),
+              loanDate());
+      for (var row : schedule) {
+        db.update(
+            "INSERT INTO transactions(id,record_kind,user_id,target_id,source_account_id,"
+                + "installment_number,due_at,principal_component,interest_component,amount,currency_code,status,created_at)"
+                + " VALUES(?,'LOAN_INSTALLMENT',?,?,?,?,?,?,?,?,'INR','PENDING',CURRENT_TIMESTAMP)",
+            id("I-"),
+            user.userId(),
+            id,
+            funding,
+            row.installmentNumber(),
+            row.dueDate().toString(),
+            row.principalAmount(),
+            row.interestAmount(),
+            row.totalAmount());
+      }
+      db.update(
+          "UPDATE accounts SET due_at=? WHERE id=?", schedule.get(0).dueDate().toString(), loanId);
+    }
+    db.update(
+        "UPDATE transactions SET principal_component=?,interest_component=0 WHERE id=?",
+        amount,
+        tx);
     return tx;
   }
 
@@ -314,12 +379,14 @@ public class CreditMandateService {
     money(r.amount);
     String tx = requestId(r);
     var preview = loan(id, false);
+    if (preview.get("TENURE_MONTHS") != null) return payInstallment(id, null, r).id();
     long loanId = ((Number) preview.get("ID")).longValue(),
         funding = ((Number) preview.get("FUNDING_ACCOUNT_ID")).longValue();
-    lockPair(loanId, funding);
+    lockLoanAccounts(loanId, funding);
     var l = loan(id, false);
     if (retry(tx, id, "LOAN_REPAYMENT", r.amount)) return tx;
-    if (!"ACTIVE".equals(value(l, "PRODUCT_STATUS")) || !"ACTIVE".equals(value(l, "STATUS")))
+    if (!Set.of("ACTIVE", "OVERDUE").contains(value(l, "PRODUCT_STATUS"))
+        || !"ACTIVE".equals(value(l, "STATUS")))
       throw new InvalidRequestException("Loan is not active");
     A a = account(funding, false);
     owned(a);
@@ -341,9 +408,211 @@ public class CreditMandateService {
         loanId);
     change(funding, r.amount.negate());
     change(loanId, r.amount.negate());
+    settlement.settle(tx, r.amount, false);
     if (r.amount.compareTo(outstanding) == 0)
       db.update("UPDATE accounts SET product_status='PAID',status='CLOSED' WHERE id=?", loanId);
     return tx;
+  }
+
+  private LocalDate loanDate() {
+    return LocalDate.now(clock.withZone(dates.zone()));
+  }
+
+  private Map<String, Object> applyLoan(LoanRequest r) {
+    if (r.accountId <= 0
+        || r.applicationKey == null
+        || !r.applicationKey.matches("[A-Za-z0-9_-]{1,80}")
+        || r.purpose == null
+        || r.purpose.isBlank()
+        || r.purpose.length() > 200)
+      throw new InvalidRequestException(
+          "Supply accountId, applicationKey (1 to 80 letters, digits, underscores or hyphens), and"
+              + " purpose (up to 200 characters)");
+    if (r.principal != null || r.interestRate != null)
+      throw new InvalidRequestException(
+          "Use amount and tenureMonths; application rates are set by the bank");
+    var quote = calculation.quote(new LoanModels.QuoteRequest(r.amount, r.tenureMonths));
+    // Serialize application keys across all accounts belonging to the same customer.
+    db.queryForObject(
+        "SELECT id FROM customers WHERE user_id=? FOR UPDATE", Long.class, user.userId());
+    A funding = account(r.accountId, true);
+    owned(funding);
+    depositAccount(funding);
+    var existing =
+        db.queryForList(
+            "SELECT a.* FROM accounts a JOIN customers c ON c.id=a.customer_id"
+                + " WHERE c.user_id=? AND a.application_key=?",
+            user.userId(),
+            r.applicationKey);
+    if (!existing.isEmpty()) {
+      var prior = existing.get(0);
+      if (((Number) prior.get("FUNDING_ACCOUNT_ID")).longValue() != r.accountId
+          || ((BigDecimal) prior.get("PRINCIPAL_AMOUNT")).compareTo(quote.amount()) != 0
+          || ((Number) prior.get("TENURE_MONTHS")).intValue() != r.tenureMonths
+          || !r.purpose.trim().equals(prior.get("LOAN_PURPOSE")))
+        throw new ConflictException("Application key was already used with different loan details");
+      return prior;
+    }
+    var created =
+        createLoan(
+            new LoanRequest(
+                r.accountId,
+                r.purpose.trim().substring(0, Math.min(120, r.purpose.trim().length())),
+                quote.amount(),
+                quote.annualInterestRate()));
+    String id = value(created, "PRODUCT_ID");
+    db.update(
+        "UPDATE accounts SET application_key=?,loan_purpose=?,tenure_months=?,periodic_payment=?,"
+            + "product_status='PENDING_APPROVAL',approved_at=NULL WHERE product_id=?",
+        r.applicationKey,
+        r.purpose.trim(),
+        r.tenureMonths,
+        quote.emiAmount(),
+        id);
+    return loan(id, false);
+  }
+
+  public List<LoanModels.Installment> schedule(String id) {
+    loan(id, false);
+    return db.query(
+        "SELECT * FROM transactions WHERE record_kind='LOAN_INSTALLMENT' AND target_id=? ORDER BY"
+            + " installment_number",
+        (r, n) -> {
+          LocalDate due = LocalDate.parse(r.getString("due_at"));
+          String state = r.getString("status");
+          return new LoanModels.Installment(
+              r.getString("id"),
+              id,
+              r.getInt("installment_number"),
+              due,
+              r.getBigDecimal("principal_component"),
+              r.getBigDecimal("interest_component"),
+              r.getBigDecimal("amount"),
+              "PENDING".equals(state) && due.isBefore(loanDate()) ? "OVERDUE" : state,
+              r.getTimestamp("completed_at") == null
+                  ? null
+                  : r.getTimestamp("completed_at").toLocalDateTime());
+        },
+        id);
+  }
+
+  public List<LoanModels.Payment> loanPayments(String id) {
+    var l = loan(id, false);
+    long funding = ((Number) l.get("FUNDING_ACCOUNT_ID")).longValue();
+    return db.query(
+        "SELECT * FROM transactions WHERE record_kind='PAYMENT' AND target_id=? AND operation IN"
+            + " ('LOAN_DISBURSEMENT','LOAN_REPAYMENT') ORDER BY created_at DESC,id",
+        (r, n) ->
+            new LoanModels.Payment(
+                r.getString("id"),
+                id,
+                r.getString("parent_id"),
+                funding,
+                r.getString("transaction_reference"),
+                "LOAN_DISBURSEMENT".equals(r.getString("operation"))
+                    ? "DISBURSEMENT"
+                    : "EMI_PAYMENT",
+                "INR",
+                r.getBigDecimal("amount"),
+                r.getBigDecimal("principal_component"),
+                r.getBigDecimal("interest_component"),
+                "POSTED",
+                r.getTimestamp("completed_at").toLocalDateTime()),
+        id);
+  }
+
+  public LoanModels.Payment payInstallment(String id, String installmentId) {
+    return payInstallment(id, installmentId, null);
+  }
+
+  private LoanModels.Payment payInstallment(String id, String installmentId, Execution execution) {
+    var preview = loan(id, false);
+    long loanId = ((Number) preview.get("ID")).longValue();
+    long funding = ((Number) preview.get("FUNDING_ACCOUNT_ID")).longValue();
+    var incomeIds =
+        db.queryForList(
+            "SELECT id FROM accounts WHERE account_number='NEXA-LOAN-INTEREST' AND"
+                + " account_type='CLEARING' AND account_category='SYSTEM' AND status='ACTIVE' AND"
+                + " currency_code='INR'",
+            Long.class);
+    if (incomeIds.size() != 1)
+      throw new IllegalStateException("Loan interest account is unavailable");
+    long income = incomeIds.get(0);
+    // Use the same global account lock order as transfers, including the income account.
+    lockLoanAccounts(loanId, funding, income);
+    var l = loan(id, false);
+    String tx = execution == null ? id("TX-") : requestId(execution);
+    if (execution != null && retry(tx, id, "LOAN_REPAYMENT", execution.amount))
+      return loanPayments(id).stream().filter(p -> tx.equals(p.id())).findFirst().orElseThrow();
+    var rows = schedule(id);
+    var installment =
+        rows.stream()
+            .filter(
+                r ->
+                    installmentId == null
+                        ? !"PAID".equals(r.status())
+                        : r.id().equals(installmentId))
+            .findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Loan installment not found"));
+    if ("PAID".equals(installment.status()))
+      return loanPayments(id).stream()
+          .filter(p -> installment.id().equals(p.installmentId()))
+          .findFirst()
+          .orElseThrow(() -> new IllegalStateException("Installment payment is missing"));
+    if (!"ACTIVE".equals(value(l, "PRODUCT_STATUS")) || !"ACTIVE".equals(value(l, "STATUS")))
+      throw new InvalidRequestException("Only an active loan can be repaid");
+    var next = rows.stream().filter(r -> !"PAID".equals(r.status())).findFirst().orElseThrow();
+    if (!next.id().equals(installment.id()))
+      throw new InvalidRequestException("Pay the earliest unpaid installment first");
+    if (execution != null && installment.totalAmount().compareTo(execution.amount) != 0)
+      throw new InvalidRequestException(
+          "Repay the exact next EMI amount: " + installment.totalAmount());
+    A source = account(funding, false);
+    owned(source);
+    depositAccount(source);
+    if (source.balance.compareTo(installment.totalAmount()) < 0)
+      throw new InvalidRequestException("Insufficient balance for this EMI");
+    post(
+        tx,
+        funding,
+        loanId,
+        installment.totalAmount(),
+        "LOAN_REPAYMENT",
+        "LOAN_REPAYMENT",
+        installment.id(),
+        id,
+        funding,
+        loanId,
+        income,
+        installment.interestAmount());
+    db.update(
+        "UPDATE transactions SET principal_component=?,interest_component=? WHERE id=?",
+        installment.principalAmount(),
+        installment.interestAmount(),
+        tx);
+    change(funding, installment.totalAmount().negate());
+    change(loanId, installment.principalAmount().negate());
+    change(income, installment.interestAmount());
+    settlement.settle(tx, installment.principalAmount(), false);
+    db.update(
+        "UPDATE transactions SET status='PAID',completed_at=?,transaction_reference=? WHERE id=?",
+        LocalDateTime.now(clock),
+        tx,
+        installment.id());
+    String nextDate =
+        rows.stream()
+            .filter(r -> r.installmentNumber() > installment.installmentNumber())
+            .findFirst()
+            .map(r -> r.dueDate().toString())
+            .orElse(null);
+    db.update("UPDATE accounts SET due_at=? WHERE id=?", nextDate, loanId);
+    if (((BigDecimal) l.get("BALANCE")).compareTo(installment.principalAmount()) == 0)
+      db.update(
+          "UPDATE accounts SET product_status='CLOSED',status='CLOSED',closed_at=?,due_at=NULL"
+              + " WHERE id=?",
+          LocalDateTime.now(clock),
+          loanId);
+    return loanPayments(id).stream().filter(p -> tx.equals(p.id())).findFirst().orElseThrow();
   }
 
   private String requestId(Execution r) {
@@ -371,6 +640,14 @@ public class CreditMandateService {
     account(Math.max(a, b), true);
   }
 
+  private void lockLoanAccounts(long... ids) {
+    java.util.stream.LongStream.concat(
+            java.util.Arrays.stream(ids), settlement.accounts().stream().mapToLong(Long::longValue))
+        .distinct()
+        .sorted()
+        .forEach(a -> account(a, true));
+  }
+
   private void change(long id, BigDecimal amount) {
     db.update(
         "UPDATE accounts SET balance=balance+?,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE"
@@ -390,10 +667,38 @@ public class CreditMandateService {
       String target,
       long debit,
       long credit) {
+    post(
+        id,
+        source,
+        destination,
+        amount,
+        type,
+        operation,
+        parent,
+        target,
+        debit,
+        credit,
+        null,
+        BigDecimal.ZERO);
+  }
+
+  private void post(
+      String id,
+      long source,
+      long destination,
+      BigDecimal amount,
+      String type,
+      String operation,
+      String parent,
+      String target,
+      long debit,
+      long credit,
+      Long interestAccount,
+      BigDecimal interest) {
     db.update(
         "INSERT INTO"
-            + " transactions(id,record_kind,user_id,transaction_type,source_account_id,destination_account_id,amount,currency_code,status,completed_at,operation,parent_id,target_id,transaction_reference)"
-            + " VALUES(?,'PAYMENT',?,?,?,?,?,'INR','SUCCESS',CURRENT_TIMESTAMP,?,?,?,?)",
+            + " transactions(id,record_kind,user_id,transaction_type,source_account_id,destination_account_id,amount,currency_code,status,completed_at,operation,parent_id,target_id,transaction_reference,created_at)"
+            + " VALUES(?,'PAYMENT',?,?,?,?,?,'INR','SUCCESS',CURRENT_TIMESTAMP,?,?,?,?,CURRENT_TIMESTAMP)",
         id,
         user.userId(),
         type,
@@ -421,8 +726,16 @@ public class CreditMandateService {
             + " SELECT id,?,'CREDIT',?,CURRENT_TIMESTAMP FROM journal_entries WHERE"
             + " transaction_id=?",
         credit,
-        amount,
+        amount.subtract(interest),
         id);
+    if (interest.signum() > 0)
+      db.update(
+          "INSERT INTO ledger_entries(journal_entry_id,account_id,entry_type,amount,created_at)"
+              + " SELECT id,?,'CREDIT',?,CURRENT_TIMESTAMP FROM journal_entries WHERE"
+              + " transaction_id=?",
+          interestAccount,
+          interest,
+          id);
     BigDecimal net =
         db.queryForObject(
             "SELECT SUM(CASE WHEN entry_type='DEBIT' THEN amount ELSE -amount END) FROM"

@@ -1,3 +1,7 @@
+import "ojs/ojdialog";
+import { ojDialog } from "ojs/ojdialog";
+import Context = require("ojs/ojcontext");
+import "ojs/ojprogress-circle";
 import { t } from "../../services/locale";
 import { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -23,7 +27,7 @@ export function State({ loading, error, empty, retry, children }: {
     children?: ComponentChildren;
 }) {
     if (loading)
-        return <div class="bank-state" role="status"><span class="bank-loader"/><strong>{t("Loading your banking information")}</strong><span>{t("Please wait a moment.")}</span></div>;
+        return <div class="bank-state" role="status"><oj-progress-circle size="sm" value={-1} aria-label={t("Loading your banking information")}/><strong>{t("Loading your banking information")}</strong><span>{t("Please wait a moment.")}</span></div>;
     if (error)
         return <div class="bank-state bank-error" role="alert"><strong>{t("We couldn’t load this information")}</strong><p>{t(error)}</p>{retry && <button class="bank-button" onClick={retry}>{t("Try again")}</button>}</div>;
     if (empty)
@@ -51,11 +55,19 @@ export function Modal({ title, onClose, children, locked = false }: {
     children: ComponentChildren;
     locked?: boolean;
 }) {
-    const ref = useRef<HTMLDialogElement>(null);
-    useEffect(() => { const previous = document.activeElement as HTMLElement; ref.current?.showModal(); return () => { ref.current?.close(); previous?.focus(); }; }, []);
-    useEffect(() => { ref.current?.querySelector<HTMLElement>("h2")?.focus(); }, [title]);
-    return <dialog ref={ref} class="bank-dialog" aria-label={t(title)} onCancel={e => { e.preventDefault(); if (!locked)
-        onClose(); }}><header><h2 tabIndex={-1}>{t(title)}</h2><button class="bank-icon-button" aria-label={t("Close dialog")} disabled={locked} onClick={onClose}>{t("Close ×")}</button></header>{children}</dialog>;
+    const ref = useRef<ojDialog>(null);
+    const active = useRef(true);
+    useEffect(() => {
+        let mounted = true;
+        active.current = true;
+        const previous = document.activeElement as HTMLElement;
+        const dialog = ref.current;
+        if (dialog) void Context.getContext(dialog).getBusyContext().whenReady().then(() => { if (mounted) dialog.open(); });
+        return () => { mounted = false; active.current = false; dialog?.close(); previous?.focus(); };
+    }, []);
+    return <oj-dialog ref={ref} class="bank-app bank-dialog" dialogTitle={t(title)} modality="modal" cancelBehavior={locked ? "none" : "icon"} dragAffordance="none" resizeBehavior="none" onojBeforeClose={event => { if (locked && active.current) event.preventDefault(); }} onojClose={() => { if (active.current) onClose(); }}>
+      <div slot="body">{children}</div>
+    </oj-dialog>;
 }
 export function Detail({ label, children }: {
     label: string;

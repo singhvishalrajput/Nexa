@@ -6,14 +6,21 @@ export function initials(name: string): string { return name.trim().split(/\s+/)
 export const routes = ["send-money", "overview", "accounts", "transactions", "payments", "beneficiaries", "cards", "bills", "mandates", "scheduled-payments", "loans", "settings", "security", "assistant", "operations"] as const;
 export type Route = typeof routes[number];
 export function parseRoute(hash: string): {
-    page: Route | "login" | "register" | "not-found";
+    page: Route | "admin" | "login" | "register" | "not-found";
     id?: string;
     account?: string;
+    section?: string;
 } {
     const [pathname, query] = hash.replace(/^#\/?/, "").split("?");
     const parts = pathname.split("/");
     const page = parts[0] || "assistant";
-    if (![...routes, "login", "register"].includes(page))
+    if (pathname === "admin/loans") return {page:"admin",section:"loans"};
+    if (page === "admin" && parts.length > 1) {
+        if (parts[1] !== "accounts" || !/^[1-9]\d*$/.test(parts[2] || "") || parts.length > 4 ||
+            (parts[3] && !["overview", "transactions", "related", "audit"].includes(parts[3]))) return { page: "not-found" };
+        return { page: "admin", id: parts[2], section: parts[3] || "overview" };
+    }
+    if (![...routes, "admin", "login", "register"].includes(page))
         return { page: "not-found" };
     const detailPages = ["accounts", "transactions", "cards", "bills", "beneficiaries", "mandates", "loans", "scheduled-payments"];
     if (parts.length > 2 || (parts[1] && !detailPages.includes(page))) return { page: "not-found" };

@@ -29,6 +29,7 @@ export function MessageBubble({ role, text, timestamp, voice, children, status, 
 }) {
   const date = timestamp ? new Date(timestamp) : null;
   return <article class={`messenger-message from-${role}${animate ? " messenger-arrival" : ""}`} aria-label={role === "user" ? t("Your message") : t("Nexa’s message")}>
+    {role === "assistant" && <img class="messenger-message-avatar" src="styles/images/nexa.svg" width="28" height="28" alt=""/>}
     <div class="messenger-bubble">
       {voice && <span class="messenger-voice-label"><ChatIcon name="mic" />{t("Understood from speech")}</span>}
       {text && <p dir="auto" lang={/[\u0900-\u097f]/.test(text) ? "hi-IN" : "en-IN"}>{text}</p>}

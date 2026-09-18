@@ -27,9 +27,17 @@
     <link rel="stylesheet" href="styles/banking.css" type="text/css" />
     <link rel="stylesheet" href="styles/controls.css" type="text/css" />
     <link rel="stylesheet" href="styles/sidebar.css" type="text/css" />
+    <link rel="stylesheet" href="styles/auth-page.css" />
+    <link rel="stylesheet" href="styles/landing.css" />
+    <link rel="stylesheet" href="styles/experience.css" />
+    <link rel="stylesheet" href="styles/brand-transition.css" />
   </head>
   <body class="oj-web-applayout-body" data-oj-binding-provider="none">
-    <div id="nexa-boot" role="status"><h1>Opening Nexa…</h1><p>Please wait while we connect to your banking.</p><details><summary>Taking longer than expected?</summary><p>Check your internet connection, then <a href="">reload Nexa</a>.</p></details></div>
+    <div id="nexa-boot" class="nexa-transition" role="status" aria-live="polite" aria-atomic="true">
+      <span class="nexa-loading-label">Loading Nexa</span>
+      <div class="nexa-transition-lockup" aria-hidden="true"><div class="nexa-transition-halo"></div><svg class="nexa-transition-mark" viewBox="0 0 48 48"><g class="nexa-transition-turn"><g transform="rotate(0 24 24)"><g class="nexa-transition-facet" style="animation-delay:0ms"><path d="M21.5 17.5 17 7A20 20 0 0 1 29 4.6v11.8l-4.5 3.2Z"/></g></g><g transform="rotate(72 24 24)"><g class="nexa-transition-facet" style="animation-delay:22ms"><path d="M21.5 17.5 17 7A20 20 0 0 1 29 4.6v11.8l-4.5 3.2Z"/></g></g><g transform="rotate(144 24 24)"><g class="nexa-transition-facet" style="animation-delay:44ms"><path d="M21.5 17.5 17 7A20 20 0 0 1 29 4.6v11.8l-4.5 3.2Z"/></g></g><g transform="rotate(216 24 24)"><g class="nexa-transition-facet" style="animation-delay:66ms"><path d="M21.5 17.5 17 7A20 20 0 0 1 29 4.6v11.8l-4.5 3.2Z"/></g></g><g transform="rotate(288 24 24)"><g class="nexa-transition-facet" style="animation-delay:88ms"><path d="M21.5 17.5 17 7A20 20 0 0 1 29 4.6v11.8l-4.5 3.2Z"/></g></g></g></svg><span class="nexa-transition-wordmark">Nexa</span></div>
+      <div class="nexa-loading-help"><p>Connecting to your banking…</p><details><summary>Taking longer than expected?</summary><p>Check your internet connection, then <a href="">reload Nexa</a>.</p></details></div>
+    </div>
     <noscript><p>Enable JavaScript in your browser settings to use Nexa.</p></noscript>
     <app-root></app-root>
     <!-- This injects script tags for the main javascript files -->

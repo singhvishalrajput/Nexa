@@ -58,3 +58,13 @@ test('totals and display share rounding and do not hide invalid amounts',()=>{
 });
 
 test('server failures show recovery guidance instead of internal error details',async()=>{const {api}=load(authFile,async()=>new Response(JSON.stringify({detail:'database stack trace',error:'internal exception'}),{status:503}),session);await assert.rejects(api.authenticatedRequest('/accounts','old'),e=>e.status===503 && /try again later/.test(e.message) && !/stack trace|exception/.test(e.message));});
+
+test('admin account deep links preserve sections and reject malformed routes',()=>{
+ const {api}=load('src/features/banking/utils.ts');
+ for(const section of ['overview','transactions','related','audit']){
+  const r=api.parseRoute('#/admin/accounts/42/'+section);
+  assert.equal(r.page,'admin');assert.equal(r.id,'42');assert.equal(r.section,section);
+ }
+ assert.equal(api.parseRoute('#/admin/accounts/42').section,'overview');
+ for(const route of ['#/admin/accounts/0','#/admin/accounts/nope','#/admin/accounts/42/unknown','#/admin/accounts/42/audit/extra'])assert.equal(api.parseRoute(route).page,'not-found');
+});

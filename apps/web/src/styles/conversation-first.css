@@ -38,8 +38,6 @@
 .conversation-quick-action > strong { font-size:.9rem; font-weight:600; line-height:1.5; }
 .conversation-quick-action > span:not(.conversation-action-icon) { color:var(--nexa-text-muted); font-size:.8rem; line-height:1.5; }
 .conversation-quick-action > svg { position:absolute; right:16px; top:24px; width:17px; color:var(--nexa-text-muted); }
-.conversation-welcome .conversation-welcome-note { display:flex; align-items:center; gap:var(--space-sm); font-size:.75rem; }
-.conversation-welcome-note svg { width:16px; }
 .nexa-messenger .messenger-message { display:flex; margin:0 0 20px; }
 .messenger-message.from-user { justify-content:flex-end; }
 .nexa-messenger .messenger-bubble { min-width:60px; max-width:90%; padding:14px 18px; border-radius:4px 18px 18px; background:var(--nexa-surface); overflow-wrap:anywhere; }
@@ -75,7 +73,6 @@
 .messenger-composer-meta details { position:relative; margin-left:auto; }
 .messenger-composer-meta summary { display:flex; align-items:center; cursor:pointer; }
 .messenger-composer-meta details p { position:absolute; z-index:4; bottom:40px; right:0; width:min(300px,calc(100vw - 40px)); padding:var(--space-md); border-radius:var(--radius-md); border:1px solid var(--nexa-border); background:var(--nexa-surface); box-shadow:var(--nexa-shadow); font-size:var(--text-sm); }
-.messenger-voice-hint { margin:0; font-size:.75rem; color:var(--nexa-text-muted); }
 .messenger-voice-session { padding:var(--space-sm); }
 .messenger-voice-state { display:flex; gap:10px; align-items:center; }
 .messenger-voice-state time { margin-left:auto; font-variant-numeric:tabular-nums; }
@@ -195,7 +192,6 @@
   .nexa-messenger .messenger-quick-actions button { padding:6px var(--space-sm); font-size:.7rem; }
   .messenger-composer-meta { gap:0 6px; }
   .messenger-composer-meta > button { display:none; }
-  .messenger-voice-hint { font-size:.65rem; }
   .nexa-messenger .messenger-bubble { max-width:96%; padding:12px; }
   .nexa-messenger .messenger-banking-surface { padding:14px; }
   .bank-collection.is-comparison .bank-collection-items { grid-template-columns:1fr; }
@@ -205,7 +201,7 @@
 }
 @media (max-height:550px) {
   .nexa-messenger .messenger-header { padding-block:4px; }
-  .messenger-quick-actions,.messenger-voice-hint { display:none; }
+  .messenger-quick-actions { display:none; }
   .messenger-bottom { padding-top:4px; padding-bottom:4px; }
 }
 @media (prefers-reduced-motion:reduce) {

@@ -23,8 +23,8 @@ export const secondaryNavigation: NavigationItem[] = [
 
 export function SidebarBrand({ action }: { action?: ComponentChildren }) {
   return <header class="sidebar-brand-row">
-    <a class="sidebar-brand" href="#/assistant" aria-label={t("Nexa chat")}>
-      <span class="sidebar-brand-mark" aria-hidden="true">n</span><span>nexa<span class="sidebar-brand-period">.</span></span>
+    <a class="sidebar-brand" href="#home" aria-label={t("Nexa home")}>
+      <img src="styles/images/nexa.svg" width="28" height="28" alt=""/><span>Nexa</span>
     </a>{action}
   </header>;
 }

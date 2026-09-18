@@ -58,6 +58,8 @@ class SixTableBankingIntegrationTest {
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper json;
   @Autowired JdbcTemplate db;
+  @Autowired com.nexa.api.repository.UserRepository users;
+  @Autowired org.springframework.security.crypto.password.PasswordEncoder passwords;
   String auth, otherAuth, source, destination, email;
 
   JsonNode postJson(String path, Object data, String token, int status) throws Exception {
@@ -258,6 +260,7 @@ class SixTableBankingIntegrationTest {
             auth,
             200);
     String id = loan.get("PRODUCT_ID").asText(), account = loan.get("ID").asText();
+    LoanTestSupport.approvedFixture(db, id);
     assertThat(balance(account)).isZero();
     postJson("/api/v1/loans/" + id + "/disburse", Map.of(), otherAuth, 404);
     var disbursed = postJson("/api/v1/loans/" + id + "/disburse", Map.of(), auth, 200);
@@ -308,6 +311,7 @@ class SixTableBankingIntegrationTest {
             auth,
             200);
     String id = loan.get("PRODUCT_ID").asText();
+    LoanTestSupport.approvedFixture(db, id);
     String mandate = mandate("2020-01-01", null);
     postJson("/api/v1/mandates/" + mandate + "/activate", Map.of(), auth, 200);
     db.execute(
@@ -417,6 +421,7 @@ class SixTableBankingIntegrationTest {
               auth,
               200);
       String id = loan.get("PRODUCT_ID").asText();
+      LoanTestSupport.approvedFixture(db, id);
       postJson("/api/v1/loans/" + id + "/disburse", Map.of(), auth, 200);
       var barrier = new java.util.concurrent.CountDownLatch(1);
       java.util.concurrent.Callable<Integer> repay =
@@ -456,6 +461,186 @@ class SixTableBankingIntegrationTest {
         .isZero();
   }
 
+  String admin() throws Exception {
+    String email = "admin-" + UUID.randomUUID() + "@example.com";
+    new com.nexa.api.service.AdminBootstrap(users, passwords, email, "Administrator@Test12345")
+        .run(new org.springframework.boot.DefaultApplicationArguments());
+    var login =
+        postJson(
+            "/api/v1/auth/login",
+            Map.of("email", email, "password", "Administrator@Test12345"),
+            null,
+            200);
+    assertThat(login.get("user").get("role").asText()).isEqualTo("ADMIN");
+    return "Bearer " + login.get("accessToken").asText();
+  }
+
+  @Test
+  void savedPayeePaymentPostsOnceAndCancelledOrUnlinkedPaymentsNeverPost() throws Exception {
+    String number =
+        db.queryForObject(
+            "SELECT account_number FROM accounts WHERE id=?", String.class, destination);
+    String payee =
+        postJson(
+                "/api/v1/beneficiaries",
+                Map.of("displayName", "Real recipient", "accountNumber", number),
+                auth,
+                200)
+            .get("id")
+            .asText();
+    var draft =
+        Map.of(
+            "operation",
+            "START_TRANSFER",
+            "accountId",
+            source,
+            "targetId",
+            payee,
+            "amount",
+            "45.25");
+    var review = postJson("/api/v1/demo/actions/prepare", draft, auth, 200);
+    assertThat(review.get("simulated").asBoolean()).isFalse();
+    assertThat(balance(source)).isEqualByComparingTo("1000");
+    String confirm = "/api/v1/demo/actions/" + review.get("id").asText() + "/confirm";
+    postJson(confirm, Map.of(), otherAuth, 404);
+    var receipt = postJson(confirm, Map.of(), auth, 200);
+    assertThat(receipt.get("status").asText()).isEqualTo("COMPLETED");
+    assertThat(postJson(confirm, Map.of(), auth, 200)).isEqualTo(receipt);
+    assertThat(balance(source)).isEqualByComparingTo("954.75");
+    assertThat(balance(destination)).isEqualByComparingTo("45.25");
+    getJson("/api/v1/transactions/" + receipt.get("reference").asText(), otherAuth);
+    var cancelled = postJson("/api/v1/demo/actions/prepare", draft, auth, 200).get("id").asText();
+    postJson("/api/v1/demo/actions/" + cancelled + "/cancel", Map.of(), auth, 200);
+    postJson("/api/v1/demo/actions/" + cancelled + "/confirm", Map.of(), auth, 400);
+    db.update("UPDATE transactions SET destination_account_id=NULL WHERE id=?", payee);
+    postJson("/api/v1/demo/actions/prepare", draft, auth, 400);
+    assertThat(balance(destination)).isEqualByComparingTo("45.25");
+    balanced();
+  }
+
+  @Test
+  void administratorHasSeparateAccessEditsAreAuditedAndAdjustmentsPostExactlyOnce()
+      throws Exception {
+    String admin = admin();
+    mvc.perform(get("/api/v1/admin/accounts").header("Authorization", auth))
+        .andExpect(status().isForbidden());
+    mvc.perform(get("/api/v1/admin/accounts")).andExpect(status().isUnauthorized());
+    assertThat(getJson("/api/v1/admin/accounts", admin).size()).isGreaterThanOrEqualTo(2);
+    long version = db.queryForObject("SELECT version FROM accounts WHERE id=?", Long.class, source);
+    String edit =
+        json.writeValueAsString(
+            Map.of(
+                "name",
+                "Managed savings",
+                "status",
+                "BLOCKED",
+                "version",
+                version,
+                "reason",
+                "Customer requested freeze"));
+    mvc.perform(
+            put("/api/v1/admin/accounts/" + source)
+                .header("Authorization", admin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(edit))
+        .andExpect(status().isOk());
+    mvc.perform(
+            put("/api/v1/admin/accounts/" + source)
+                .header("Authorization", admin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(edit))
+        .andExpect(status().isConflict());
+    var audit = getJson("/api/v1/admin/accounts/" + source + "/audit", admin);
+    assertThat(audit.get(0).get("AUDIT_REASON").asText()).isEqualTo("Customer requested freeze");
+    String adjustment = "/api/v1/admin/accounts/" + source + "/adjustments";
+    var r =
+        Map.of(
+            "direction",
+            "CREDIT",
+            "amount",
+            "20.50",
+            "reason",
+            "Cash deposit",
+            "requestId",
+            UUID.randomUUID().toString());
+    postJson(adjustment, r, auth, 403);
+    postJson(adjustment, r, admin, 400);
+    version = db.queryForObject("SELECT version FROM accounts WHERE id=?", Long.class, source);
+    mvc.perform(
+            put("/api/v1/admin/accounts/" + source)
+                .header("Authorization", admin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    json.writeValueAsString(
+                        Map.of(
+                            "name",
+                            "Managed savings",
+                            "status",
+                            "ACTIVE",
+                            "version",
+                            version,
+                            "reason",
+                            "Customer requested unfreeze"))))
+        .andExpect(status().isOk());
+    var receipt = postJson(adjustment, r, admin, 200);
+    assertThat(postJson(adjustment, r, admin, 200)).isEqualTo(receipt);
+    assertThat(balance(source)).isEqualByComparingTo("1020.50");
+    var changed = new HashMap<String, String>(r);
+    changed.put("amount", "30");
+    postJson(adjustment, changed, admin, 409);
+    var withdrawal =
+        Map.of(
+            "direction",
+            "DEBIT",
+            "amount",
+            "10",
+            "reason",
+            "Cash withdrawal",
+            "requestId",
+            UUID.randomUUID().toString());
+    postJson(adjustment, withdrawal, admin, 200);
+    assertThat(balance(source)).isEqualByComparingTo("1010.50");
+    getJson("/api/v1/transactions/" + receipt.get("transactionId").asText(), auth);
+    assertThat(getJson("/api/v1/admin/accounts/" + source + "/audit", admin).size()).isEqualTo(4);
+    balanced();
+  }
+
+  @Test
+  void importedLoanWithUnknownPrincipalCanBeRepaidAndHistoryShowsThePosting() throws Exception {
+    var loan =
+        postJson(
+            "/api/v1/loans",
+            Map.of(
+                "accountId",
+                Long.valueOf(source),
+                "displayName",
+                "Imported loan regression",
+                "principal",
+                "100",
+                "interestRate",
+                "5"),
+            auth,
+            200);
+    String id = loan.get("PRODUCT_ID").asText();
+    LoanTestSupport.approvedFixture(db, id);
+    postJson("/api/v1/loans/" + id + "/disburse", Map.of(), auth, 200);
+    db.update(
+        "UPDATE accounts SET principal_amount=NULL,product_status='OVERDUE' WHERE product_id=?",
+        id);
+    var repayment = execution("40.25");
+    var result = postJson("/api/v1/loans/" + id + "/repay", repayment, auth, 200);
+    assertThat(postJson("/api/v1/loans/" + id + "/repay", repayment, auth, 200)).isEqualTo(result);
+    assertThat(balance(source)).isEqualByComparingTo("1059.75");
+    assertThat(getJson("/api/v1/loans/" + id, auth).get("outstanding").asText())
+        .isEqualTo(ORACLE ? "59.75" : "59.75");
+    var history = getJson("/api/v1/loans/" + id + "/payments", auth);
+    assertThat(history.get(0).get("reference").asText())
+        .isEqualTo(result.get("transactionId").asText());
+    assertThat(history.get(0).get("payee").asText()).isEqualTo("LOAN_REPAYMENT");
+    assertThat(history.get(0).get("dueAt").isNull()).isFalse();
+    balanced();
+  }
+
   @Test
   void existingOracleDemoCustomerStillAuthenticates() throws Exception {
     if (!ORACLE) return;
@@ -464,5 +649,104 @@ class SixTableBankingIntegrationTest {
         Map.of("email", "vishal@example.com", "password", "NexaDemo@123"),
         null,
         200);
+  }
+
+  @Test
+  void multipleLinkedPayeesHaveDistinctNonNullDestinationHashes() throws Exception {
+    String second = open(otherAuth);
+    for (String account : List.of(destination, second)) {
+      String number =
+          db.queryForObject(
+              "SELECT account_number FROM accounts WHERE id=?", String.class, account);
+      var payee =
+          postJson(
+              "/api/v1/beneficiaries",
+              Map.of("displayName", "Demo recipient " + account, "accountNumber", number),
+              auth,
+              200);
+      String hash =
+          db.queryForObject(
+              "SELECT destination_hash FROM transactions WHERE id=?",
+              String.class,
+              payee.get("id").asText());
+      assertThat(hash).matches("[a-f0-9]{64}");
+      postJson(
+          "/api/v1/beneficiaries",
+          Map.of("displayName", "Duplicate recipient", "accountNumber", number),
+          auth,
+          409);
+    }
+    assertThat(getJson("/api/v1/beneficiaries", auth).size()).isEqualTo(2);
+  }
+
+  @Test
+  void adminWorkspaceScopesRelatedAccountsMandatesAndPostedActivity() throws Exception {
+    String admin = admin();
+    String sibling = open(auth);
+    var mandate =
+        postJson(
+            "/api/v1/mandates",
+            Map.of(
+                "sourceAccountId",
+                source,
+                "beneficiaryAccountId",
+                destination,
+                "payee",
+                "Workspace mandate",
+                "limit",
+                "50",
+                "startDate",
+                "2026-01-01"),
+            auth,
+            200);
+    var workspace = getJson("/api/v1/admin/accounts/" + source, admin);
+    assertThat(workspace.get("account").get("id").asText()).isEqualTo(source);
+    assertThat(workspace.get("account").get("customerEmail").asText()).isEqualTo(email);
+    assertThat(workspace.get("relatedAccounts").size()).isEqualTo(1);
+    assertThat(workspace.get("relatedAccounts").get(0).get("id").asText()).isEqualTo(sibling);
+    assertThat(workspace.get("mandates").get(0).get("ID").asText())
+        .isEqualTo(mandate.get("ID").asText());
+    assertThat(getJson("/api/v1/admin/accounts/" + destination, admin).get("mandates").size())
+        .isEqualTo(1);
+    var activity = getJson("/api/v1/admin/accounts/" + source + "/transactions?size=1", admin);
+    assertThat(activity.get("total").asLong()).isEqualTo(1);
+    assertThat(activity.get("items").get(0).get("TRANSACTION_TYPE").asText()).isEqualTo("DEPOSIT");
+    assertThat(
+            getJson("/api/v1/admin/accounts/" + sibling + "/transactions", admin)
+                .get("total")
+                .asLong())
+        .isZero();
+    assertThat(
+            getJson("/api/v1/admin/accounts/" + source + "/transactions?size=1&page=1", admin)
+                .get("items")
+                .size())
+        .isZero();
+    long cash =
+        db.queryForObject(
+            "SELECT id FROM accounts WHERE account_type='CASH' AND account_category='SYSTEM'",
+            Long.class);
+    long cashPostings =
+        db.queryForObject(
+            "SELECT COUNT(DISTINCT j.transaction_id) FROM journal_entries j "
+                + "JOIN ledger_entries l ON l.journal_entry_id=j.id WHERE l.account_id=?",
+            Long.class,
+            cash);
+    assertThat(
+            getJson("/api/v1/admin/accounts/" + cash + "/transactions", admin)
+                .get("total")
+                .asLong())
+        .isEqualTo(cashPostings);
+    for (String suffix : List.of("", "/transactions", "/audit")) {
+      mvc.perform(get("/api/v1/admin/accounts/" + source + suffix).header("Authorization", auth))
+          .andExpect(status().isForbidden());
+      mvc.perform(
+              get("/api/v1/admin/accounts/9223372036854775807" + suffix)
+                  .header("Authorization", admin))
+          .andExpect(status().isNotFound());
+    }
+    mvc.perform(
+            get("/api/v1/admin/accounts/" + source + "/transactions?size=101")
+                .header("Authorization", admin))
+        .andExpect(status().isBadRequest());
   }
 }

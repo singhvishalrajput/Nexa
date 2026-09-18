@@ -1,6 +1,5 @@
 package com.nexa.api.beans;
 
-
 import java.util.Locale;
 
 /** Shared normalization for routing and slot matching; never used to authorize a posting. */
@@ -97,6 +96,8 @@ public final class BankingLanguage {
       return null;
     if (text.matches(".*\\b(cancel|stop)\\b.*\\b(mandate|autopay|direct debit)\\b.*"))
       return "CANCEL_MANDATE";
+    if (text.matches(".*\\b(repay|pay|repayment)\\b.*\\bloan\\b.*")
+        || text.matches(".*\\bloan\\b.*\\b(repay|repayment|pay)\\b.*")) return "REPAY_LOAN";
     if (text.matches(".*\\bcard\\b.*")) {
       if (text.matches(".*\\bunfreeze\\b.*")) return "UNFREEZE_CARD";
       if (text.matches(".*\\b(freeze|block)\\b.*")) return "FREEZE_CARD";
@@ -119,7 +120,9 @@ public final class BankingLanguage {
     if (operation != null
         && !operation.endsWith("FREEZE_CARD")
         && !operation.equals("REPLACE_CARD"))
-      return operation.equals("OWN_TRANSFER") ? Intent.START_TRANSFER : Intent.valueOf(operation);
+      return operation.equals("REPAY_LOAN")
+          ? Intent.GET_LOANS
+          : operation.equals("OWN_TRANSFER") ? Intent.START_TRANSFER : Intent.valueOf(operation);
     if (text.matches(".*\\b(balance)\\b.*") && !text.contains("transfer"))
       return Intent.GET_BALANCE;
     if (text.matches(".*\\b(transactions|history)\\b.*")

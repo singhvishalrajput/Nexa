@@ -60,7 +60,7 @@ public class MoneyTransferService {
     this.entities = entities;
   }
 
-  @Transactional
+  @Transactional(noRollbackFor = {InvalidRequestException.class, ResourceNotFoundException.class})
   public Receipt prepare(MoneyTransferController.Request request) {
     if ((request.destinationAccountId() == null) == (request.destinationAccountNumber() == null))
       throw new InvalidRequestException(
@@ -107,7 +107,7 @@ public class MoneyTransferService {
     Stored stored = find(id, true); // Serializes double taps, HTTP retries and concurrent devices.
     Receipt receipt = stored.receipt();
     if (receipt.status().equals("COMPLETED")) return receipt;
-    if (receipt.status().equals("EXPIRED"))
+    if (!receipt.status().equals("READY"))
       throw new InvalidRequestException(
           "This review has expired. Check the details again before sending.");
     long sourceId = Long.parseLong(receipt.sourceAccountId());
@@ -145,6 +145,14 @@ public class MoneyTransferService {
   }
 
   private void validate(Account source, Account destination, BigDecimal amount) {
+    if (!java.util.Set.of(
+                com.nexa.api.beans.AccountType.SAVINGS, com.nexa.api.beans.AccountType.CURRENT)
+            .contains(source.getAccountType())
+        || !java.util.Set.of(
+                com.nexa.api.beans.AccountType.SAVINGS, com.nexa.api.beans.AccountType.CURRENT)
+            .contains(destination.getAccountType()))
+      throw new InvalidRequestException(
+          "Select deposit accounts. Use the loan repayment controls for loans.");
     if (source.getAccountCategory() != AccountCategory.CUSTOMER
         || destination.getAccountCategory() != AccountCategory.CUSTOMER
         || source.getCustomer() == null

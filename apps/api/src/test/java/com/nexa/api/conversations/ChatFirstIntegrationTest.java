@@ -83,6 +83,7 @@ public class ChatFirstIntegrationTest {
         name,
         name,
         "0".repeat(64));
+    db.update("UPDATE transactions SET destination_account_id=? WHERE id=?", destination, id);
     return id;
   }
 
@@ -183,8 +184,8 @@ public class ChatFirstIntegrationTest {
         .isZero();
     var result = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
     assertThat(result.get("assistantText").asText())
-        .contains("100", "Electricity", "accepted")
-        .doesNotContain("recorded", "Open Payments", "COLLECTING");
+        .contains("100", "Electricity", "no money moved")
+        .doesNotContain("Open Payments", "COLLECTING");
     assertThat(say("do it").get("workflow").get("reference"))
         .isEqualTo(result.get("workflow").get("reference"));
   }
@@ -260,9 +261,7 @@ public class ChatFirstIntegrationTest {
       assertThat(review.get("status").asText()).as(request).isEqualTo("REVIEW");
       assertThat(say("haan kar do").get("workflow").get("id")).isEqualTo(review.get("id"));
       var result = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
-      assertThat(result.get("assistantText").asText())
-          .contains("accepted")
-          .doesNotContain("saved", "recorded", "Open");
+      assertThat(result.get("assistantText").asText()).contains("accepted").doesNotContain("Open");
     }
   }
 
@@ -696,7 +695,7 @@ public class ChatFirstIntegrationTest {
   }
 
   @Test
-  void ambiguousBeneficiariesRequireSelectionAndConfirmSimulation() throws Exception {
+  void ambiguousBeneficiariesRequireSelectionAndPostRealPayment() throws Exception {
     String owner =
         db.queryForObject(
             "SELECT c.user_id FROM customers c JOIN accounts a ON a.customer_id=c.id WHERE a.id=?",
@@ -714,6 +713,9 @@ public class ChatFirstIntegrationTest {
           "Rahul " + suffix,
           "0".repeat(64));
     }
+    db.update(
+        "UPDATE transactions SET destination_account_id=? WHERE id IN ('ben_Sharma','ben_Verma')",
+        destination);
     var start = say("Transfer 5000 to Rahul");
     String id = start.get("workflow").get("id").asText();
     assertThat(start.get("workflow").get("choices").size()).isEqualTo(2);
@@ -722,11 +724,15 @@ public class ChatFirstIntegrationTest {
     var review = command(id, "SELECT", source, UUID.randomUUID().toString());
     assertThat(review.get("workflow").get("status").asText()).isEqualTo("REVIEW");
     var completed = command(id, "CONFIRM", "", UUID.randomUUID().toString());
-    assertThat(completed.get("workflow").get("reference").asText()).startsWith("DEMO-");
+    assertThat(completed.get("workflow").get("reference").asText()).startsWith("TX-");
     var replay = command(id, "CONFIRM", "", UUID.randomUUID().toString());
     assertThat(replay.get("workflow")).isEqualTo(completed.get("workflow"));
     assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source))
-        .isEqualTo(10000);
+        .isEqualTo(5000);
+    assertThat(
+            db.queryForObject(
+                "SELECT balance FROM accounts WHERE id=?", Integer.class, destination))
+        .isEqualTo(5000);
   }
 
   @Test
@@ -762,5 +768,76 @@ public class ChatFirstIntegrationTest {
             .getTokenValue();
     mvc.perform(get("/api/v1/conversations").header("Authorization", "Bearer " + expired))
         .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void chatLoanRepaymentRequiresConfirmationAndPostsExactlyOnce() throws Exception {
+    var loan =
+        postJson(
+            "/api/v1/loans",
+            Map.of(
+                "accountId",
+                Long.valueOf(source),
+                "displayName",
+                "Travel loan",
+                "principal",
+                "200",
+                "interestRate",
+                "5"),
+            200);
+    String loanId = loan.get("PRODUCT_ID").asText();
+    com.nexa.api.banking.LoanTestSupport.approvedFixture(db,loanId);
+    postJson("/api/v1/loans/" + loanId + "/disburse", Map.of(), 200);
+    var review = say("repay 40 to Travel loan").get("workflow");
+    assertThat(review.get("operation").asText()).isEqualTo("REPAY_LOAN");
+    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
+    assertThat(
+            db.queryForObject(
+                "SELECT balance FROM accounts WHERE product_id=?", Integer.class, loanId))
+        .isEqualTo(200);
+    assertThat(say("yes").get("workflow").get("status").asText()).isEqualTo("REVIEW");
+    String action = review.get("id").asText();
+    var result = command(action, "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(result.get("workflow").get("reference").asText()).startsWith("TX-");
+    assertThat(
+            db.queryForObject(
+                "SELECT balance FROM accounts WHERE product_id=?", Integer.class, loanId))
+        .isEqualTo(160);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source))
+        .isEqualTo(10160);
+    assertThat(command(action, "CONFIRM", "", UUID.randomUUID().toString()).get("workflow"))
+        .isEqualTo(result.get("workflow"));
+  }
+
+  @Test
+  void unlinkedPayeeReturnsAnExplanationInsteadOfPretendingToTransfer() throws Exception {
+    String id = payee("Unlinked recipient");
+    db.update("UPDATE transactions SET destination_account_id=NULL WHERE id=?", id);
+    var result = say("transfer 40 to Unlinked recipient from Everyday");
+    assertThat(result.get("workflow").get("status").asText()).isNotEqualTo("COMPLETED");
+    assertThat(result.get("workflow").get("message").asText()).contains("verified Nexa account");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source))
+        .isEqualTo(10000);
+  }
+
+  @Test
+  void chatScheduledLoanUsesTheFullEmiIncludingFinalInterest() throws Exception {
+    if (db.queryForObject("SELECT COUNT(*) FROM accounts WHERE account_number='NEXA-LOAN-INTEREST'", Integer.class) == 0)
+      db.update("INSERT INTO accounts(account_number,account_name,account_type,account_category,currency_code,balance,status,version,created_at,updated_at)"
+          + " VALUES('NEXA-LOAN-INTEREST','Loan interest income','CLEARING','SYSTEM','INR',0,'ACTIVE',0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
+    var loan = postJson("/api/v1/loans", Map.of("accountId", Long.valueOf(source),
+        "applicationKey", "chat-" + UUID.randomUUID(), "purpose", "Study loan", "amount", "12000", "tenureMonths", 1), 201);
+    String loanId = loan.get("id").asText();
+    com.nexa.api.banking.LoanTestSupport.approvedFixture(db,loanId);
+    postJson("/api/v1/loans/" + loanId + "/accept", Map.of(), 200);
+    var review = say("repay Study loan").get("workflow");
+    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
+    assertThat(new java.math.BigDecimal(review.get("amount").asText())).isEqualByComparingTo("12145");
+    String action = review.get("id").asText();
+    var result = command(action, "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(result.get("workflow").get("status").asText()).isEqualTo("COMPLETED");
+    assertThat(db.queryForObject("SELECT product_status FROM accounts WHERE product_id=?", String.class, loanId)).isEqualTo("CLOSED");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", java.math.BigDecimal.class, source)).isEqualByComparingTo("9855");
+    assertThat(command(action, "CONFIRM", "", UUID.randomUUID().toString()).get("workflow")).isEqualTo(result.get("workflow"));
   }
 }

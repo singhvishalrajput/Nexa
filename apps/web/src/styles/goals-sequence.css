@@ -1,0 +1,660 @@
+/* Compact, choreographed card handoff. Transform-only motion preserves layout. */
+.goals-story {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 5%;
+  height: 360px;
+  padding: 36px 4%;
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+  background: var(--nexa-reference-272727);
+  color: var(--nexa-background);
+  font-size: var(--text-min);
+}
+.dream-copy {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+}
+.dream-copy h3 {
+  font-size: clamp(32px, 3vw, 48px);
+  line-height: 1.2;
+  letter-spacing: -0.05em;
+  margin: 0;
+}
+.dream-copy h3 em {
+  color: var(--nexa-reference-ff967e);
+  font-style: normal;
+}
+.dream-question-stage {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: center;
+  column-gap: 12px;
+  margin-top: 28px;
+  min-height: 66px;
+}
+.dream-voice {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  grid-area: 1 / 1;
+  color: var(--nexa-coral);
+}
+.dream-voice i {
+  display: block;
+  width: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  animation: dream-voice 1s calc(var(--i) * -140ms) ease-in-out infinite
+    alternate;
+}
+.dream-question {
+  grid-area: 1 / 2;
+  margin: 0;
+  font-size: clamp(16px, 1.3vw, 20px);
+  line-height: 1.6;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+  pointer-events: none;
+  transition:
+    opacity 300ms ease,
+    transform 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.dream-question.is-active {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.dream-controls {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin-top: 8px;
+}
+.dream-scenes {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.dream-scenes button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  padding: 0;
+}
+.dream-scenes button > span {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 10px;
+  background: var(--nexa-reference-ffffff40);
+  overflow: hidden;
+  transition:
+    width 550ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 350ms;
+}
+.dream-scenes button.is-active > span {
+  width: 32px;
+  background: var(--nexa-reference-ff624833);
+}
+.dream-scenes i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--nexa-reference-ff967e);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.dream-scenes .is-active i {
+  animation: dream-timer 4200ms linear both;
+}
+
+.dream-visual {
+  position: relative;
+  min-width: 0;
+  padding: 0 24px 0 4px;
+}
+.dream-signal {
+  position: absolute;
+  width: calc(100% + 120px);
+  height: 300px;
+  top: -28px;
+  left: -100px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+.dream-signal > path {
+  stroke-dasharray: 0.12 0.88;
+  animation: dream-signal 1200ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+.dream-deck {
+  position: relative;
+  height: 234px;
+  isolation: isolate;
+}
+.dream-answer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 25px 28px;
+  border-radius: 18px;
+  border: 1px solid var(--nexa-reference-ffffff26);
+  background: linear-gradient(125deg, var(--nexa-reference-363636), var(--nexa-reference-292929));
+  color: var(--nexa-background);
+  opacity: 0;
+  transform: translate3d(30px, 18px, 0) rotate(10deg) scale(0.9);
+  transform-origin: 80% 80%;
+  box-shadow: 0 18px 32px var(--nexa-reference-00000024);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  pointer-events: none;
+  transition:
+    transform 540ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 380ms ease;
+}
+
+.dream-answer.is-active {
+  opacity: 1;
+  z-index: 4;
+  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+}
+
+.dream-answer.is-outgoing {
+  opacity: 0;
+  z-index: 5;
+  transform: translate3d(-44px, -8px, 0) rotate(-4deg) scale(0.98);
+}
+.dream-answer.is-next {
+  opacity: 0.75;
+  z-index: 2;
+  transform: translate3d(16px, 10px, 0) rotate(5deg) scale(0.95);
+}
+.dream-answer.is-next-two {
+  opacity: 0.5;
+  z-index: 1;
+  transform: translate3d(30px, 18px, 0) rotate(10deg) scale(0.9);
+}
+.dream-answer > * {
+  opacity: 1;
+  transition: opacity 280ms ease;
+}
+.dream-answer.is-next > *,
+.dream-answer.is-next-two > * {
+  opacity: 0;
+}
+.dream-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.dream-card-top h4 {
+  color: inherit;
+  margin: 0;
+  font-size: clamp(16px, 1.45vw, 21px);
+  font-weight: 450;
+  letter-spacing: -0.03em;
+  line-height: 1.4;
+}
+.dream-card-top img {
+  flex: 0 0 24px;
+}
+.dream-amount {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 9px;
+  margin-top: 20px;
+}
+.dream-amount strong {
+  overflow: hidden;
+  font:
+    450 clamp(30px, 3vw, 46px)/1.2 "Manrope",
+    sans-serif;
+  letter-spacing: -0.055em;
+}
+.dream-amount strong > span {
+  display: block;
+}
+.dream-amount > span {
+  font-size: 14px;
+  color: var(--nexa-reference-aaa);
+}
+.dream-segments {
+  display: flex;
+  gap: 3px;
+  height: 19px;
+  margin-top: 19px;
+}
+.dream-segments i {
+  flex: 1;
+  border-radius: 2px;
+  background: var(--nexa-reference-ffffff15);
+  transform-origin: bottom;
+}
+.dream-segments .filled {
+  background: var(--nexa-reference-ff775d);
+}
+.dream-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  font-size: 14px;
+  color: var(--nexa-reference-bbb);
+}
+.dream-foot > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dream-foot svg {
+  width: 16px;
+  height: 16px;
+}
+.dream-plan {
+  background: var(--nexa-reference-ffebe5);
+  color: var(--nexa-reference-282828);
+  border-color: var(--nexa-reference-fff0ec);
+}
+.dream-plan .dream-amount {
+  flex-direction: column;
+  margin-top: 0;
+}
+.dream-plan .dream-amount > span,
+.dream-plan .dream-foot {
+  color: var(--nexa-reference-796861);
+}
+.dream-plan-body {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex: 1;
+  margin-top: 16px;
+}
+.dream-steps {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  flex: 1;
+  height: 100px;
+}
+.dream-steps i {
+  flex: 1;
+  background: var(--nexa-coral);
+  border-radius: 3px 3px 0 0;
+  transform-origin: bottom;
+  opacity: calc(0.3 + var(--i) * 0.14);
+}
+.dream-move {
+  background: var(--nexa-coral);
+  border-color: var(--nexa-reference-ff957f);
+  color: var(--nexa-surface);
+}
+.dream-move .dream-card-top img {
+  filter: brightness(0) invert(1);
+}
+.dream-move-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dream-move .dream-amount {
+  flex-direction: column;
+  gap: 5px;
+}
+.dream-move .dream-amount > span {
+  color: var(--nexa-reference-fff3ee);
+}
+.dream-check {
+  width: 49px;
+  height: 49px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--nexa-reference-ffffff65);
+  position: relative;
+}
+.dream-check::before,
+.dream-check::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  border: 1px solid var(--nexa-reference-ffffff50);
+  opacity: 0;
+}
+.dream-approval {
+  margin-top: auto;
+  padding-top: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--nexa-surface);
+}
+.dream-approval svg {
+  margin-left: auto;
+}
+.dream-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--nexa-surface);
+}
+.dream-overview {
+  background: var(--nexa-background);
+  border-color: var(--nexa-surface);
+  color: var(--nexa-text);
+}
+.dream-goal-list {
+  margin-top: 20px;
+}
+.dream-goal-row {
+  margin-top: 12px;
+}
+.dream-goal-row:first-child {
+  margin-top: 0;
+}
+.dream-goal-row > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+.dream-goal-row strong {
+  font-weight: 500;
+}
+.dream-goal-track {
+  height: 3px;
+  border-radius: 4px;
+  margin-top: 7px;
+  background: var(--nexa-reference-e7e7e7);
+  overflow: hidden;
+}
+.dream-goal-track i {
+  display: block;
+  height: 100%;
+  background: var(--nexa-coral);
+  transform-origin: left;
+}
+.dream-answer.is-active .dream-amount strong > span {
+  animation: dream-number-enter 600ms 80ms cubic-bezier(0.22, 0.61, 0.36, 1)
+    both;
+}
+
+.dream-answer.is-active .dream-steps i {
+  animation: dream-step-enter 1100ms calc(200ms + var(--i) * 90ms)
+    cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.dream-answer.is-active .dream-check {
+  animation: dream-check-enter 900ms 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.dream-answer.is-active .dream-check::before {
+  animation: dream-ripple 1400ms 700ms ease-out 2 both;
+}
+.dream-answer.is-active .dream-check::after {
+  animation: dream-ripple 1400ms 1000ms ease-out 2 both;
+}
+.dream-answer.is-active .dream-goal-row {
+  animation: dream-row-enter 900ms calc(180ms + var(--i) * 140ms)
+    cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.dream-answer.is-active .dream-goal-track i {
+  animation: dream-timer 1200ms calc(300ms + var(--i) * 140ms)
+    cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.goals-story[data-stopped="true"] .dream-voice i,
+.goals-story[data-stopped="true"] .dream-answer *,
+.goals-story[data-stopped="true"] .dream-answer *::before,
+.goals-story[data-stopped="true"] .dream-answer *::after {
+  animation-play-state: paused;
+}
+.goals-story[data-stopped="true"] .dream-scenes .is-active i {
+  animation: none;
+  transform: scaleX(1);
+}
+
+@keyframes dream-signal {
+  from {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    stroke-dashoffset: -1;
+    opacity: 0;
+  }
+}
+
+@keyframes dream-voice {
+  to {
+    transform: scaleY(0.35);
+  }
+}
+@keyframes dream-timer {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes dream-number-enter {
+  from {
+    transform: translateY(110%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes dream-segment-enter {
+  from {
+    transform: translate3d(0, 4px, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+@keyframes dream-step-enter {
+  from {
+    transform: translateX(20px) scaleY(0.03);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes dream-check-enter {
+  from {
+    transform: scale(0.2) rotate(-90deg);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes dream-ripple {
+  from {
+    transform: scale(0.7);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@keyframes dream-row-enter {
+  from {
+    transform: translateX(30px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@media (min-width: 1500px) {
+  .goals-story {
+    height: 380px;
+  }
+  .dream-deck {
+    height: 248px;
+  }
+}
+@media (max-width: 1050px) {
+  .goals-story {
+    gap: 24px;
+    padding: 30px;
+  }
+  .dream-visual {
+    padding-right: 14px;
+  }
+  .dream-answer {
+    padding: 22px;
+  }
+  .dream-foot {
+    font-size: 14px;
+  }
+  .dream-foot > span:last-child {
+    text-align: right;
+  }
+  .dream-amount strong {
+    font-size: 32px;
+  }
+  .dream-steps {
+    gap: 3px;
+    height: 82px;
+  }
+}
+@media (max-width: 760px) {
+  .goals-story {
+    grid-template-columns: 1fr;
+    height: 560px;
+    padding: 28px 24px 38px;
+    gap: 12px;
+  }
+  .dream-copy h3 {
+    font-size: 34px;
+  }
+  .dream-question-stage {
+    margin-top: 18px;
+    min-height: 60px;
+  }
+  .dream-question {
+    font-size: 16px;
+  }
+  .dream-controls {
+    margin-top: 4px;
+  }
+  .dream-visual {
+    width: 100%;
+    max-width: 480px;
+    justify-self: center;
+    padding: 0 14px 0 0;
+  }
+  .dream-deck {
+    height: 218px;
+  }
+  .dream-answer {
+    padding: 20px;
+    border-radius: 15px;
+  }
+  .dream-card-top h4 {
+    font-size: 16px;
+  }
+  .dream-card-top img {
+    width: 20px;
+    height: 20px;
+    flex-basis: 20px;
+  }
+  .dream-amount strong {
+    font-size: 30px;
+  }
+  .dream-amount {
+    margin-top: 16px;
+  }
+  .dream-segments {
+    gap: 2px;
+    height: 16px;
+    margin-top: 16px;
+  }
+  .dream-foot > span:last-child {
+    max-width: 120px;
+  }
+  .dream-plan-body {
+    gap: 8px;
+  }
+  .dream-steps {
+    height: 75px;
+    gap: 3px;
+  }
+  .dream-plan .dream-amount strong {
+    font-size: 28px;
+  }
+  .dream-move .dream-amount > span {
+    font-size: 14px;
+  }
+  .dream-check {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+  }
+  .dream-goal-list {
+    margin-top: 16px;
+  }
+}
+@media (max-width: 360px) {
+  .goals-story {
+    padding: 26px 18px 32px;
+  }
+  .dream-copy h3 {
+    font-size: 30px;
+  }
+  .dream-answer {
+    padding: 17px;
+  }
+  .dream-card-top {
+    gap: 8px;
+  }
+  .dream-move-body {
+    gap: 6px;
+  }
+  .dream-amount strong {
+    font-size: 28px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goals-story *,
+  .goals-story *::before,
+  .goals-story *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Reveal the meter as one layer instead of animating forty separate bars. */
+.dream-answer.is-active .dream-segments {
+  animation: dream-segment-enter 650ms 80ms cubic-bezier(0.22, 0.61, 0.36, 1)
+    both;
+}
+.site-shell[data-motion="paused"] .dream-answer,
+.site-shell[data-motion="paused"] .dream-question {
+  transition: none;
+}

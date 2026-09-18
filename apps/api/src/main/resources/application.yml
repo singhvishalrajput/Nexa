@@ -45,6 +45,10 @@ logging:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%X{correlationId:-}] %logger{36} - %msg%n"
 
 nexa:
+  admin:
+    bootstrap:
+      email: ${NEXA_ADMIN_EMAIL:}
+      password: ${NEXA_ADMIN_PASSWORD:}
   security:
     jwt:
       issuer: ${NEXA_JWT_ISSUER:nexa-api}

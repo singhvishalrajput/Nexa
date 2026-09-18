@@ -43,7 +43,18 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.endsWith('/me')) { if (req.method === 'PATCH' || req.method === 'PUT') Object.assign(profile,input); return reply(profile); }
     if (url.pathname === '/api/v1/accounts') return reply([{...account, ledgerBalance: account.availableBalance}, {...account,id:'account-2',displayName:'Reserve',accountNumberMasked:'•••• 5678',availableBalance:'5000.00',ledgerBalance:'5000.00'}]);
     if (url.pathname === '/api/v1/accounts/account-1') return reply({...account, ledgerBalance: account.availableBalance});
-    if (url.pathname === '/api/v1/transactions') return reply({content: transactionFixtures.slice(0,15), page: 0, size: 15, totalElements:24, totalPages:2});
+    if (url.pathname === '/api/v1/transactions') {
+      const query = url.searchParams;
+      const rows = transactionFixtures.filter(item =>
+        (!query.get('accountId') || item.accountId === query.get('accountId')) &&
+        (!query.get('search') || (item.merchantName + ' ' + item.reference).toLowerCase().includes(query.get('search').toLowerCase())) &&
+        (!query.get('category') || item.category.toLowerCase() === query.get('category').toLowerCase()) &&
+        (!query.get('direction') || (query.get('direction') === 'CREDIT' ? Number(item.amount) > 0 : Number(item.amount) < 0)) &&
+        (!query.get('from') || item.occurredAt.slice(0, 10) >= query.get('from')) &&
+        (!query.get('to') || item.occurredAt.slice(0, 10) <= query.get('to')));
+      const page = Math.max(0, Number(query.get('page') || 0)), size = Math.max(1, Number(query.get('size') || 15));
+      return reply({content: rows.slice(page * size, (page + 1) * size), page, size, totalElements: rows.length, totalPages: Math.ceil(rows.length / size)});
+    }
     if (/^\/api\/v1\/transactions\/transaction-/.test(url.pathname)) return reply(transactionFixtures.find(t=>url.pathname.endsWith('/'+t.id)) || {},200);
     if (url.pathname === '/api/v1/beneficiaries') return reply([{id:'payee-1',displayName:'Test payee',name:'Test payee',accountNumberMasked:'•••• 5678',status:'ACTIVE'}]);
     if (url.pathname === '/api/v1/demo/actions/prepare') {

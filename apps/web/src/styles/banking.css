@@ -381,7 +381,7 @@
 }
 .bank-app.bank-app :is(p, dt, dd) { font-size: 1rem; line-height: 1.6; }
 .bank-app.bank-app :is(p, dt) { color: var(--nexa-text-muted); }
-.bank-app.bank-app .bank-balance-hero p { color: var(--nexa-soft); }
+.bank-app.bank-app .bank-balance-hero p { color: var(--nexa-text-muted); }
 .bank-app .bank-account-tile > span,
 .bank-app .bank-transaction-name span { font-size: .875rem; color: var(--nexa-text-muted); }
 
@@ -413,7 +413,7 @@
 .bank-app .nexa-settings-error { color: var(--nexa-error); background: var(--nexa-error-bg); }
 
 .bank-app .bank-page-heading p:last-child { font-size: 1rem; }
-.bank-app :is(.bank-balance-hero, .bank-payment-card) :focus-visible { outline-color: var(--nexa-focus-inverse) !important; }
+.bank-app .bank-payment-card :focus-visible { outline-color: var(--nexa-focus-inverse) !important; }
 
 .bank-app .bank-dialog { max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; }
 .bank-app .bank-transaction { display: grid; }
@@ -480,9 +480,9 @@
 .bank-app .bank-icon-button { width: auto; padding: 8px 12px; border-radius: var(--radius-md); }
 .bank-app .bank-dialog > header { align-items: start; gap: 12px; }
 .bank-app .bank-dialog > header button { flex-shrink: 0; }
-.bank-app :is(.bank-balance-hero, .bank-payment-card) { background: var(--nexa-inverse-surface); color: var(--nexa-on-action); }
-.bank-app.bank-app :is(.bank-balance-hero, .bank-payment-card) :is(h2, strong, p, footer, .bank-eyebrow) { color: var(--nexa-on-action); }
-.bank-app.bank-app :is(.bank-balance-hero, .bank-payment-card) :is(p, .bank-product-amount > span) { color: var(--nexa-on-action-soft); }
+.bank-app .bank-payment-card { background: var(--nexa-inverse-surface); color: var(--nexa-on-action); }
+.bank-app.bank-app .bank-payment-card :is(h2, strong, p, footer, .bank-eyebrow) { color: var(--nexa-on-action); }
+.bank-app.bank-app .bank-payment-card :is(p, .bank-product-amount > span) { color: var(--nexa-on-action-soft); }
 
 .bank-app .nexa-auth-page :is(label,button,p) { text-transform: none; letter-spacing: normal; }
 
@@ -602,3 +602,8 @@ html, .bank-app, .bank-app.bank-app * { scrollbar-color: auto; scrollbar-width: 
 .nexa-language-select select { min-height:44px; border:1px solid var(--nexa-border); border-radius:var(--radius-sm); padding:8px; background:var(--nexa-surface); }
 .nexa-auth-header .nexa-language-select { margin-left:auto; order:2; }
 @media (max-width:599px) { .bank-app .bank-topbar { flex-wrap:wrap; gap:8px; } .bank-app .bank-topbar > div { flex-wrap:wrap; } }
+
+.admin-app .bank-main{max-width:1440px;margin:auto;width:100%}.admin-table-scroll{overflow-x:auto}.admin-table{width:100%;border-collapse:collapse;text-align:left}.admin-table th,.admin-table td{padding:16px;border-bottom:1px solid var(--nexa-border)}.admin-table small{display:block;margin-top:5px;color:var(--nexa-text-secondary)}.admin-app fieldset{display:grid;gap:16px}.admin-app .bank-topbar{position:static}
+.admin-filters{display:flex;align-items:end;gap:16px;flex-wrap:wrap}.admin-filters label{display:grid;gap:8px;font-weight:600}.admin-filters .bank-search-label{flex:1;min-width:240px}.admin-filters input,.admin-filters select{min-height:44px;border:1px solid var(--nexa-border);border-radius:var(--radius-sm);background:var(--nexa-surface);color:var(--nexa-text);padding:10px 12px;font:inherit}.admin-result-count{color:var(--nexa-text-secondary);margin:20px 0 8px}.admin-account-link{display:flex;align-items:center;justify-content:space-between;gap:16px;font-weight:600;min-height:44px}.admin-account-link span{opacity:0.65}.admin-table tbody tr:hover{background:var(--nexa-hover)}.admin-pagination,.admin-actions{display:flex;gap:12px;align-items:center}.admin-pagination{justify-content:flex-end;margin-top:20px}.admin-pagination>span{margin-right:auto}.admin-breadcrumb{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:28px;color:var(--nexa-text-secondary)}.admin-account-summary{display:flex;align-items:center;gap:24px;padding:24px;border:1px solid var(--nexa-border);border-radius:var(--radius-md);background:var(--nexa-surface);margin-bottom:24px}.admin-account-summary>div{margin-right:auto;display:grid;gap:6px}.admin-account-summary strong{font-size:2rem;letter-spacing:-.04em}.admin-account-summary>div>span{color:var(--nexa-text-secondary)}.admin-sections{display:flex;overflow-x:auto;border-bottom:1px solid var(--nexa-border);gap:8px;margin-bottom:24px}.admin-sections a{padding:16px 20px;white-space:nowrap;text-decoration:none;border-bottom:3px solid transparent;color:var(--nexa-text-secondary)}.admin-sections a[aria-current=page]{border-color:var(--nexa-action);color:var(--nexa-action);font-weight:600}.admin-overview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.admin-overview-grid .bank-panel{margin:0}.admin-app .bank-panel+.bank-panel{margin-top:24px}.admin-overview-grid .bank-panel+.bank-panel{margin-top:0}.admin-mandate{padding:20px 0;border-bottom:1px solid var(--nexa-border)}.admin-mandate header{display:flex;justify-content:space-between;gap:16px}.admin-mandate dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.admin-app a:focus-visible{outline:2px solid var(--nexa-action);outline-offset:4px}.admin-table td{overflow-wrap:anywhere}.admin-app .bank-wordmark{text-decoration:none}
+@media(max-width:700px){.admin-overview-grid{grid-template-columns:1fr}.admin-account-summary{flex-wrap:wrap;gap:16px}.admin-account-summary>div{width:100%}.admin-filters label{flex:1}.admin-filters .bank-search-label{flex-basis:100%;min-width:0}.admin-sections a{padding:12px}.admin-mandate dl{grid-template-columns:1fr}.admin-table th,.admin-table td{padding:12px}.admin-table{min-width:640px}.admin-actions{flex-wrap:wrap}}
+.admin-app .bank-panel > .admin-mandate { padding: 24px; }

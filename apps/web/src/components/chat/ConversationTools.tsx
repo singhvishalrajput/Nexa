@@ -1,12 +1,10 @@
+import { Action } from "../design/Action";
 import { BankingIcon, BankingIconName } from "../BankingIcon";
 import { AccountSnapshot, formatMoney, safeMask } from "../../services/banking-content";
 import { t } from "../../services/locale";
 
 export function QuickAction({ icon, title, description, disabled, onClick }: { icon: BankingIconName; title: string; description: string; disabled: boolean; onClick: () => void }) {
-  return <button type="button" class="conversation-quick-action" disabled={disabled} onClick={onClick}>
-    <span class="conversation-action-icon"><BankingIcon name={icon}/></span>
-    <strong>{t(title)}</strong><span>{t(description)}</span><BankingIcon name="arrow"/>
-  </button>;
+  return <Action className="conversation-quick-action" label={t(title) + ". " + t(description)} disabled={disabled} onAction={onClick}><BankingIcon name={icon}/><span>{t(title)}</span></Action>;
 }
 
 export function AccountContext({ accounts, loading, error, hidden, onToggle, onRetry }: { accounts: AccountSnapshot[]; loading: boolean; error: string; hidden: boolean; onToggle: () => void; onRetry: () => void }) {

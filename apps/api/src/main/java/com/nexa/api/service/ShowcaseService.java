@@ -12,7 +12,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Isolated provider simulation: never posts to the ledger or calls a bank/card network. */
+/**
+ * Compatibility boundary: internal payee transfers post; external provider actions stay explicit
+ * simulations.
+ */
 @Service
 public class ShowcaseService {
   public record Receipt(
@@ -32,16 +35,22 @@ public class ShowcaseService {
   private final CurrentUserProvider user;
   private final ActionPreparationService preparation;
   private final CardQueryService cards;
+  private final MoneyTransferService transfers;
+  private final BeneficiaryQueryService beneficiaries;
 
   public ShowcaseService(
       JdbcTemplate db,
       CurrentUserProvider user,
       ActionPreparationService preparation,
-      CardQueryService cards) {
+      CardQueryService cards,
+      MoneyTransferService transfers,
+      BeneficiaryQueryService beneficiaries) {
     this.db = db;
     this.user = user;
     this.preparation = preparation;
     this.cards = cards;
+    this.transfers = transfers;
+    this.beneficiaries = beneficiaries;
   }
 
   private void validate(String operation, String account, String target, String amount) {
@@ -54,8 +63,20 @@ public class ShowcaseService {
     }
   }
 
-  @Transactional
+  @Transactional(noRollbackFor = {InvalidRequestException.class, ResourceNotFoundException.class})
   public Receipt prepare(String operation, String account, String target, BigDecimal amount) {
+    if ("START_TRANSFER".equals(operation)) {
+      var receipt =
+          transfers.prepare(
+              new com.nexa.api.controller.MoneyTransferController.Request(
+                  account, null, beneficiaries.destinationNumber(target), amount));
+      db.update(
+          "UPDATE transactions SET operation='START_TRANSFER',target_id=? WHERE id=? AND"
+              + " record_kind='TRANSFER_REVIEW'",
+          target,
+          receipt.id());
+      return read(receipt.id(), false);
+    }
     String decimal = amount == null ? null : amount.toPlainString();
     validate(operation, account, target, decimal);
     if (Set.of("FREEZE_CARD", "UNFREEZE_CARD", "REPLACE_CARD").contains(operation)) {
@@ -84,6 +105,17 @@ public class ShowcaseService {
   @Transactional
   public Receipt confirm(String id) {
     Receipt receipt = read(id, true);
+    if (!receipt.simulated()) {
+      if (receipt.status().equals("COMPLETED")) return receipt;
+      if (!receipt.status().equals("REVIEW"))
+        throw new InvalidRequestException("This transfer review is closed.");
+      // The reviewed account is immutable; payee edits never redirect an existing review.
+      transfers.confirm(id);
+      return read(id, false);
+    }
+    if ("START_TRANSFER".equals(receipt.operation()))
+      throw new InvalidRequestException(
+          "This old request was only a simulation. Review a new transfer to a linked Nexa payee.");
     if (receipt.status().equals("SIMULATED")) return receipt;
     if (!receipt.status().equals("REVIEW"))
       throw new InvalidRequestException("This request is closed. Start a new request.");
@@ -110,8 +142,9 @@ public class ShowcaseService {
   public List<Receipt> history() {
     return db
         .query(
-            "SELECT id FROM transactions WHERE record_kind='SIMULATION' AND user_id=? ORDER BY"
-                + " expires_at DESC FETCH NEXT 30 ROWS ONLY",
+            "SELECT id FROM transactions WHERE (record_kind='SIMULATION' OR"
+                + " (record_kind='TRANSFER_REVIEW' AND operation='START_TRANSFER')) AND user_id=?"
+                + " ORDER BY expires_at DESC FETCH NEXT 30 ROWS ONLY",
             (r, n) -> r.getString(1),
             user.userId())
         .stream()
@@ -122,11 +155,14 @@ public class ShowcaseService {
   private Receipt read(String id, boolean lock) {
     var rows =
         db.query(
-            "SELECT * FROM transactions WHERE record_kind='SIMULATION' AND id=? AND user_id=?"
+            "SELECT * FROM transactions WHERE record_kind IN ('SIMULATION','TRANSFER_REVIEW') AND"
+                + " id=? AND user_id=?"
                 + (lock ? " FOR UPDATE" : ""),
             (r, n) -> {
               Instant expiry = r.getTimestamp("expires_at").toInstant();
               String state = r.getString("status");
+              boolean simulated = r.getString("record_kind").equals("SIMULATION");
+              if (!simulated && state.equals("READY")) state = "REVIEW";
               if (state.equals("REVIEW") && !Instant.now().isBefore(expiry)) state = "EXPIRED";
               var completed = r.getTimestamp("completed_at");
               return new Receipt(
@@ -139,8 +175,10 @@ public class ShowcaseService {
                   state,
                   expiry.toString(),
                   completed == null ? null : completed.toInstant().toString(),
-                  state.equals("SIMULATED") ? "DEMO-" + id : null,
-                  true);
+                  simulated
+                      ? (state.equals("SIMULATED") ? "DEMO-" + id : null)
+                      : r.getString("transaction_reference"),
+                  simulated);
             },
             id,
             user.userId());

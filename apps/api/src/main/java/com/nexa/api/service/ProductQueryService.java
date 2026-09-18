@@ -1,17 +1,15 @@
 package com.nexa.api.service;
+
 import com.nexa.api.exep.InvalidRequestException;
 import com.nexa.api.exep.ResourceNotFoundException;
 import com.nexa.api.repository.BankingProductRepository;
-
-
-import com.nexa.api.service.CurrentUserProvider;
-import com.nexa.api.exep.InvalidRequestException;
-import com.nexa.api.exep.ResourceNotFoundException;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.transaction.annotation.Transactional;
 
-@Transactional(readOnly = true)
+@Transactional(
+    readOnly = true,
+    noRollbackFor = {InvalidRequestException.class, ResourceNotFoundException.class})
 public abstract class ProductQueryService<T> {
   private final BankingProductRepository repository;
   private final CurrentUserProvider user;

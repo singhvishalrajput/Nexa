@@ -1,11 +1,12 @@
 import { registerCustomElement } from "ojs/ojvcomponent";
 import { Component, ComponentChildren } from "preact";
-import { useEffect } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 import Context = require("ojs/ojcontext");
 import { BankingApp } from "../features/banking/BankingApp";
 
 class AppRecovery extends Component<{children: ComponentChildren}, {failed: boolean}> {
   state = {failed: false};
+  componentDidCatch() { document.getElementById("nexa-boot")?.remove(); }
   static getDerivedStateFromError() { return {failed: true}; }
   render() {
     if (!this.state.failed) return this.props.children;
@@ -20,13 +21,32 @@ class AppRecovery extends Component<{children: ComponentChildren}, {failed: bool
 export const App = registerCustomElement(
   "app-root",
   () => {
+    const [ready, setReady] = useState(false);
+    const [opening, setOpening] = useState(true);
+    const onReady = useCallback(() => setReady(true), []);
     useEffect(() => {
-      document.getElementById("nexa-boot")?.remove();
       Context.getPageContext()
         .getBusyContext()
         .applicationBootstrapComplete();
     }, []);
 
-    return <AppRecovery><BankingApp /></AppRecovery>;
+    useEffect(() => {
+      if (!ready) return;
+      const boot = document.getElementById("nexa-boot");
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // Keep the reference logo sequence visible, but never dismiss a pending session.
+      const remaining = reduced ? 0 : Math.max(0, 1700 - performance.now());
+      let dismiss: number | undefined;
+      const reveal = window.setTimeout(() => {
+        boot?.classList.add("nexa-loading-ready");
+        dismiss = window.setTimeout(() => {
+          boot?.remove();
+          setOpening(false);
+        }, reduced ? 0 : 240);
+      }, remaining);
+      return () => { window.clearTimeout(reveal); window.clearTimeout(dismiss); };
+    }, [ready]);
+
+    return <AppRecovery><div class="nexa-page-content" inert={opening} aria-hidden={opening ? "true" : undefined}><BankingApp onReady={onReady}/></div></AppRecovery>;
   }
 );

@@ -23,7 +23,7 @@ export type CardSnapshot = {
   cardType?: string; creditLimit?: Money; minimumPayment?: Money; availableLimit: Money; currencyCode: string; dueAt?: string; status: string;
 };
 export type LoanSnapshot = {
-  id: string; displayName: string; numberMasked: string; nextEmi: Money;
+  id: string; displayName: string; numberMasked?: string | null; nextEmi: Money;
   outstanding: Money; currencyCode: string; dueAt?: string; status: string;
 };
 export type BillSnapshot = {
@@ -68,8 +68,8 @@ export function formatMoney(value: Money, currency = "INR", signed = false): str
   return `${prefix}${currency === "INR" ? "₹" : currency + " "}${whole}${decimals === "00" ? "" : "." + decimals}`;
 }
 
-export const safeMask = (value: string) => {
-  const tail = value.replace(/\D/g, "").slice(-4);
+export const safeMask = (value: string | null | undefined) => {
+  const tail = (value ?? "").replace(/\D/g, "").slice(-4);
   return tail ? `•••• ${tail}` : t("Number unavailable");
 };
 export const humanize = (value: string) => t(value.replace(/_/g, " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase()));

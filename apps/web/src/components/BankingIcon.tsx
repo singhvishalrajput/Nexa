@@ -1,8 +1,9 @@
 import { ComponentChildren } from "preact";
 
-export type BankingIconName = "home" | "accounts" | "payments" | "cards" | "transactions" | "insights" | "support" | "plus" | "shield" | "arrow" | "overview" | "people" | "repeat" | "clock" | "more" | "chevron" | "profile" | "logout";
+export type BankingIconName = "chat" | "home" | "accounts" | "payments" | "cards" | "transactions" | "insights" | "support" | "plus" | "shield" | "arrow" | "overview" | "people" | "repeat" | "clock" | "more" | "chevron" | "profile" | "logout";
 export function BankingIcon({ name }: { name: BankingIconName }) {
   const paths: Record<BankingIconName, ComponentChildren> = {
+    chat: <path d="M20 11a8 8 0 0 1-8 8H5l-3 3V11a9 9 0 0 1 18 0Z"/>,
     home: <><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></>,
     accounts: <><rect x="3" y="5" width="18" height="15" rx="3"/><path d="M3 9h18M15 13h6v4h-6Z"/></>,
     payments: <><path d="M4 8h15m-5-5 5 5-5 5M20 16H5m5-5-5 5 5 5"/></>,

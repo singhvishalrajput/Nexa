@@ -1,0 +1,508 @@
+package com.nexa.api.banking;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import java.math.BigDecimal;
+import java.util.*;
+import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.*;
+
+/** Runs unchanged against H2 or the explicitly configured, migrated Oracle schema. */
+@SpringBootTest(
+    properties = {
+      "spring.profiles.active=integration",
+      "spring.flyway.enabled=false",
+      "spring.jpa.show-sql=false",
+      "nexa.security.jwt.secret=six-table-test-secret-with-at-least-32-bytes",
+      "nexa.cors.allowed-origins=http://localhost:8000"
+    })
+@AutoConfigureMockMvc
+class LoanIntegrationTest {
+  static final boolean ORACLE = "true".equals(System.getenv("NEXA_VERIFY_ORACLE"));
+
+  @DynamicPropertySource
+  static void database(DynamicPropertyRegistry r) {
+    if (ORACLE)
+      r.add(
+          "spring.datasource.hikari.connection-init-sql",
+          () -> "ALTER SESSION SET TIME_ZONE='UTC'");
+    r.add(
+        "spring.datasource.url",
+        () ->
+            ORACLE
+                ? System.getenv("BANKING_DB_URL")
+                : "jdbc:h2:mem:loanbank;MODE=Oracle;DB_CLOSE_DELAY=-1");
+    r.add("spring.datasource.username", () -> ORACLE ? System.getenv("BANKING_DB_USERNAME") : "sa");
+    r.add("spring.datasource.password", () -> ORACLE ? System.getenv("BANKING_DB_PASSWORD") : "");
+    r.add(
+        "spring.datasource.driver-class-name",
+        () -> ORACLE ? "oracle.jdbc.OracleDriver" : "org.h2.Driver");
+    r.add(
+        "spring.datasource.hikari.schema",
+        () -> ORACLE ? System.getenv("BANKING_DB_SCHEMA") : "PUBLIC");
+    r.add("spring.jpa.hibernate.ddl-auto", () -> ORACLE ? "validate" : "create-drop");
+  }
+
+  @Autowired MockMvc mvc;
+  @Autowired ObjectMapper json;
+  @Autowired JdbcTemplate db;
+  @Autowired com.nexa.api.repository.UserRepository users;
+  @Autowired org.springframework.security.crypto.password.PasswordEncoder passwords;
+  String auth, otherAuth, source, destination, email;
+
+  JsonNode postJson(String path, Object data, String token, int status) throws Exception {
+    var q =
+        post(path).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(data));
+    if (token != null) q.header("Authorization", token);
+    return json.readTree(
+        mvc.perform(q)
+            .andExpect(status().is(status))
+            .andReturn()
+            .getResponse()
+            .getContentAsString());
+  }
+
+  JsonNode getJson(String path, String token) throws Exception {
+    return json.readTree(
+        mvc.perform(get(path).header("Authorization", token))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString());
+  }
+
+  String register(String email) throws Exception {
+    return "Bearer "
+        + postJson(
+                "/api/v1/auth/register",
+                Map.of(
+                    "email",
+                    email,
+                    "fullName",
+                    "Six table validation",
+                    "password",
+                    "SixTable@Test123"),
+                null,
+                201)
+            .get("accessToken")
+            .asText();
+  }
+
+  String open(String token) throws Exception {
+    return postJson(
+            "/api/v1/accounts",
+            Map.of(
+                "displayName",
+                "Validation savings",
+                "accountType",
+                "SAVINGS",
+                "currencyCode",
+                "INR",
+                "dateOfBirth",
+                "1990-01-01",
+                "address",
+                "Mumbai"),
+            token,
+            201)
+        .get("id")
+        .asText();
+  }
+
+  BigDecimal balance(String id) {
+    return db.queryForObject("SELECT balance FROM accounts WHERE id=?", BigDecimal.class, id);
+  }
+
+  @BeforeEach
+  void setup() throws Exception {
+    if (!ORACLE
+        && db.queryForObject(
+                "SELECT COUNT(*) FROM accounts WHERE account_number='NEXA-LOAN-INTEREST'",
+                Integer.class)
+            == 0) {
+      // Exercise the real additive migration, rather than only Hibernate's generated columns.
+      for (String column :
+          List.of("application_key", "loan_purpose", "tenure_months", "approved_at", "closed_at"))
+        db.execute("ALTER TABLE accounts DROP COLUMN " + column);
+      for (String column :
+          List.of("installment_number", "principal_component", "interest_component"))
+        db.execute("ALTER TABLE transactions DROP COLUMN " + column);
+      db.execute(
+          "ALTER TABLE transactions ADD CONSTRAINT ck_tx_record_kind CHECK(record_kind IS NOT"
+              + " NULL)");
+      var migration =
+          new org.springframework.core.io.ClassPathResource(
+              "db/migration/V20__loan_amortization.sql");
+      String sql;
+      try (var input = migration.getInputStream()) {
+        sql = new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+      }
+      // H2 has no Oracle function-based indexes; NULLS DISTINCT provides the same scope.
+      sql =
+          sql.replace(
+                  "CREATE UNIQUE INDEX uk_loan_application ON accounts(CASE WHEN application_key IS"
+                      + " NOT NULL THEN customer_id END, application_key)",
+                  "ALTER TABLE accounts ADD CONSTRAINT uk_loan_application UNIQUE NULLS"
+                      + " DISTINCT(customer_id, application_key)")
+              .replace(
+                  "CREATE UNIQUE INDEX uk_loan_installment ON transactions(CASE WHEN"
+                      + " installment_number IS NOT NULL THEN target_id END, installment_number)",
+                  "ALTER TABLE transactions ADD CONSTRAINT uk_loan_installment UNIQUE NULLS"
+                      + " DISTINCT(target_id, installment_number)");
+      new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+              new org.springframework.core.io.ByteArrayResource(
+                  sql.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+          .execute(db.getDataSource());
+    }
+    if (!ORACLE
+        && db.queryForObject(
+                "SELECT COUNT(*) FROM accounts WHERE account_number='NEXA-BANK-FUNDING'",
+                Integer.class)
+            == 0) {
+      for (String col : List.of("reviewed_by", "review_reason", "reviewed_at"))
+        db.execute("ALTER TABLE accounts DROP COLUMN " + col);
+      new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+              new org.springframework.core.io.ClassPathResource(
+                  "db/migration/V21__admin_loan_approval_and_bank_funding.sql"))
+          .execute(db.getDataSource());
+      db.update("UPDATE accounts SET balance=10000000 WHERE account_number='NEXA-BANK-FUNDING'");
+    }
+    LoanTestSupport.bank(db);
+    email = "six-" + UUID.randomUUID() + "@example.com";
+    auth = register(email);
+    source = open(auth);
+    otherAuth = register("six-" + UUID.randomUUID() + "@example.com");
+    destination = open(otherAuth);
+    if (db.queryForObject(
+            "SELECT COUNT(*) FROM accounts WHERE account_type='CASH' AND account_category='SYSTEM'",
+            Integer.class)
+        == 0)
+      db.update(
+          "INSERT INTO"
+              + " accounts(account_number,account_name,account_type,account_category,balance,currency_code,status,version,created_at,updated_at)"
+              + " VALUES('SIX-CASH','Cash','CASH','SYSTEM',0,'INR','ACTIVE',0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
+    mvc.perform(
+            post("/api/transactions/deposit")
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"destinationAccountId\":" + source + ",\"amount\":1000}"))
+        .andExpect(status().isCreated());
+  }
+
+  Map<String, Object> application(String key, int months) {
+    return Map.of(
+        "accountId",
+        Long.valueOf(source),
+        "applicationKey",
+        key,
+        "purpose",
+        "Education",
+        "amount",
+        "12000",
+        "tenureMonths",
+        months);
+  }
+
+  String apply(String key, int months) throws Exception {
+    var loan = postJson("/api/v1/loans", application(key, months), auth, 201);
+    assertThat(loan.get("status").asText()).isEqualTo("PENDING_APPROVAL");
+    assertThat(new BigDecimal(loan.get("outstanding").asText())).isZero();
+    assertThat(loan.at("/terms/annualInterestRate").decimalValue()).isEqualByComparingTo("14.50");
+    approve(loan.get("id").asText());
+    return loan.get("id").asText();
+  }
+
+  String adminToken() throws Exception {
+    String email = "admin-" + UUID.randomUUID() + "@example.com";
+    new com.nexa.api.service.AdminBootstrap(users, passwords, email, "Administrator@Test12345")
+        .run(new org.springframework.boot.DefaultApplicationArguments());
+    return "Bearer "
+        + postJson(
+                "/api/v1/auth/login",
+                Map.of("email", email, "password", "Administrator@Test12345"),
+                null,
+                200)
+            .get("accessToken")
+            .asText();
+  }
+
+  void approve(String id) throws Exception {
+    postJson(
+        "/api/v1/admin/loans/" + id + "/approve",
+        Map.of("reason", "Approved for integration scenario"),
+        adminToken(),
+        200);
+  }
+
+  String root(String id) {
+    return "/api/v1/loans/" + id;
+  }
+
+  String pay(String id, String installment) {
+    return root(id) + "/installments/" + installment + "/pay";
+  }
+
+  void balanced() {
+    assertThat(
+            db.queryForObject(
+                "SELECT COUNT(*) FROM (SELECT j.id FROM journal_entries j LEFT JOIN ledger_entries"
+                    + " l ON l.journal_entry_id=j.id GROUP BY j.id HAVING COUNT(l.id)<2 OR SUM(CASE"
+                    + " WHEN l.entry_type='DEBIT' THEN l.amount ELSE -l.amount END)<>0)",
+                Integer.class))
+        .isZero();
+  }
+
+  @Test
+  void completeLifecyclePostsPrincipalAndInterestAndPreservesReadModels() throws Exception {
+    var quote =
+        postJson("/api/v1/loans/quote", Map.of("amount", "12000", "tenureMonths", 3), auth, 200);
+    String id = apply("lifecycle", 3);
+    assertThat(balance(source)).isEqualByComparingTo("1000");
+    assertThat(getJson(root(id) + "/schedule", auth).size()).isZero();
+    assertThat(postJson(root(id) + "/accept", Map.of(), auth, 200).get("status").asText())
+        .isEqualTo("ACTIVE");
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    assertThat(balance(source)).isEqualByComparingTo("13000");
+    var schedule = getJson(root(id) + "/schedule", auth);
+    assertThat(schedule.size()).isEqualTo(3);
+    BigDecimal paid = BigDecimal.ZERO;
+    for (var row : schedule) {
+      String path = pay(id, row.get("id").asText());
+      var receipt = postJson(path, Map.of(), auth, 200);
+      assertThat(receipt.get("principalAmount")).isEqualTo(row.get("principalAmount"));
+      assertThat(receipt.get("interestAmount")).isEqualTo(row.get("interestAmount"));
+      assertThat(postJson(path, Map.of(), auth, 200)).isEqualTo(receipt);
+      paid = paid.add(receipt.get("amount").decimalValue());
+    }
+    assertThat(paid).isEqualByComparingTo(quote.get("totalRepayment").decimalValue());
+    assertThat(balance(source)).isEqualByComparingTo(new BigDecimal("13000").subtract(paid));
+    var detail = getJson(root(id), auth);
+    assertThat(detail.get("status").asText()).isEqualTo("CLOSED");
+    assertThat(new BigDecimal(detail.get("outstanding").asText())).isZero();
+    assertThat(detail.at("/terms/closedAt").isNull()).isFalse();
+    assertThat(detail.get("paymentHistory").size()).isEqualTo(3);
+    assertThat(getJson(root(id) + "/payments", auth).size()).isEqualTo(4);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    assertThat(balance(source)).isEqualByComparingTo(new BigDecimal("13000").subtract(paid));
+    balanced();
+  }
+
+  @Test
+  void validationsOwnershipAndOrderingUseExistingApiErrors() throws Exception {
+    mvc.perform(post("/api/v1/loans/quote").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        .andExpect(status().isUnauthorized());
+    var bad =
+        postJson("/api/v1/loans/quote", Map.of("amount", "999.99", "tenureMonths", 3), auth, 400);
+    assertThat(bad.get("code").asText()).isEqualTo("INVALID_REQUEST");
+    postJson("/api/v1/loans", application("foreign", 2), otherAuth, 404);
+    String id = apply("validation", 2);
+    for (String suffix : List.of("", "/schedule", "/payments", "/account"))
+      mvc.perform(get(root(id) + suffix).header("Authorization", otherAuth))
+          .andExpect(status().isNotFound());
+    postJson(root(id) + "/accept", Map.of(), otherAuth, 404);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    var rows = getJson(root(id) + "/schedule", auth);
+    postJson(pay(id, rows.get(0).get("id").asText()), Map.of(), otherAuth, 404);
+    postJson(pay(id, rows.get(1).get("id").asText()), Map.of(), auth, 400);
+    db.update("UPDATE accounts SET balance=1 WHERE id=?", Long.valueOf(source));
+    postJson(pay(id, rows.get(0).get("id").asText()), Map.of(), auth, 400);
+    assertThat(getJson(root(id) + "/payments", auth).size()).isEqualTo(1);
+    assertThat(new BigDecimal(getJson(root(id), auth).get("outstanding").asText()))
+        .isEqualByComparingTo("12000");
+    db.update("UPDATE accounts SET status='BLOCKED' WHERE id=?", Long.valueOf(source));
+    postJson("/api/v1/loans", application("blocked", 2), auth, 400);
+    postJson(pay(id, rows.get(0).get("id").asText()), Map.of(), auth, 400);
+  }
+
+  @Test
+  void applicationRetriesAndConcurrentAcceptAndPaymentPostOnce() throws Exception {
+    var requests =
+        together(() -> postJson("/api/v1/loans", application("concurrent", 3), auth, 201));
+    String id = requests.get(0).get("id").asText();
+    assertThat(requests.get(1).get("id").asText()).isEqualTo(id);
+    postJson("/api/v1/loans", application("concurrent", 4), auth, 409);
+    approve(id);
+    together(() -> postJson(root(id) + "/accept", Map.of(), auth, 200));
+    assertThat(balance(source)).isEqualByComparingTo("13000");
+    var row = getJson(root(id) + "/schedule", auth).get(0);
+    var receipts = together(() -> postJson(pay(id, row.get("id").asText()), Map.of(), auth, 200));
+    assertThat(receipts.get(0)).isEqualTo(receipts.get(1));
+    assertThat(balance(source))
+        .isEqualByComparingTo(
+            new BigDecimal("13000").subtract(row.get("totalAmount").decimalValue()));
+    assertThat(getJson(root(id) + "/payments", auth).size()).isEqualTo(2);
+    balanced();
+  }
+
+  @Test
+  void repaymentCompatibilityRequiresExactEmiAndSupportsRequestRetries() throws Exception {
+    String id = apply("compatibility", 1);
+    postJson(root(id) + "/disburse", Map.of(), auth, 200);
+    postJson(
+        root(id) + "/repay",
+        Map.of("amount", "10", "requestId", UUID.randomUUID().toString()),
+        auth,
+        400);
+    var row = getJson(root(id) + "/schedule", auth).get(0);
+    var request =
+        Map.of(
+            "amount",
+            row.get("totalAmount").decimalValue(),
+            "requestId",
+            UUID.randomUUID().toString());
+    var receipt = postJson(root(id) + "/repay", request, auth, 200);
+    assertThat(postJson(root(id) + "/repay", request, auth, 200)).isEqualTo(receipt);
+    assertThat(getJson(root(id), auth).get("status").asText()).isEqualTo("CLOSED");
+    balanced();
+  }
+
+  @Test
+  void overdueStateIsDerivedAndFilteredWithoutChangingSchedule() throws Exception {
+    String id = apply("overdue", 3);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    db.update("UPDATE accounts SET due_at='2020-01-01' WHERE product_id=?", id);
+    db.update(
+        "UPDATE transactions SET due_at='2020-01-01' WHERE target_id=? AND installment_number=1",
+        id);
+    assertThat(getJson(root(id), auth).get("status").asText()).isEqualTo("OVERDUE");
+    assertThat(getJson("/api/v1/loans?status=OVERDUE", auth).get(0).get("id").asText())
+        .isEqualTo(id);
+    assertThat(getJson("/api/v1/loans?status=ACTIVE", auth).size()).isZero();
+    var row = getJson(root(id) + "/schedule", auth).get(0);
+    assertThat(row.get("status").asText()).isEqualTo("OVERDUE");
+    postJson(pay(id, row.get("id").asText()), Map.of(), auth, 200);
+    assertThat(getJson(root(id), auth).get("status").asText()).isEqualTo("ACTIVE");
+  }
+
+  @Test
+  void postingFailuresRollBackDisbursementAndEntireEmi() throws Exception {
+    String id = apply("rollback", 3);
+    db.execute(
+        "ALTER TABLE ledger_entries ADD CONSTRAINT loan_test_failure CHECK(amount<>12000 OR"
+            + " account_id<>"
+            + source
+            + ")");
+    try {
+      postJson(root(id) + "/accept", Map.of(), auth, 503);
+    } finally {
+      db.execute("ALTER TABLE ledger_entries DROP CONSTRAINT loan_test_failure");
+    }
+    assertThat(balance(source)).isEqualByComparingTo("1000");
+    assertThat(getJson(root(id) + "/schedule", auth).size()).isZero();
+    assertThat(getJson(root(id), auth).get("status").asText()).isEqualTo("APPROVED");
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    var row = getJson(root(id) + "/schedule", auth).get(0);
+    long income =
+        db.queryForObject(
+            "SELECT id FROM accounts WHERE account_number='NEXA-LOAN-INTEREST'", Long.class);
+    BigDecimal incomeBefore = balance(Long.toString(income));
+    // Fail the final interest credit after the principal and debit postings have been inserted.
+    long lastJournal = db.queryForObject("SELECT MAX(id) FROM journal_entries", Long.class);
+    db.execute(
+        "ALTER TABLE ledger_entries ADD CONSTRAINT loan_test_failure CHECK(account_id<>"
+            + income
+            + " OR journal_entry_id<="
+            + lastJournal
+            + ")");
+    try {
+      postJson(pay(id, row.get("id").asText()), Map.of(), auth, 503);
+    } finally {
+      db.execute("ALTER TABLE ledger_entries DROP CONSTRAINT loan_test_failure");
+    }
+    assertThat(balance(source)).isEqualByComparingTo("13000");
+    assertThat(balance(Long.toString(income))).isEqualByComparingTo(incomeBefore);
+    assertThat(new BigDecimal(getJson(root(id), auth).get("outstanding").asText()))
+        .isEqualByComparingTo("12000");
+    assertThat(getJson(root(id) + "/payments", auth).size()).isEqualTo(1);
+    assertThat(getJson(root(id) + "/schedule", auth).get(0).get("status").asText())
+        .isEqualTo("PENDING");
+    balanced();
+  }
+
+  private List<JsonNode> together(java.util.concurrent.Callable<JsonNode> task) throws Exception {
+    var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+    var start = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.Callable<JsonNode> gated =
+        () -> {
+          start.await();
+          return task.call();
+        };
+    try {
+      var a = pool.submit(gated);
+      var b = pool.submit(gated);
+      start.countDown();
+      return List.of(
+          a.get(20, java.util.concurrent.TimeUnit.SECONDS),
+          b.get(20, java.util.concurrent.TimeUnit.SECONDS));
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  @Test
+  void loansRequireAdminReviewAndBankFundsAndSettlementIsAtomic() throws Exception {
+    String admin = adminToken();
+    var applied = postJson("/api/v1/loans", application("review-required", 3), auth, 201);
+    String id = applied.get("id").asText(), endpoint = "/api/v1/admin/loans/" + id;
+    assertThat(applied.get("status").asText()).isEqualTo("PENDING_APPROVAL");
+    assertThat(applied.at("/terms/approvedAt").isNull()).isTrue();
+    postJson(root(id) + "/accept", Map.of(), auth, 400);
+    postJson(root(id) + "/disburse", Map.of(), auth, 400);
+    postJson(endpoint + "/approve", Map.of("reason", "Self approval"), auth, 403);
+    mvc.perform(get("/api/v1/admin/loans").header("Authorization", otherAuth))
+        .andExpect(status().isForbidden());
+    assertThat(getJson("/api/v1/admin/loans", admin).toString()).contains(id);
+    postJson(endpoint + "/approve", Map.of("reason", ""), admin, 400);
+    var decision = Map.of("reason", "Income and repayment capacity verified");
+    var results = together(() -> postJson(endpoint + "/approve", decision, admin, 200));
+    assertThat(results.get(0).get("PRODUCT_STATUS").asText()).isEqualTo("APPROVED");
+    assertThat(
+            db.queryForObject(
+                "SELECT COUNT(*) FROM transactions WHERE target_id=? AND operation='APPROVE_LOAN'",
+                Integer.class,
+                id))
+        .isEqualTo(1);
+    postJson(endpoint + "/reject", decision, admin, 409);
+    assertThat(getJson("/api/v1/admin/loans", admin).toString()).doesNotContain(id);
+    long bank =
+        db.queryForObject(
+            "SELECT id FROM accounts WHERE account_number='NEXA-BANK-FUNDING'", Long.class);
+    BigDecimal before = balance(Long.toString(bank));
+    db.update("UPDATE accounts SET balance=1 WHERE id=?", bank);
+    postJson(root(id) + "/accept", Map.of(), auth, 400);
+    assertThat(balance(source)).isEqualByComparingTo("1000");
+    assertThat(getJson(root(id) + "/payments", auth).size()).isZero();
+    db.update("UPDATE accounts SET balance=? WHERE id=?", before, bank);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    assertThat(balance(Long.toString(bank)))
+        .isEqualByComparingTo(before.subtract(new BigDecimal("12000")));
+    var row = getJson(root(id) + "/schedule", auth).get(0);
+    postJson(pay(id, row.get("id").asText()), Map.of(), auth, 200);
+    assertThat(balance(Long.toString(bank)))
+        .isEqualByComparingTo(
+            before
+                .subtract(new BigDecimal("12000"))
+                .add(row.get("principalAmount").decimalValue()));
+    var rejected =
+        postJson("/api/v1/loans", application("reject-request", 3), auth, 201).get("id").asText();
+    postJson(
+        "/api/v1/admin/loans/" + rejected + "/reject",
+        Map.of("reason", "Existing credit exposure"),
+        admin,
+        200);
+    postJson(root(rejected) + "/accept", Map.of(), auth, 400);
+    assertThat(getJson(root(rejected), auth).get("status").asText()).isEqualTo("REJECTED");
+    balanced();
+  }
+}

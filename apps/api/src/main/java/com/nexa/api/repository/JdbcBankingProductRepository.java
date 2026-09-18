@@ -12,9 +12,17 @@ import tools.jackson.databind.ObjectMapper;
 @Repository
 public class JdbcBankingProductRepository implements BankingProductRepository {
   private final JdbcTemplate db;
+  private final java.time.Clock clock;
+  private final com.nexa.api.service.BusinessDateResolver dates;
 
-  public JdbcBankingProductRepository(JdbcTemplate db, ObjectMapper ignored) {
+  public JdbcBankingProductRepository(
+      JdbcTemplate db,
+      ObjectMapper ignored,
+      java.time.Clock clock,
+      com.nexa.api.service.BusinessDateResolver dates) {
     this.db = db;
+    this.clock = clock;
+    this.dates = dates;
   }
 
   public <T> List<T> list(
@@ -29,17 +37,27 @@ public class JdbcBankingProductRepository implements BankingProductRepository {
   private <T> List<T> query(
       String owner, Kind kind, Class<T> type, String id, String status, int page, int size) {
     boolean account = kind == Kind.LOAN || kind == Kind.CARD;
+    String state =
+        kind == Kind.LOAN
+            ? "CASE WHEN p.tenure_months IS NOT NULL AND p.product_status='ACTIVE' AND p.due_at<'"
+                + java.time.LocalDate.now(clock.withZone(dates.zone()))
+                + "' THEN 'OVERDUE' ELSE p.product_status END"
+            : "p.product_status";
     String sql =
         account
-            ? "SELECT p.*,p.product_id public_id FROM accounts p JOIN customers c ON"
-                  + " c.id=p.customer_id WHERE c.user_id=? AND p.account_type=? AND (? IS NULL OR"
-                  + " p.product_id=?) AND (? IS NULL OR p.product_status=?) ORDER BY p.product_id"
-                  + " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY"
+            ? "SELECT p.*,p.product_id public_id,"
+                + state
+                + " display_status FROM accounts p JOIN customers c ON"
+                + " c.id=p.customer_id WHERE c.user_id=? AND p.account_type=? AND (? IS NULL OR"
+                + " p.product_id=?) AND (? IS NULL OR "
+                + state
+                + "=?) ORDER BY p.product_id"
+                + " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY"
             : "SELECT p.*,a.account_name,a.account_number FROM transactions p JOIN accounts a ON"
-                  + " a.id=p.source_account_id JOIN customers c ON c.id=a.customer_id WHERE"
-                  + " p.user_id=? AND c.user_id=p.user_id AND p.record_kind=? AND (? IS NULL OR"
-                  + " p.id=?) AND (? IS NULL OR p.status=?) ORDER BY p.id OFFSET ? ROWS FETCH NEXT"
-                  + " ? ROWS ONLY";
+                + " a.id=p.source_account_id JOIN customers c ON c.id=a.customer_id WHERE"
+                + " p.user_id=? AND c.user_id=p.user_id AND p.record_kind=? AND (? IS NULL OR"
+                + " p.id=?) AND (? IS NULL OR p.status=?) ORDER BY p.id OFFSET ? ROWS FETCH NEXT"
+                + " ? ROWS ONLY";
     return db.query(
         sql,
         (r, n) -> type.cast(project(r, kind)),
@@ -62,13 +80,26 @@ public class JdbcBankingProductRepository implements BankingProductRepository {
           r.getString("number_masked"),
           r.getString("product_type"),
           r.getString("balance"),
-          r.getString("periodic_payment"),
+          nextEmi(id, r),
           r.getString("currency_code"),
           r.getString("due_at"),
           r.getString("interest_rate"),
-          r.getString("product_status"),
+          r.getString("display_status"),
           r.getString("funding_account_id"),
-          payments(id));
+          payments(id),
+          new com.nexa.api.beans.LoanModels.Terms(
+              r.getString("application_key"),
+              r.getString("loan_purpose"),
+              r.getBigDecimal("principal_amount"),
+              r.getBigDecimal("interest_rate"),
+              r.getObject("tenure_months") == null ? null : r.getInt("tenure_months"),
+              r.getBigDecimal("periodic_payment"),
+              r.getTimestamp("approved_at") == null
+                  ? null
+                  : r.getTimestamp("approved_at").toLocalDateTime(),
+              r.getTimestamp("closed_at") == null
+                  ? null
+                  : r.getTimestamp("closed_at").toLocalDateTime()));
     if (kind == Kind.CARD)
       return new Card(
           id,
@@ -119,13 +150,27 @@ public class JdbcBankingProductRepository implements BankingProductRepository {
   private Payment payment(ResultSet r) throws SQLException {
     return new Payment(
         r.getString("id"),
-        r.getString("display_name"),
+        r.getString("display_name") == null
+            ? r.getString("operation")
+            : r.getString("display_name"),
         r.getString("amount"),
         r.getString("currency_code"),
-        r.getString("due_at"),
+        r.getString("due_at") == null ? r.getString("created_at") : r.getString("due_at"),
         r.getString("status"),
         r.getString("source_account_id"),
         r.getString("transaction_reference"));
+  }
+
+  private String nextEmi(String id, ResultSet r) throws SQLException {
+    if (r.getObject("tenure_months") == null) return r.getString("periodic_payment");
+    if ("CLOSED".equals(r.getString("product_status"))) return null;
+    var amounts =
+        db.queryForList(
+            "SELECT amount FROM transactions WHERE target_id=? AND record_kind='LOAN_INSTALLMENT'"
+                + " AND status='PENDING' ORDER BY installment_number FETCH FIRST 1 ROW ONLY",
+            java.math.BigDecimal.class,
+            id);
+    return amounts.isEmpty() ? r.getString("periodic_payment") : amounts.get(0).toPlainString();
   }
 
   private List<Payment> payments(String id) {

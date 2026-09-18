@@ -3,7 +3,7 @@
   outline: 3px solid var(--nexa-focus);
   outline-offset: 3px;
 }
-.bank-app :is(.bank-balance-hero, .bank-payment-card) :focus-visible {
+.bank-app .bank-payment-card :focus-visible {
   outline-color: var(--nexa-focus-inverse) !important;
 }
 :is(.bank-app, .nexa-messenger) :is(input, select, textarea) {

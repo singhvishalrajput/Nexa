@@ -37,6 +37,16 @@ public class TransactionInstruction {
   private String currencyCode;
   private String parentId;
   private String operation;
+  private Integer installmentNumber;
+  @Column(precision = 19, scale = 2)
+  private BigDecimal principalComponent;
+  @Column(precision = 19, scale = 2)
+  private BigDecimal interestComponent;
+  private String auditReason;
+  private String beforeName;
+  private String afterName;
+  private String beforeStatus;
+  private String afterStatus;
   private String targetId;
   private String transactionReference;
   private String displayName;

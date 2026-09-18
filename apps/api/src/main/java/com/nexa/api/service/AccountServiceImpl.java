@@ -25,6 +25,8 @@ public class AccountServiceImpl implements AccountService {
   @Autowired LedgerEntryDao ledgers;
 
   @Autowired TransactionDao transactions;
+  @Autowired org.springframework.jdbc.core.JdbcTemplate db;
+  @Autowired CurrentUserProvider user;
 
   public Account create(Account a) {
     if (a.getBalance() != null && a.getBalance().signum() != 0)
@@ -72,11 +74,40 @@ public class AccountServiceImpl implements AccountService {
     return accounts.findByStatus(s);
   }
 
+  @org.springframework.transaction.annotation.Transactional
   public Account update(Long id, Account input) {
-    Account a = getById(id);
+    Account a =
+        accounts
+            .findLockedById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+    if (input.getAccountName() == null
+        || input.getAccountName().isBlank()
+        || input.getAccountName().length() > 120
+        || input.getStatus() == null)
+      throw new InvalidRequestException("Supply an account name and status");
+    if (input.getStatus() == AccountStatus.CLOSED && a.getBalance().signum() != 0)
+      throw new InvalidRequestException("An account must have zero balance before closing");
+    if (a.getAccountType() == com.nexa.api.beans.AccountType.LOAN
+        && a.getStatus() == AccountStatus.CLOSED
+        && input.getStatus() != AccountStatus.CLOSED)
+      throw new InvalidRequestException("A repaid loan cannot be reopened");
+    String oldName = a.getAccountName(), oldStatus = a.getStatus().name();
     a.setAccountName(input.getAccountName());
     a.setStatus(input.getStatus());
-    return accounts.save(a);
+    accounts.saveAndFlush(a);
+    db.update(
+        "INSERT INTO"
+            + " transactions(id,record_kind,user_id,source_account_id,operation,status,audit_reason,before_name,after_name,before_status,after_status,created_at)"
+            + " VALUES(?,'ADMIN_EVENT',?,?,'UPDATE_ACCOUNT','COMPLETED','Legacy administrator API"
+            + " update',?,?,?,?,CURRENT_TIMESTAMP)",
+        "A-" + UUID.randomUUID(),
+        user.userId(),
+        id,
+        oldName,
+        a.getAccountName(),
+        oldStatus,
+        a.getStatus().name());
+    return a;
   }
 
   public List<LedgerEntry> ledger(Long id) {

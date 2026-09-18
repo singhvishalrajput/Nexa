@@ -22,3 +22,11 @@ test('repayment retries keep the same request ID after a lost response',async()=
 test('revocation calls the real mandate endpoint and closed mandates offer no execution',async()=>{
  const calls=[];const app=setup(async p=>{calls.push(p);return {};});await app.button('Revoke mandate').props.onClick();assert.deepEqual(calls,['/mandates/product-1/revoke']);const closed=setup(async()=>assert.fail('No request expected'),'mandates','CANCELLED');assert.equal(closed.button('Review mandate payment'),undefined);assert.equal(closed.button('Revoke mandate'),undefined);
 });
+
+test('loans awaiting approval or rejected cannot be disbursed by the customer',()=>{
+ for(const state of ['PENDING_APPROVAL','REJECTED','CREATED']){
+  const app=setup(async()=>assert.fail('No request expected'),'loans',state);
+  assert.equal(app.button('Accept approved loan and receive funds'),undefined);
+ }
+ const approved=setup(async()=>({}),'loans','APPROVED');assert.ok(approved.button('Accept approved loan and receive funds'));
+});

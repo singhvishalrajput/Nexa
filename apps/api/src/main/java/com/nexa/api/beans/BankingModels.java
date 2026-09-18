@@ -1,7 +1,5 @@
 package com.nexa.api.beans;
 
-
-import com.nexa.api.beans.BankingContent;
 import java.util.List;
 
 /** Display-safe read models. Decimal text preserves money across JSON clients. */
@@ -101,7 +99,37 @@ public final class BankingModels {
       String interestRate,
       String status,
       String accountId,
-      List<Payment> paymentHistory) {
+      List<Payment> paymentHistory,
+      LoanModels.Terms terms) {
+    public Loan(
+        String id,
+        String displayName,
+        String numberMasked,
+        String loanType,
+        String outstanding,
+        String nextEmi,
+        String currencyCode,
+        String dueAt,
+        String interestRate,
+        String status,
+        String accountId,
+        List<Payment> paymentHistory) {
+      this(
+          id,
+          displayName,
+          numberMasked,
+          loanType,
+          outstanding,
+          nextEmi,
+          currencyCode,
+          dueAt,
+          interestRate,
+          status,
+          accountId,
+          paymentHistory,
+          null);
+    }
+
     public Loan {
       numberMasked = mask(numberMasked);
     }

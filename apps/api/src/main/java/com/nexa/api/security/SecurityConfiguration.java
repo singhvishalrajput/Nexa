@@ -1,5 +1,4 @@
 package com.nexa.api.security;
-import com.nexa.api.beans.Customer;
 
 
 import com.nimbusds.jose.JWSAlgorithm;
@@ -50,6 +49,7 @@ public class SecurityConfiguration {
                     .requestMatchers("/actuator/**")
                     .denyAll()
                     .requestMatchers(
+                        "/api/v1/admin/**",
                         "/api/accounts/**",
                         "/api/customers/**",
                         "/api/transactions/**",

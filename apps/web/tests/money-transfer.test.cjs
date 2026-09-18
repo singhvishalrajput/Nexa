@@ -12,8 +12,8 @@ function harness(overrides={}, saved=null){
   const exports={};const jsx=(type,props)=>({type,props});
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/features/banking/MoneyTransfer.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2021,jsx:ts.JsxEmit.ReactJSX,jsxImportSource:'preact'}}).outputText,{exports,window:{sessionStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}},require:n=>n.endsWith('/locale')?require('./source-loader.cjs').loadSource('services/locale.ts'):n==='preact/hooks'?hooks:n==='preact/jsx-runtime'?{jsx,jsxs:jsx}:n==='./money-transfers'?{moneyTransfers:api}:n.endsWith('/auth')?{ApiRequestError}:n.endsWith('useNavigationGuard')?{useNavigationGuard:()=>{}}:n==='./utils'?{validAmount:v=>/^(0|[1-9]\d{0,12})(\.\d{1,2})?$/.test(v)&&Number(v)>0}:n.endsWith('banking-content')?{formatMoney:v=>'₹'+v,moneyInMinorUnits:v=>/^\d+(\.\d{1,2})?$/.test(v)?BigInt(Math.round(Number(v)*100)):null}:n==='./ui'?{useLoad:()=>({data:accounts,loading:false,error:'',reload:()=>{}}),PageHeading:'heading',Panel:'panel',State:'state',Detail:'detail'}:{}});
   function render(){cursor=0;tree=exports.MoneyTransfer({token:'token',userId:'user'});const pending=effects;effects=[];pending.forEach(fn=>fn());return tree;}
-  function input(i,value){nodes(tree).filter(n=>n.type==='input')[i].props.onInput({currentTarget:{value}});render();}
-  function button(text){return nodes(tree).find(n=>n.type==='button'&&n.props.children===text);}
+  function input(i,value){nodes(tree).filter(n=>n.type==='oj-input-text')[i].props.onrawValueChanged({detail:{value}});render();}
+  function button(text){const node=nodes(tree).find(n=>n.type==='oj-button'&&n.props.children===text);return node && {...node,props:{...node.props,onClick:node.props.onojAction}};}
   render();render();return {render,input,button,calls,storage,ApiRequestError,api,nodes:()=>nodes(tree)};
 }
 async function reviewed(app){app.input(0,'123456789012');app.input(1,'25');await app.nodes().find(n=>n.type==='form').props.onSubmit({preventDefault(){}});app.render();}
@@ -34,5 +34,14 @@ test('reopening a saved review checks its status before allowing a new transfer'
   const app=harness({},'review-1');await new Promise(r=>setImmediate(r));app.render();assert.equal(app.button('Review transfer'),undefined);assert.equal(app.button('Edit details'),undefined);assert.ok(app.button('Send this transfer again'));
 });
 test('editing an unsubmitted review preserves the amount and recipient',async()=>{
-  const app=harness();await reviewed(app);app.button('Edit details').props.onClick();app.render();assert.deepEqual(app.nodes().filter(n=>n.type==='input').map(n=>n.props.value),['123456789012','25']);assert.equal(app.storage.size,0);
+  const app=harness();await reviewed(app);app.button('Edit details').props.onClick();app.render();assert.deepEqual(app.nodes().filter(n=>n.type==='oj-input-text').map(n=>n.props.value),['123456789012','25']);assert.equal(app.storage.size,0);
+});
+
+test('JET programmatic select updates never clear a typed recipient',()=>{
+ const app=harness();app.input(0,'123456789012');app.input(1,'25');
+ const recipientType=()=>app.nodes().find(n=>n.type==='oj-select-one'&&n.props.labelHint==='Who are you sending to?');
+ recipientType().props.onvalueChanged({detail:{value:'other',updatedFrom:'external'}});app.render();
+ assert.equal(app.nodes().find(n=>n.type==='oj-input-text').props.value,'123456789012');
+ recipientType().props.onvalueChanged({detail:{value:'own',updatedFrom:'internal'}});app.render();
+ assert.equal(app.nodes().find(n=>n.type==='oj-select-one'&&n.props.labelHint==='To account').props.value,'');
 });

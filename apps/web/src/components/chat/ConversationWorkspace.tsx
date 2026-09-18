@@ -1,3 +1,6 @@
+import { WorkspaceRail } from "../design/WorkspaceRail";
+import { Action } from "../design/Action";
+import "ojs/ojinputtext";
 import { BankingIcon } from "../BankingIcon";
 import { SidebarBrand, SidebarNavigation, SidebarFooter } from "../SidebarNavigation";
 import { getLocale, setLocale, t } from "../../services/locale";
@@ -57,6 +60,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   const [sending, setSending] = useState(false);
   const [outgoing, setOutgoing] = useState<{ text: string; source: "TEXT" | "VOICE"; createdAt: string } | null>(null);
   const [hasNew, setHasNew] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [wideLayout, setWideLayout] = useState(() => window.matchMedia("(min-width: 900px)").matches);
   const historyModal = historyOpen && !wideLayout;
@@ -350,27 +354,28 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
 
   const historyContents = <>
       <SidebarBrand action={!wideLayout && <button type="button" class="messenger-icon" aria-label={t("Close history")} onClick={closeHistory}><ChatIcon name="close"/></button>}/>
-      <SidebarNavigation page="assistant" admin={session.user.role === "ADMIN"}>
-        <button class="sidebar-link" type="button" disabled={busy || listening || !!pending.current} onClick={() => { setHistoryOpen(false); void submit(hindi ? "इस महीने मैंने कितना खर्च किया?" : "Show my spending this month"); }}><BankingIcon name="insights"/><span>{t("Insights")}</span></button>
-      </SidebarNavigation>
-      <button type="button" class="messenger-new-chat" disabled={busy || listening || !!pending.current} onClick={() => void submit("new conversation")}><BankingIcon name="plus"/>{t("New conversation")}</button>
+      <Action className="experience-new-chat" primary disabled={busy || listening || !!pending.current} onAction={() => void submit("new conversation")} label={t("New conversation")}/>
+      <oj-input-text class="experience-history-search" labelHint={t("Search conversations")} labelEdge="inside" value={historySearch} onrawValueChanged={event => setHistorySearch(event.detail.value || "")}/>
       <header class="sidebar-history-heading"><h2 id="messenger-history-title">{t("Recent conversations")}</h2></header>
-      <div class="messenger-history-list" role="region" aria-labelledby="messenger-history-title">{conversations.length ? conversations.map(item => <ConversationHistoryItem key={item.id} conversation={item} current={item.id === current?.id} hasDraft={!!input.trim()} disabled={busy || listening || !!pending.current} onSelect={() => void select(item)} onDelete={() => removeConversation(item)}/>) : <p>{t("Your conversations will appear here.")}</p>}
+      <div class="messenger-history-list" role="region" aria-labelledby="messenger-history-title">{conversations.length ? conversations.filter(item => item.title.toLocaleLowerCase().includes(historySearch.toLocaleLowerCase())).map(item => <ConversationHistoryItem key={item.id} conversation={item} current={item.id === current?.id} hasDraft={!!input.trim()} disabled={busy || listening || !!pending.current} onSelect={() => void select(item)} onDelete={() => removeConversation(item)}/>) : <p>{t("Your conversations will appear here.")}</p>}
         {moreHistory && <button type="button" disabled={busy || listening} onClick={more}>{t("Load more conversations")}</button>}
       </div>
+      {historySearch && !conversations.some(item => item.title.toLocaleLowerCase().includes(historySearch.toLocaleLowerCase())) && <p role="status">{t("No matching conversations.")}</p>}
+      <details class="experience-banking-menu"><summary>{t("More banking")}</summary><SidebarNavigation page="assistant" admin={session.user.role === "ADMIN"}/></details>
       <SidebarFooter page="assistant" onLogout={() => runCommand("sign out")} disabled={busy || listening || !!pending.current}>
         <button class="sidebar-link" type="button" onClick={() => { setHistoryOpen(false); showGuidance("help"); }}><BankingIcon name="support"/><span>{t("Support")}</span></button>
       </SidebarFooter>
   </>;
   const context = <AccountContext accounts={accounts} loading={accountsLoading} error={accountsError} hidden={balancesHidden} onToggle={() => setBalancesHidden(value => !value)} onRetry={onRefreshAccounts}/>;
 
-  return <div class="nexa-messenger" lang={language}>
+  return <div class="nexa-messenger experience-chat" lang={language}>
+    <div class="experience-rail-container" inert={historyModal}><WorkspaceRail page="assistant" name={session.profile.fullName}/></div>
     <a class="conversation-skip" href="#nexa-conversation-input" onClick={event => { event.preventDefault(); textarea.current?.focus(); }}>{t("Skip to conversation")}</a>
     {wideLayout && <aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history messenger-history-sidebar" aria-label={t("Banking navigation and history")}>{historyContents}</aside>}
     <main class="messenger-main" aria-label={t("Nexa banking conversation")} inert={historyModal}>
       <header class="messenger-header">
         <button type="button" class="messenger-icon" onClick={onClose} aria-label={t("Open banking overview")}><ChatIcon name="back" /><span>{t("Banking")}</span></button>
-        <div class="messenger-identity"><h1>{t("Your money, in conversation.")}</h1><span>{t(sending ? "Working on your request…" : "Personal banking")}</span></div>
+        <div class="messenger-identity"><h1>{t("Your conversation")}</h1></div>
         <button type="button" class="messenger-icon conversation-context-toggle" aria-label={t("Account context")} aria-expanded={contextOpen} onClick={() => setContextOpen(true)}><BankingIcon name="accounts"/></button>
         <button ref={historyToggle} type="button" class="messenger-icon" onClick={() => { setMenuOpen(false); setHistoryOpen(true); }} aria-label={t("Conversation history")} aria-expanded={wideLayout || historyOpen} aria-controls="messenger-history"><ChatIcon name="history" /><span>{t("History")}</span></button>
         <div class="messenger-menu-wrap">
@@ -394,14 +399,13 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
           <div class="messenger-timeline">
             {older && <div class="messenger-load"><button type="button" disabled={busy || listening} onClick={earlier}>{t("Load earlier messages")}</button></div>}
             {!turns.length && !outgoing && <>
-              <div class="conversation-welcome"><span class="conversation-welcome-mark" aria-hidden="true">✳</span><span>{t("EVERYDAY, MADE EASIER")}</span><h2>{t("A little clarity. A lot more possibility.")}</h2><p>{t("Ask a question, make a plan, or get something done.")}</p>
+              <div class="conversation-welcome"><span class="conversation-welcome-mark" aria-hidden="true"><img src="styles/images/nexa.svg" width="40" height="40" alt=""/></span><h2>{t("How can I help?")}</h2>
                 <div class="conversation-starters">
-                  <QuickAction icon="accounts" title={t("What’s my balance?")} description={t("See what’s available across your accounts")} disabled={busy || listening} onClick={() => void submit(hindi ? "मेरा बैलेंस कितना है?" : "What’s my balance?")}/>
-                  <QuickAction icon="payments" title={t("Move money between my accounts")} description={t("Review a transfer before sending")} disabled={busy || listening} onClick={() => void submit(hindi ? "मेरे खातों के बीच पैसे भेजें" : "Transfer between my accounts")}/>
-                  <QuickAction icon="transactions" title={t("Show my latest transactions")} description={t("A closer look at money in and out")} disabled={busy || listening} onClick={() => void submit(hindi ? "पिछले 10 ट्रांज़ैक्शन दिखाओ।" : "Show my latest transactions")}/>
-                  <QuickAction icon="insights" title={t("Understand my spending")} description={t("Explore your spending by category")} disabled={busy || listening} onClick={() => void submit(hindi ? "इस महीने मैंने कितना खर्च किया?" : "Show my spending this month")}/>
+                  <QuickAction icon="accounts" title={t("Check Balance")} description={t("See what’s available across your accounts")} disabled={busy || listening} onClick={() => void submit(hindi ? "मेरा बैलेंस कितना है?" : "What’s my balance?")}/>
+                  <QuickAction icon="payments" title={t("Transfer between accounts")} description={t("Review a transfer before sending")} disabled={busy || listening} onClick={() => void submit(hindi ? "मेरे खातों के बीच पैसे भेजें" : "Transfer between my accounts")}/>
+                  <QuickAction icon="transactions" title={t("Recent Transactions")} description={t("A closer look at money in and out")} disabled={busy || listening} onClick={() => void submit(hindi ? "पिछले 10 ट्रांज़ैक्शन दिखाओ।" : "Show my latest transactions")}/>
+                  <QuickAction icon="insights" title={t("Spending by category")} description={t("Explore your spending by category")} disabled={busy || listening} onClick={() => void submit(hindi ? "इस महीने मैंने कितना खर्च किया?" : "Show my spending this month")}/>
                 </div>
-                <p class="conversation-welcome-note"><BankingIcon name="shield"/>{t("Money moves only after you confirm.")}</p>
               </div>
 
             </>}
@@ -423,8 +427,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
             </MessageBubble>}
             {guidance && <MessageBubble role="assistant">
               <div role="status" lang={hindi ? "hi" : "en"}>
-                <p>{hindi ? "नीचे एक बटन चुनें या माइक दबाकर बोलें। भेजने से पहले अपनी बात जाँचें।" : "Choose a button below, or tap Speak to ask a question. Check your words before sending."}</p>
-                <p>{hindi ? "बैंक के कर्मचारी से मदद के लिए अपने कार्ड पर दिया नंबर इस्तेमाल करें या शाखा जाएँ। अपना PIN या पासवर्ड साझा न करें।" : "Need help from a person? Use the number printed on your bank card or visit your branch. Never share your PIN or password."}</p>
+                <p>{hindi ? "बैंक से सहायता के लिए अपने कार्ड पर दिए नंबर पर कॉल करें या शाखा जाएँ।" : "For bank support, call the number on your card or visit a branch."}</p>
               </div>
               <div class="messenger-inline-actions"><button type="button" disabled={busy || listening || !!pending.current} onClick={() => runCommand(readAloud ? "stop reading" : "read aloud")}>{readAloud ? t("Stop reading replies") : t("Read replies aloud")}</button><button type="button" onClick={() => setGuidance(null)}>{hindi ? "ठीक है" : "Got it"}</button></div>
             </MessageBubble>}
@@ -447,22 +450,20 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
         <form class="messenger-composer" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
           {listening ? <div class="messenger-voice-session">
             <div class="messenger-voice-state" role="status"><span class={voice.phase === "listening" ? "recording-dot" : ""} /><strong>{voice.phase === "review" ? (voice.simulated ? t("Message ready") : t("Voice message ready")) : voice.phase === "stopping" ? t("Finishing…") : t("Listening")}</strong><time>{Math.floor(voice.seconds / 60)}:{String(voice.seconds % 60).padStart(2, "0")}</time></div>
-            {voice.phase === "review" && <label class="messenger-voice-preview">{t("Check your words before sending")}<textarea aria-label={t("Your voice message")} lang={hindi ? "hi" : "en"} value={voice.transcript} maxLength={2000} onInput={event => voice.editTranscript(event.currentTarget.value)} dir="auto" /></label>}
+            {voice.phase === "review" && <label class="messenger-voice-preview">{t("Your voice message")}<textarea aria-label={t("Your voice message")} lang={hindi ? "hi" : "en"} value={voice.transcript} maxLength={2000} onInput={event => voice.editTranscript(event.currentTarget.value)} dir="auto" /></label>}
             <div class="messenger-voice-actions"><button type="button" onClick={voice.cancel}>{t("Cancel")}</button>{voice.phase === "review" ? <button type="button" class="messenger-primary" disabled={!voice.transcript.trim()} onClick={sendVoice} aria-label={t("Send voice message")}><ChatIcon name="send" />{t("Send")}</button> : <button type="button" disabled={voice.phase === "stopping"} onClick={voice.stop} aria-label={t("Stop listening")}><ChatIcon name="stop" />{t("Stop")}</button>}</div>
           </div> : <div class="messenger-input-row">
             <label class="messenger-input-label" for="nexa-conversation-input">{hindi ? "अपना सवाल लिखें" : t("Write your question")}</label>
             <textarea ref={textarea} id="nexa-conversation-input" rows={1} maxLength={2000} value={input} readOnly={busy || !!pending.current} dir="auto" enterkeyhint="send" onInput={(event) => setInput(event.currentTarget.value)} onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey && !event.isComposing && window.matchMedia("(pointer: fine)").matches) { event.preventDefault(); void submit(); }
-            }} placeholder={hindi ? "यहाँ लिखें…" : wideLayout ? t("Ask about your money, or tell me what you’d like to do…") : t("Ask Nexa…")} aria-describedby="messenger-voice-hint" />
-            <button type="button" class={`messenger-icon messenger-mic ${input.trim() ? "" : "messenger-primary"}`} disabled={busy || !!pending.current} onClick={() => { setVoiceError(""); voice.start(language); }} aria-label={hindi ? "हिन्दी में बोलें" : t("Speak your message")}><ChatIcon name="mic" /><span lang={hindi ? "hi" : "en"}>{hindi ? "बोलें" : t("Speak")}</span></button>
+            }} placeholder={hindi ? "यहाँ लिखें…" : t("Ask Nexa…")} />
+            <button type="button" class="messenger-icon messenger-mic" disabled={busy || !!pending.current} onClick={() => { setVoiceError(""); voice.start(language); }} aria-label={hindi ? "हिन्दी में बोलें" : t("Speak your message")}><ChatIcon name="mic" /><span lang={hindi ? "hi" : "en"}>{hindi ? "बोलें" : t("Speak")}</span></button>
             <button type="submit" class={`messenger-icon messenger-send ${input.trim() ? "messenger-primary" : ""}`} disabled={busy || !!pending.current || !input.trim()} aria-label={t("Send message")}><ChatIcon name="send" /><span>{hindi ? "भेजें" : t("Send")}</span></button>
           </div>}
         </form>
-        <div class="messenger-composer-meta"><label>{t("Language")} <select aria-label={t("Voice language / बोलने की भाषा")} value={language} disabled={listening} onChange={(event) => { const next = event.currentTarget.value as "en-IN" | "hi-IN"; setLocale(next); setLanguage(next); }}><option value="en-IN">English</option><option value="hi-IN" lang="hi">हिन्दी (Hindi)</option></select></label><button type="button" disabled={busy || listening || !!pending.current} onClick={() => { setVoiceError(""); voice.startDemo(language); }}>{t("Use suggested message")}</button><details><summary>{t("About voice")}</summary><p>{t("Review your words before sending. Speech recognition may use your browser’s speech service.")}</p></details></div>
-        <p id="messenger-voice-hint" class="messenger-voice-hint" lang={hindi ? "hi" : "en"}>{hindi ? "बोलें, फिर भेजने से पहले अपने शब्द जाँचें।" : t("Speak, then check your words before sending.")}</p>
+        <div class="messenger-composer-meta"><label>{t("Language")} <select aria-label={t("Voice language / बोलने की भाषा")} value={language} disabled={listening} onChange={(event) => { const next = event.currentTarget.value as "en-IN" | "hi-IN"; setLocale(next); setLanguage(next); }}><option value="en-IN">English</option><option value="hi-IN" lang="hi">हिन्दी (Hindi)</option></select></label><button type="button" disabled={busy || listening || !!pending.current} onClick={() => { setVoiceError(""); voice.startDemo(language); }}>{t("Use suggested message")}</button><details><summary>{t("About voice")}</summary><p>{t("Speech recognition may use your browser’s speech service.")}</p></details></div>
       </footer>
     </main>
-    <aside class="conversation-context" aria-label={t("Account context")}>{context}</aside>
     {contextOpen && <Modal title={t("Your accounts")} onClose={() => setContextOpen(false)}>{context}</Modal>}
     {!wideLayout && <div hidden={!historyModal} inert={!historyModal} class="messenger-drawer-backdrop" onClick={closeHistory}><aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history" role="dialog" aria-modal="true" aria-label={t("Banking navigation and history")} onClick={(event) => event.stopPropagation()}>{historyContents}</aside></div>}
   </div>;

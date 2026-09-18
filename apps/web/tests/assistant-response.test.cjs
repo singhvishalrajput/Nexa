@@ -1,3 +1,4 @@
+require('./jet-node-stubs.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -14,6 +15,26 @@ const { AssistantResponse } = require('../src/components/chat/AssistantResponse.
 const { MessageBubble } = require('../src/components/chat/MessageBubble.tsx');
 const { supportsBankingContent, BillList } = require('../src/components/chat/BankingResponse.tsx');
 const turn = { assistantText: 'Here is your summary.', createdAt: '2026-09-10T09:00:00Z' };
+
+test('loan chat summaries render new loans without a masked number alongside imported loans', () => {
+  const { LoanSummary } = require('../src/components/chat/BankingResponse.tsx');
+  const base = {displayName:'New loan', outstanding:'503', nextEmi:'509.08', currencyCode:'INR', status:'ACTIVE'};
+  const result = LoanSummary({content:{version:1, type:'LOANS', loans:[
+    {...base, id:'new-loan', numberMasked:null},
+    {...base, id:'pending-loan', status:'PENDING_APPROVAL'},
+    {...base, id:'imported-loan', numberMasked:'•••• 8842'}
+  ]}});
+  function text(node) {
+    if (node == null || typeof node === 'boolean') return '';
+    if (Array.isArray(node)) return node.map(text).join(' ');
+    if (typeof node !== 'object') return String(node);
+    return text(node.props?.children);
+  }
+  const rendered = text(result);
+  assert.equal((rendered.match(/Number unavailable/g) || []).length, 2);
+  assert.match(rendered, /8842/);
+  assert.match(rendered, /New loan/);
+});
 
 test('plain and historical replies retain standard message bubbles', () => {
   const result = AssistantResponse({ turn, accessToken: 'test' });
