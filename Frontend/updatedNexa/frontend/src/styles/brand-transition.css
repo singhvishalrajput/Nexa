@@ -1,0 +1,125 @@
+.nexa-page-content {
+  display: contents;
+}
+.nexa-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #fcfbfa;
+  animation: nexa-transition-reveal 1700ms linear both;
+}
+.nexa-transition-lockup {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  transform: translateY(-12px);
+}
+.nexa-transition-mark {
+  width: 88px;
+  height: 88px;
+  overflow: visible;
+  position: relative;
+}
+.nexa-transition-turn {
+  transform-origin: 24px 24px;
+  animation: nexa-mark-turn 1260ms both;
+}
+.nexa-transition-facet {
+  animation: nexa-facet-gather 580ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.nexa-transition-wordmark {
+  font:
+    650 30px/1.2 "Manrope",
+    sans-serif;
+  letter-spacing: -0.06em;
+  color: #252525;
+  animation: nexa-wordmark-in 400ms 840ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.nexa-transition-halo {
+  position: absolute;
+  width: 190px;
+  height: 190px;
+  top: -51px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #ff62480b,
+    #ff624804 52%,
+    transparent 72%
+  );
+  animation: nexa-halo-settle 1150ms 200ms ease-out both;
+}
+@keyframes nexa-facet-gather {
+  from {
+    transform: translateY(-22px);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes nexa-mark-turn {
+  0%,
+  55% {
+    transform: rotate(-36deg) scale(0.92);
+  }
+  55% {
+    animation-timing-function: cubic-bezier(0.65, 0, 0.2, 1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+@keyframes nexa-wordmark-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes nexa-halo-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  45% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+@keyframes nexa-transition-reveal {
+  0%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nexa-transition {
+    animation: nexa-transition-reveal 240ms linear both;
+  }
+  .nexa-transition-mark *,
+  .nexa-transition-wordmark {
+    animation: none;
+  }
+  .nexa-transition-halo {
+    display: none;
+  }
+}

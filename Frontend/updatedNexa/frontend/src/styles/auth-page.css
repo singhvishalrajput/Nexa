@@ -1,0 +1,456 @@
+.na-shell {
+  position: fixed;
+  inset: 12px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #ddd transparent;
+  border-radius: 26px;
+  background: #fafafa;
+  color: #252525;
+  font:
+    13px/1.5 "DM Sans",
+    sans-serif;
+}
+.na-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 17px 28px;
+  flex-shrink: 0;
+}
+.na-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font:
+    650 26px/1 "Manrope",
+    sans-serif;
+  letter-spacing: -0.055em;
+}
+.na-brand img {
+  width: 28px;
+  height: 28px;
+}
+.na-home {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #777 !important;
+}
+.na-home:hover {
+  color: #252525 !important;
+}
+.na-home svg {
+  width: 15px;
+}
+.na-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: clamp(16px, 3vw, 48px);
+  padding: 0 12px 12px;
+  flex: 1;
+  min-height: 0;
+}
+.na-story {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(24px, 2.5vw, 36px) 0 0;
+  border-radius: 20px;
+  background: #eeede9;
+  isolation: isolate;
+}
+.na-story-heading {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  padding: 0 clamp(26px, 3vw, 42px);
+  animation: na-copy-enter 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.na-story h2 {
+  font-size: clamp(28px, 2.6vw, 38px);
+  line-height: 1.13;
+  font-weight: 450;
+  letter-spacing: -0.055em;
+}
+.na-story h2 span {
+  color: #a15038;
+}
+.na-artwork {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+.na-artwork-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transform-origin: 50% 65%;
+  animation: na-art-enter 1400ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.na-form-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+  padding: 18px clamp(22px, 3vw, 44px) 18px 0;
+}
+.na-form-wrap {
+  width: 100%;
+  max-width: 370px;
+  margin: auto 0;
+  padding: 8px 0;
+}
+.na-form-panel h1 {
+  font-size: clamp(27px, 2.3vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -0.05em;
+  font-weight: 500;
+  outline: none;
+}
+.na-form-intro {
+  color: #7b7b77;
+  font-size: 13px;
+  line-height: 1.65;
+  margin: 10px 0 24px;
+}
+.na-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.na-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #454545;
+  margin-bottom: 8px;
+}
+.na-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.na-text-button {
+  background: transparent;
+  padding: 0;
+  font-size: 11px;
+  color: #777;
+}
+.na-text-button:hover {
+  color: #c85439;
+  text-decoration: underline;
+}
+.na-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  border: 1px solid #deddda;
+  border-radius: 11px;
+  padding: 0 14px;
+  background: #fff;
+  color: #8b8b87;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s;
+}
+.na-input-wrap:focus-within {
+  border-color: #ee967c;
+  box-shadow: 0 0 0 3px #ff62480a;
+}
+.na-input-wrap > svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.na-input-wrap input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #252525;
+  font:
+    13px/1.5 "DM Sans",
+    sans-serif;
+  padding: 11px 0;
+}
+.na-input-wrap input::placeholder {
+  color: #92928e;
+}
+.na-input-wrap input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 40px #fff inset;
+  -webkit-text-fill-color: #252525;
+}
+.na-eye {
+  display: grid;
+  place-items: center;
+  padding: 8px 0 8px 5px;
+  background: none;
+  color: #80807c;
+  flex-shrink: 0;
+}
+.na-eye svg {
+  width: 17px;
+  height: 17px;
+}
+.na-input-wrap.has-error {
+  border-color: #d06a53;
+}
+.na-error {
+  margin-top: 6px;
+  color: #b64c36;
+  font-size: 12px;
+}
+.na-password-hint {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 9px;
+  color: #81817c;
+  font-size: 11px;
+}
+.na-length-meter {
+  width: 36px;
+  height: 3px;
+  background: #e7ded5;
+  overflow: hidden;
+  border-radius: 3px;
+}
+.na-length-meter i {
+  display: block;
+  height: 100%;
+  background: #f49c7d;
+  transition: width 0.2s;
+}
+.na-length-meter.is-ready i {
+  background: #ff6248;
+}
+.na-submit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  border-radius: 12px;
+  background: #ffebe4;
+  color: #252525;
+  border: 1px solid #f5cbbf;
+  padding: 8px 10px 8px 19px;
+  font:
+    600 13px/1.5 "DM Sans",
+    sans-serif;
+  margin-top: 6px;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+.na-submit:hover {
+  background: #ffdfd3;
+  transform: translateY(-1px);
+}
+.na-submit:focus-visible {
+  outline: 2px solid #252525;
+  outline-offset: 4px;
+}
+.na-submit:active {
+  transform: translateY(0);
+}
+.na-submit-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #ff6248;
+}
+.na-submit-icon svg {
+  width: 17px;
+}
+.na-switch {
+  margin-top: 18px;
+  font-size: 12px;
+  text-align: center;
+  color: #777;
+}
+.na-switch a {
+  color: #252525;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.na-switch a span {
+  margin-left: 5px;
+  color: #e1684a;
+}
+.na-switch a:hover {
+  text-decoration: underline;
+}
+.na-panel-footer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #858580;
+  padding-top: 14px;
+}
+.na-panel-footer a span {
+  color: #555;
+}
+.na-notice {
+  padding: 13px 15px;
+  border: 1px solid #efddd0;
+  border-radius: 10px;
+  background: #fff1e9;
+  color: #815944;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.na-notice a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  color: #ad482e;
+  font-weight: 500;
+}
+.na-notice svg {
+  width: 15px;
+}
+.na-return {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  margin: 24px auto 0;
+  color: #666;
+  font-size: 12px;
+}
+.na-return svg {
+  width: 16px;
+}
+
+@keyframes na-art-enter {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes na-copy-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-height: 760px) and (min-width: 761px) {
+  .na-header {
+    padding-top: 13px;
+    padding-bottom: 13px;
+  }
+  .na-story {
+    padding: 24px 0 0;
+  }
+  .na-story h2 {
+    font-size: 34px;
+  }
+  .na-form-panel {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .na-form {
+    gap: 12px;
+  }
+  .na-form-intro {
+    margin-bottom: 20px;
+  }
+  .na-switch {
+    margin-top: 14px;
+  }
+  .na-panel-footer {
+    padding-top: 10px;
+  }
+}
+@media (max-width: 760px) {
+  .na-shell {
+    inset: 0;
+    border-radius: 0;
+  }
+  .na-header {
+    padding: 20px 24px;
+  }
+  .na-brand {
+    font-size: 25px;
+  }
+  .na-layout {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0 24px 20px;
+  }
+  .na-story {
+    display: none;
+  }
+  .na-form-panel {
+    padding: 12px 0;
+  }
+  .na-form-wrap {
+    max-width: 390px;
+  }
+  .na-form-panel h1 {
+    font-size: 29px;
+  }
+  .na-form-intro {
+    margin-bottom: 24px;
+  }
+  .na-input-wrap input {
+    font-size: 16px;
+  }
+  .na-input-wrap {
+    min-height: 49px;
+  }
+  .na-submit {
+    min-height: 49px;
+  }
+  .na-panel-footer {
+    flex-shrink: 0;
+    font-size: 11px;
+  }
+}
+@media (max-height: 620px) {
+  .na-form-panel {
+    justify-content: flex-start;
+  }
+  .na-form-wrap {
+    margin: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .na-shell *,
+  .na-shell *::before,
+  .na-shell *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
