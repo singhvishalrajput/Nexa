@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 public class MandateController {
   @org.springframework.beans.factory.annotation.Autowired
   private com.nexa.api.service.CreditMandateService operations;
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.nexa.api.service.PaymentItemService paymentItems;
 
   private final MandateQueryService service;
 
@@ -49,6 +51,11 @@ public class MandateController {
   @PostMapping({"/{id}/revoke", "/{id}/cancel"})
   public java.util.Map<String, Object> revoke(@PathVariable String id) {
     return operations.revoke(id);
+  }
+
+  @PostMapping("/{id}/status")
+  public java.util.Map<String, Object> status(@PathVariable String id, @RequestBody com.nexa.api.service.PaymentItemService.StatusRequest request) {
+    return paymentItems.setMandateStatus(id, request);
   }
 
   @PostMapping("/{id}/execute")

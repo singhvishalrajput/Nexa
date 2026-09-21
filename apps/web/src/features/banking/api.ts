@@ -51,6 +51,8 @@ export const bankApi = {
         targetId: string;
         amount?: string;
     }) => authenticatedRequest<PreparedAction>("/actions/prepare", token, { method: "POST", body: JSON.stringify(request) }),
+    createBill: (token: string, request: { billerName: string; amount: string; minimumAmount?: string; dueAt: string; category: string; customerNumber: string }) => authenticatedRequest<Product>("/bills", token, { method: "POST", body: JSON.stringify(request) }),
+    setProductStatus: (token: string, kind: "bills" | "mandates", id: string, status: string) => authenticatedRequest<Product>("/" + kind + "/" + encodeURIComponent(id) + "/status", token, { method: "POST", body: JSON.stringify({ status }) }),
     coreAccounts: (token: string) => authenticatedCoreRequest<CoreAccount[]>("/accounts", token),
     postTransaction: (token: string, operation: "deposit" | "withdraw" | "transfer", payload: {
         sourceAccountId?: number;

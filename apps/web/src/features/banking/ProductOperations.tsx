@@ -45,6 +45,67 @@ export function ProductCreate({ token, kind, reload }: {
  <p>{kind === "loans" ? "Your request goes to the administrator for approval. No money moves until approval and your acceptance." : "Creation records a pending authorization. Activate it from its details page before making payments."}</p>
  {error && <p role="alert">{error}</p>}<button type="submit" disabled={busy}>{busy ? "Saving…" : "Create"}</button></form>}</Panel>;
 }
+export function BillCreate({ token, reload }: { token: string; reload: () => void; }) {
+    const inFlight = useRef(false);
+    const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
+    async function submit(event: Event) {
+        event.preventDefault();
+        if (inFlight.current)
+            return;
+        inFlight.current = true;
+        const form = new FormData(event.currentTarget as HTMLFormElement);
+        setBusy(true);
+        setError("");
+        try {
+            const minimumAmount = String(form.get("minimumAmount") || "");
+            await bankApi.createBill(token, { billerName: String(form.get("billerName")), amount: String(form.get("amount")), ...(minimumAmount ? { minimumAmount } : {}), dueAt: String(form.get("dueAt")), category: String(form.get("category")), customerNumber: String(form.get("customerNumber")) });
+            setOpen(false);
+            reload();
+        }
+        catch (e) {
+            setError(e instanceof Error ? e.message : "The bill could not be added.");
+        }
+        finally {
+            inFlight.current = false;
+            setBusy(false);
+        }
+    }
+    return <Panel title="Add bill"><button onClick={() => setOpen(!open)}>{open ? "Close" : "Add bill"}</button>{open && <form class="bank-form" onSubmit={submit}>
+ <label>Biller<input name="billerName" required maxLength={160}/></label>
+ <label>Customer number<input name="customerNumber" required maxLength={80}/></label>
+ <label>Category<input name="category" required maxLength={80}/></label>
+ <label>Amount (INR)<input name="amount" type="number" min="0.01" step="0.01" required/></label>
+ <label>Minimum amount (INR)<input name="minimumAmount" type="number" min="0" step="0.01"/></label>
+ <label>Due date<input name="dueAt" type="date" required/></label>
+ {error && <p role="alert">{error}</p>}<button type="submit" disabled={busy}>{busy ? "Saving…" : "Add bill"}</button>
+ </form>}</Panel>;
+}
+export function ProductStatusControl({ token, kind, product, reload, onPosted }: {
+    token: string;
+    kind: "bills" | "mandates";
+    product: Product;
+    reload: () => void;
+    onPosted?: (message: string) => void;
+}) {
+    const [status, setStatus] = useState(product.status);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState("");
+    const states = kind === "bills" ? ["UPCOMING", "DUE", "OVERDUE", "PAID", "FAILED"] : ["PENDING", "ACTIVE", "PAUSED", "CANCELLED", "EXPIRED", "ACTION_REQUIRED"];
+    async function save() {
+        setBusy(true);
+        setError("");
+        try {
+            await bankApi.setProductStatus(token, kind, product.id, status);
+            onPosted?.("Status updated");
+            reload();
+        }
+        catch (e) {
+            setError(e instanceof Error ? e.message : "The status could not be changed.");
+        }
+        finally { setBusy(false); }
+    }
+    return <Panel title="Payment status"><div class="bank-form"><label>Status<select value={status} disabled={busy} onChange={e => setStatus(e.currentTarget.value)}>{states.map(value => <option value={value}>{value.replace(/_/g, " ").toLowerCase()}</option>)}</select></label><button disabled={busy || status === product.status} onClick={save}>{busy ? "Saving…" : "Save status"}</button>{error && <p role="alert">{error}</p>}</div></Panel>;
+}
 export function ProductOperations({ token, kind, product, reload, onPosted }: {
     token: string;
     kind: Kind;
