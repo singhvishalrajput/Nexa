@@ -85,4 +85,28 @@ public class LoanCalculationService {
     }
     return result;
   }
+
+  /** Keep contractual EMI and existing due dates; only unpaid projections are replaced. */
+  public List<Installment> recalculate(
+      BigDecimal principal, BigDecimal rate, BigDecimal emi, List<Installment> unpaid) {
+    BigDecimal remaining = principal.setScale(2);
+    BigDecimal monthlyRate = rate.divide(new BigDecimal("1200"), PRECISION);
+    List<Installment> result = new ArrayList<>();
+    for (int i = 0; i < unpaid.size() && remaining.signum() > 0; i++) {
+      var old = unpaid.get(i);
+      BigDecimal interest = remaining.multiply(monthlyRate).setScale(2, RoundingMode.HALF_UP);
+      BigDecimal capital =
+          i == unpaid.size() - 1 ? remaining : emi.subtract(interest).min(remaining);
+      if (capital.signum() <= 0)
+        throw new InvalidRequestException("The EMI must cover interest and principal");
+      result.add(
+          new Installment(
+              old.id(), old.loanId(), old.installmentNumber(), old.dueDate(),
+              capital, interest, capital.add(interest), "PENDING", null));
+      remaining = remaining.subtract(capital);
+    }
+    if (remaining.signum() != 0)
+      throw new IllegalStateException("No remaining installments for outstanding principal");
+    return result;
+  }
 }

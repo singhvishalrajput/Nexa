@@ -511,7 +511,7 @@ public class CreditMandateService {
                 r.getString("transaction_reference"),
                 "LOAN_DISBURSEMENT".equals(r.getString("operation"))
                     ? "DISBURSEMENT"
-                    : "EMI_PAYMENT",
+                    : r.getString("parent_id") == null ? "PRINCIPAL_PREPAYMENT" : "EMI_PAYMENT",
                 "INR",
                 r.getBigDecimal("amount"),
                 r.getBigDecimal("principal_component"),
@@ -523,6 +523,55 @@ public class CreditMandateService {
 
   public LoanModels.Payment payInstallment(String id, String installmentId) {
     return payInstallment(id, installmentId, null);
+  }
+
+  public LoanModels.RepaymentOptions repaymentOptions(String id) {
+    var l = loan(id, false);
+    return repaymentOptions(l, schedule(id), false);
+  }
+
+  public void validateRepayment(String id, BigDecimal amount) {
+    money(amount);
+    validateRepayment(amount, repaymentOptions(id));
+  }
+
+  private void validateRepayment(BigDecimal amount, LoanModels.RepaymentOptions options) {
+    if (amount.compareTo(options.minimumAmount()) < 0)
+      throw new InvalidRequestException("Pay at least the next EMI amount: " + options.minimumAmount());
+    if (amount.compareTo(options.maximumAmount()) > 0)
+      throw new InvalidRequestException(
+          "Repayment exceeds the payoff amount: " + options.maximumAmount());
+  }
+
+  private LoanModels.RepaymentOptions repaymentOptions(
+      Map<String, Object> l, List<LoanModels.Installment> rows, boolean explicitInstallment) {
+    if (!"ACTIVE".equals(value(l, "PRODUCT_STATUS")) || !"ACTIVE".equals(value(l, "STATUS")))
+      throw new InvalidRequestException("Only an active loan can be repaid");
+    BigDecimal balance = (BigDecimal) l.get("BALANCE");
+    if (l.get("TENURE_MONTHS") == null)
+      return new LoanModels.RepaymentOptions(
+          new BigDecimal("0.01"), balance, BigDecimal.ZERO, true, null, 0, null);
+    var unpaid = rows.stream().filter(r -> !"PAID".equals(r.status())).toList();
+    if (unpaid.isEmpty()) throw new InvalidRequestException("No unpaid loan installments remain");
+    var next = unpaid.get(0);
+    LocalDate monthStart = loanDate().withDayOfMonth(1);
+    // Paying a future EMI early also covers the current month. Overdue/current-month EMIs
+    // must still be settled before a small payment may go entirely to principal.
+    boolean principalOnly =
+        !explicitInstallment
+            && !next.dueDate().isBefore(monthStart.plusMonths(1))
+            && rows.stream()
+                .anyMatch(
+                    r -> "PAID".equals(r.status()) && !r.dueDate().isBefore(monthStart));
+    BigDecimal interest = principalOnly ? BigDecimal.ZERO : next.interestAmount();
+    return new LoanModels.RepaymentOptions(
+        principalOnly ? new BigDecimal("0.01") : next.totalAmount(),
+        balance.add(interest),
+        interest,
+        principalOnly,
+        (BigDecimal) l.get("PERIODIC_PAYMENT"),
+        unpaid.size(),
+        unpaid.get(unpaid.size() - 1).dueDate());
   }
 
   private LoanModels.Payment payInstallment(String id, String installmentId, Execution execution) {
@@ -559,54 +608,75 @@ public class CreditMandateService {
           .filter(p -> installment.id().equals(p.installmentId()))
           .findFirst()
           .orElseThrow(() -> new IllegalStateException("Installment payment is missing"));
-    if (!"ACTIVE".equals(value(l, "PRODUCT_STATUS")) || !"ACTIVE".equals(value(l, "STATUS")))
-      throw new InvalidRequestException("Only an active loan can be repaid");
     var next = rows.stream().filter(r -> !"PAID".equals(r.status())).findFirst().orElseThrow();
     if (!next.id().equals(installment.id()))
       throw new InvalidRequestException("Pay the earliest unpaid installment first");
-    if (execution != null && installment.totalAmount().compareTo(execution.amount) != 0)
-      throw new InvalidRequestException(
-          "Repay the exact next EMI amount: " + installment.totalAmount());
+    var options = repaymentOptions(l, rows, installmentId != null);
+    BigDecimal amount = execution == null ? installment.totalAmount() : execution.amount;
+    validateRepayment(amount, options);
+    BigDecimal interest = options.interestAmount();
+    BigDecimal principal = amount.subtract(interest);
+    BigDecimal remaining = ((BigDecimal) l.get("BALANCE")).subtract(principal);
     A source = account(funding, false);
     owned(source);
     depositAccount(source);
-    if (source.balance.compareTo(installment.totalAmount()) < 0)
-      throw new InvalidRequestException("Insufficient balance for this EMI");
+    if (source.balance.compareTo(amount) < 0)
+      throw new InvalidRequestException("Insufficient balance for this repayment");
     post(
         tx,
         funding,
         loanId,
-        installment.totalAmount(),
+        amount,
         "LOAN_REPAYMENT",
         "LOAN_REPAYMENT",
-        installment.id(),
+        options.principalOnly() ? null : installment.id(),
         id,
         funding,
         loanId,
         income,
-        installment.interestAmount());
+        interest);
     db.update(
         "UPDATE transactions SET principal_component=?,interest_component=? WHERE id=?",
-        installment.principalAmount(),
-        installment.interestAmount(),
+        principal,
+        interest,
         tx);
-    change(funding, installment.totalAmount().negate());
-    change(loanId, installment.principalAmount().negate());
-    change(income, installment.interestAmount());
-    settlement.settle(tx, installment.principalAmount(), false);
-    db.update(
-        "UPDATE transactions SET status='PAID',completed_at=?,transaction_reference=? WHERE id=?",
-        LocalDateTime.now(clock),
-        tx,
-        installment.id());
-    String nextDate =
+    change(funding, amount.negate());
+    change(loanId, principal.negate());
+    change(income, interest);
+    settlement.settle(tx, principal, false);
+    if (!options.principalOnly())
+      db.update(
+          "UPDATE transactions SET status='PAID',completed_at=?,transaction_reference=? WHERE id=?",
+          LocalDateTime.now(clock),
+          tx,
+          installment.id());
+    var unpaid =
         rows.stream()
-            .filter(r -> r.installmentNumber() > installment.installmentNumber())
-            .findFirst()
-            .map(r -> r.dueDate().toString())
-            .orElse(null);
+            .filter(r -> !"PAID".equals(r.status()))
+            .filter(r -> options.principalOnly() || !r.id().equals(installment.id()))
+            .toList();
+    if (options.principalOnly() || amount.compareTo(installment.totalAmount()) > 0) {
+      var revised =
+          calculation.recalculate(
+              remaining, (BigDecimal) l.get("INTEREST_RATE"), options.regularEmi(), unpaid);
+      for (var row : revised)
+        db.update(
+            "UPDATE transactions SET principal_component=?,interest_component=?,amount=? WHERE id=?",
+            row.principalAmount(),
+            row.interestAmount(),
+            row.totalAmount(),
+            row.id());
+      // These are unpaid projections, not payment records; retain all paid rows and receipts.
+      for (int i = revised.size(); i < unpaid.size(); i++)
+        db.update(
+            "DELETE FROM transactions WHERE id=? AND record_kind='LOAN_INSTALLMENT'"
+                + " AND status='PENDING'",
+            unpaid.get(i).id());
+      unpaid = revised;
+    }
+    String nextDate = unpaid.isEmpty() ? null : unpaid.get(0).dueDate().toString();
     db.update("UPDATE accounts SET due_at=? WHERE id=?", nextDate, loanId);
-    if (((BigDecimal) l.get("BALANCE")).compareTo(installment.principalAmount()) == 0)
+    if (remaining.signum() == 0)
       db.update(
           "UPDATE accounts SET product_status='CLOSED',status='CLOSED',closed_at=?,due_at=NULL"
               + " WHERE id=?",

@@ -821,6 +821,31 @@ public class ChatFirstIntegrationTest {
   }
 
   @Test
+  void chatScheduledLoanAllowsExtraPrincipalThenSmallTopup() throws Exception {
+    if (db.queryForObject("SELECT COUNT(*) FROM accounts WHERE account_number='NEXA-LOAN-INTEREST'", Integer.class) == 0)
+      db.update("INSERT INTO accounts(account_number,account_name,account_type,account_category,currency_code,balance,status,version,created_at,updated_at)"
+          + " VALUES('NEXA-LOAN-INTEREST','Loan interest','CLEARING','SYSTEM','INR',0,'ACTIVE',0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
+    String id = postJson("/api/v1/loans", Map.of("accountId", Long.valueOf(source),
+        "applicationKey", UUID.randomUUID().toString(), "purpose", "Education loan",
+        "amount", "12000", "tenureMonths", 6), 201).get("id").asText();
+    com.nexa.api.banking.LoanTestSupport.approvedFixture(db, id);
+    postJson("/api/v1/loans/" + id + "/accept", Map.of(), 200);
+    var review = say("repay 5000 to Education loan").get("workflow");
+    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
+    var result = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(result.get("workflow").get("status").asText()).isEqualTo("COMPLETED");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?",
+        java.math.BigDecimal.class, id)).isEqualByComparingTo("7145");
+    var topup = say("repay 50 to Education loan").get("workflow");
+    assertThat(topup.get("status").asText()).isEqualTo("REVIEW");
+    var paid = command(topup.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?",
+        java.math.BigDecimal.class, id)).isEqualByComparingTo("7095");
+    assertThat(db.queryForObject("SELECT interest_component FROM transactions WHERE id=?",
+        java.math.BigDecimal.class, paid.get("workflow").get("reference").asText())).isZero();
+  }
+
+  @Test
   void chatScheduledLoanUsesTheFullEmiIncludingFinalInterest() throws Exception {
     if (db.queryForObject("SELECT COUNT(*) FROM accounts WHERE account_number='NEXA-LOAN-INTEREST'", Integer.class) == 0)
       db.update("INSERT INTO accounts(account_number,account_name,account_type,account_category,currency_code,balance,status,version,created_at,updated_at)"

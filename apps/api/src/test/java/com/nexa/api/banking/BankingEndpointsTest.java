@@ -43,7 +43,7 @@ class BankingEndpointsTest {
   final MockMvc mvc =
       MockMvcBuilders.standaloneSetup(
               new MandateController(new MandateQueryService(repo, user)),
-              new BillController(new BillQueryService(repo, user)),
+              new BillController(new BillQueryService(repo, user), mock(com.nexa.api.service.PaymentItemService.class)),
               new CardController(new CardQueryService(repo, user)),
               new CreditCardsController(new CardQueryService(repo, user)),
               new LoanController(new LoanQueryService(repo, user)),

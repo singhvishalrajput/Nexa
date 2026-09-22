@@ -3,15 +3,18 @@ package com.nexa.api.controller;
 import com.nexa.api.beans.BankingModels;
 import com.nexa.api.service.LoanQueryService;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/loans")
 public class LoanController {
-  @org.springframework.beans.factory.annotation.Autowired
+
+  @Autowired
   private com.nexa.api.service.LoanCalculationService calculation;
 
-  @org.springframework.beans.factory.annotation.Autowired
+  @Autowired
   private com.nexa.api.service.CreditMandateService operations;
 
   private final LoanQueryService service;
@@ -43,7 +46,7 @@ public class LoanController {
   }
 
   @PostMapping
-  public org.springframework.http.ResponseEntity<?> create(
+  public ResponseEntity<?> create(
       @RequestBody com.nexa.api.service.CreditMandateService.LoanRequest request) {
     var result = operations.createLoan(request);
     return org.springframework.http.ResponseEntity.status(request.scheduled() ? 201 : 200)
@@ -65,6 +68,11 @@ public class LoanController {
   @GetMapping("/{id}/schedule")
   public List<com.nexa.api.beans.LoanModels.Installment> schedule(@PathVariable String id) {
     return operations.schedule(id);
+  }
+
+  @GetMapping("/{id}/repayment-options")
+  public com.nexa.api.beans.LoanModels.RepaymentOptions repaymentOptions(@PathVariable String id) {
+    return operations.repaymentOptions(id);
   }
 
   @PostMapping("/{id}/installments/{installmentId}/pay")

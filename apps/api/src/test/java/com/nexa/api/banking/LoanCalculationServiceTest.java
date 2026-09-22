@@ -77,4 +77,27 @@ class LoanCalculationServiceTest {
       assertThatThrownBy(() -> new LoanCalculationService(new BigDecimal(rate)))
           .isInstanceOf(IllegalArgumentException.class);
   }
+
+  @Test
+  void principalPrepaymentKeepsEmiShortensTenureAndLowersInterest() {
+    var original = service.schedule(new BigDecimal("12000"), new BigDecimal("14.50"),
+        12, LocalDate.of(2026, 1, 31));
+    BigDecimal emi = original.get(0).totalAmount();
+    var revised = service.recalculate(new BigDecimal("6000"), new BigDecimal("14.50"),
+        emi, original.subList(1, original.size()));
+    assertThat(revised).hasSizeLessThan(original.size() - 1);
+    assertThat(revised.get(0).interestAmount()).isEqualByComparingTo("72.50");
+    assertThat(revised.get(0).dueDate()).isEqualTo(original.get(1).dueDate());
+    assertThat(revised.subList(0, revised.size() - 1))
+        .allSatisfy(row -> assertThat(row.totalAmount()).isEqualByComparingTo(emi));
+    assertThat(revised.get(revised.size() - 1).totalAmount()).isLessThanOrEqualTo(emi);
+    assertThat(revised.stream().map(Installment::principalAmount)
+        .reduce(BigDecimal.ZERO, BigDecimal::add)).isEqualByComparingTo("6000");
+    assertThat(service.recalculate(BigDecimal.ZERO, new BigDecimal("14.50"), emi, original))
+        .isEmpty();
+    var zero = service.recalculate(new BigDecimal("100.01"), BigDecimal.ZERO,
+        new BigDecimal("100"), original);
+    assertThat(zero).hasSize(2);
+    assertThat(zero.get(1).totalAmount()).isEqualByComparingTo("0.01");
+  }
 }

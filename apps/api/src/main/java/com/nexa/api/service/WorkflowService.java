@@ -732,8 +732,7 @@ public class WorkflowService {
         var funding = accounts.requireOwnedAccount(account);
         BigDecimal payment = new BigDecimal(amount);
         boolean scheduledLoan = loan.terms() != null && loan.terms().tenureMonths() != null;
-        if (scheduledLoan && (loan.nextEmi() == null || payment.compareTo(new BigDecimal(loan.nextEmi())) != 0))
-          throw new InvalidRequestException("Repay the exact next EMI amount: " + loan.nextEmi());
+        if (scheduledLoan) credit.validateRepayment(w.targetId(), payment);
         if (payment.signum() <= 0
             || payment.scale() > 2
             || payment.precision() - payment.scale() > 13

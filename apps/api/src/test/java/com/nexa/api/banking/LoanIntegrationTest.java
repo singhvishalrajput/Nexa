@@ -346,7 +346,7 @@ class LoanIntegrationTest {
   }
 
   @Test
-  void repaymentCompatibilityRequiresExactEmiAndSupportsRequestRetries() throws Exception {
+  void repaymentMinimumAndFinalPaymentSupportRequestRetries() throws Exception {
     String id = apply("compatibility", 1);
     postJson(root(id) + "/disburse", Map.of(), auth, 200);
     postJson(
@@ -364,6 +364,143 @@ class LoanIntegrationTest {
     var receipt = postJson(root(id) + "/repay", request, auth, 200);
     assertThat(postJson(root(id) + "/repay", request, auth, 200)).isEqualTo(receipt);
     assertThat(getJson(root(id), auth).get("status").asText()).isEqualTo("CLOSED");
+    balanced();
+  }
+
+  @Test
+  void extraRepaymentReducesPrincipalAndInterestAndPreservesPaidHistory() throws Exception {
+    String id = apply("extra-principal", 6);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    var before = getJson(root(id) + "/schedule", auth);
+    var first = before.get(0);
+    BigDecimal emi = first.get("totalAmount").decimalValue();
+    BigDecimal payment = emi.add(new BigDecimal("5000"));
+    var request = Map.of("amount", payment, "requestId", UUID.randomUUID().toString());
+    var responses = together(() -> postJson(root(id) + "/repay", request, auth, 200));
+    assertThat(responses.get(0)).isEqualTo(responses.get(1));
+    BigDecimal principal = first.get("principalAmount").decimalValue().add(new BigDecimal("5000"));
+    BigDecimal remaining = new BigDecimal("12000").subtract(principal);
+    var detail = getJson(root(id), auth);
+    assertThat(new BigDecimal(detail.get("outstanding").asText())).isEqualByComparingTo(remaining);
+    assertThat(detail.at("/terms/emiAmount").decimalValue()).isEqualByComparingTo(emi);
+    assertThat(balance(source)).isEqualByComparingTo(new BigDecimal("13000").subtract(payment));
+    var after = getJson(root(id) + "/schedule", auth);
+    assertThat(after.size()).isLessThan(before.size());
+    assertThat(after.get(0).get("status").asText()).isEqualTo("PAID");
+    assertThat(after.get(0).get("principalAmount")).isEqualTo(first.get("principalAmount"));
+    BigDecimal projectedPrincipal = BigDecimal.ZERO;
+    for (int i = 1; i < after.size(); i++) {
+      projectedPrincipal = projectedPrincipal.add(after.get(i).get("principalAmount").decimalValue());
+      assertThat(after.get(i).get("dueDate")).isEqualTo(before.get(i).get("dueDate"));
+      assertThat(after.get(i).get("interestAmount").decimalValue())
+          .isLessThan(before.get(i).get("interestAmount").decimalValue());
+      if (i < after.size() - 1)
+        assertThat(after.get(i).get("totalAmount").decimalValue()).isEqualByComparingTo(emi);
+    }
+    assertThat(projectedPrincipal).isEqualByComparingTo(remaining);
+    String tx = responses.get(0).get("transactionId").asText();
+    assertThat(db.queryForObject("SELECT principal_component FROM transactions WHERE id=?",
+        BigDecimal.class, tx)).isEqualByComparingTo(principal);
+    assertThat(db.queryForObject("SELECT interest_component FROM transactions WHERE id=?",
+        BigDecimal.class, tx)).isEqualByComparingTo(first.get("interestAmount").decimalValue());
+    postJson(root(id) + "/repay", Map.of("amount", payment.add(BigDecimal.ONE),
+        "requestId", request.get("requestId")), auth, 409);
+    balanced();
+  }
+
+  @Test
+  void additionalPaymentAfterEarlyEmiIsPrincipalOnlyAndCanCloseLoan() throws Exception {
+    String id = apply("principal-topup", 6);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    var initial = getJson(root(id) + "/schedule", auth);
+    postJson(pay(id, initial.get(0).get("id").asText()), Map.of(), auth, 200);
+    var before = getJson(root(id) + "/schedule", auth);
+    var options = getJson(root(id) + "/repayment-options", auth);
+    assertThat(options.get("principalOnly").asBoolean()).isTrue();
+    assertThat(options.get("minimumAmount").decimalValue()).isEqualByComparingTo("0.01");
+    assertThat(options.get("interestAmount").decimalValue()).isZero();
+    BigDecimal principalBefore = options.get("maximumAmount").decimalValue();
+    var request = Map.of("amount", "50.00", "requestId", UUID.randomUUID().toString());
+    var receipt = postJson(root(id) + "/repay", request, auth, 200);
+    assertThat(postJson(root(id) + "/repay", request, auth, 200)).isEqualTo(receipt);
+    var after = getJson(root(id) + "/schedule", auth);
+    assertThat(after.get(0)).isEqualTo(before.get(0));
+    assertThat(after.get(1).get("status").asText()).isEqualTo("PENDING");
+    assertThat(after.get(1).get("interestAmount").decimalValue())
+        .isLessThan(before.get(1).get("interestAmount").decimalValue());
+    assertThat(db.queryForObject("SELECT interest_component FROM transactions WHERE id=?",
+        BigDecimal.class, receipt.get("transactionId").asText())).isZero();
+    assertThat(getJson(root(id) + "/payments", auth).toString()).contains("PRINCIPAL_PREPAYMENT");
+    var payoff = getJson(root(id) + "/repayment-options", auth);
+    assertThat(payoff.get("maximumAmount").decimalValue())
+        .isEqualByComparingTo(principalBefore.subtract(new BigDecimal("50")));
+    var close = Map.of("amount", payoff.get("maximumAmount").decimalValue(),
+        "requestId", UUID.randomUUID().toString());
+    var closed = postJson(root(id) + "/repay", close, auth, 200);
+    assertThat(postJson(root(id) + "/repay", close, auth, 200)).isEqualTo(closed);
+    assertThat(getJson(root(id), auth).get("status").asText()).isEqualTo("CLOSED");
+    assertThat(getJson(root(id) + "/schedule", auth).size()).isEqualTo(1);
+    assertThat(new BigDecimal(getJson(root(id), auth).get("outstanding").asText())).isZero();
+    balanced();
+  }
+
+  @Test
+  void reducedFinalInstallmentIsAcceptedBelowRegularEmi() throws Exception {
+    String id = apply("small-final", 6);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    postJson(root(id) + "/repay", Map.of("amount", "12000", "requestId", UUID.randomUUID().toString()), auth, 200);
+    var rows = getJson(root(id) + "/schedule", auth);
+    assertThat(rows.size()).isEqualTo(2);
+    assertThat(rows.get(1).get("principalAmount").decimalValue()).isEqualByComparingTo("145");
+    assertThat(rows.get(1).get("totalAmount").decimalValue()).isEqualByComparingTo("146.75");
+    var paid = postJson(pay(id, rows.get(1).get("id").asText()), Map.of(), auth, 200);
+    assertThat(paid.get("amount").decimalValue()).isEqualByComparingTo("146.75");
+    assertThat(getJson(root(id), auth).get("status").asText()).isEqualTo("CLOSED");
+    balanced();
+  }
+
+  @Test
+  void currentMonthAndOverdueInstallmentsPreventSmallPrincipalOnlyPayments() throws Exception {
+    String id = apply("current-month", 6);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    var rows = getJson(root(id) + "/schedule", auth);
+    postJson(pay(id, rows.get(0).get("id").asText()), Map.of(), auth, 200);
+    // Simulate a later billing month: an unpaid installment is now overdue.
+    db.update("UPDATE transactions SET due_at='2020-01-01' WHERE id=?", rows.get(1).get("id").asText());
+    var options = getJson(root(id) + "/repayment-options", auth);
+    assertThat(options.get("principalOnly").asBoolean()).isFalse();
+    assertThat(options.get("minimumAmount").decimalValue())
+        .isEqualByComparingTo(rows.get(1).get("totalAmount").decimalValue());
+    postJson(root(id) + "/repay", Map.of("amount", "50", "requestId", UUID.randomUUID().toString()), auth, 400);
+  }
+
+  @Test
+  void largerRepaymentsValidatePayoffFundsOwnershipAndAtomicRollback() throws Exception {
+    String id = apply("prepayment-validation", 6);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    var before = getJson(root(id) + "/schedule", auth);
+    mvc.perform(get(root(id) + "/repayment-options").header("Authorization", otherAuth))
+        .andExpect(status().isNotFound());
+    for (String amount : List.of("0", "-1", "0.001", "50", "12145.01"))
+      postJson(root(id) + "/repay", Map.of("amount", amount, "requestId", UUID.randomUUID().toString()), auth, 400);
+    db.update("UPDATE accounts SET balance=3000 WHERE id=?", Long.valueOf(source));
+    postJson(root(id) + "/repay", Map.of("amount", "5000", "requestId", UUID.randomUUID().toString()), auth, 400);
+    db.update("UPDATE accounts SET balance=13000 WHERE id=?", Long.valueOf(source));
+    long bank = db.queryForObject("SELECT id FROM accounts WHERE account_number='NEXA-BANK-FUNDING'", Long.class);
+    BigDecimal bankBefore = balance(Long.toString(bank));
+    long lastJournal = db.queryForObject("SELECT MAX(id) FROM journal_entries", Long.class);
+    db.execute("ALTER TABLE ledger_entries ADD CONSTRAINT prepayment_failure CHECK(account_id<>"
+        + bank + " OR journal_entry_id<=" + lastJournal + ")");
+    try {
+      postJson(root(id) + "/repay", Map.of("amount", "5000", "requestId", UUID.randomUUID().toString()), auth, 503);
+    } finally {
+      db.execute("ALTER TABLE ledger_entries DROP CONSTRAINT prepayment_failure");
+    }
+    assertThat(balance(source)).isEqualByComparingTo("13000");
+    assertThat(balance(Long.toString(bank))).isEqualByComparingTo(bankBefore);
+    assertThat(getJson(root(id) + "/schedule", auth)).isEqualTo(before);
+    assertThat(getJson(root(id) + "/payments", auth).size()).isEqualTo(1);
+    assertThat(new BigDecimal(getJson(root(id), auth).get("outstanding").asText())).isEqualByComparingTo("12000");
     balanced();
   }
 

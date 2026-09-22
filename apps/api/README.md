@@ -22,6 +22,29 @@ Customer account opening accepts `displayName`, `accountType` (SAVINGS/CURRENT),
 
 The management APIs use numeric account/customer/journal/ledger IDs and positive transaction amounts. Customer API IDs are their string representation; customer history signs amounts relative to the requested account. Both API surfaces read and write the same core records. The management API retains its `error` response envelope; customer APIs retain their structured error envelope.
 
+## Loan repayment rules
+
+Scheduled loans accept the next EMI or a larger payment through `POST /api/v1/loans/{id}/repay`
+with `amount` and a UUID `requestId`. The scheduled interest is paid first; the rest reduces
+principal. Extra principal reduces future projected interest and shortens the schedule while
+the contractual EMI stays unchanged. The final installment can be smaller. Existing paid
+installments and payment receipts remain unchanged; superseded unpaid projections are removed.
+These rules apply to existing scheduled loans without a database migration.
+
+Once the current month's EMI is covered (including an EMI paid early), further payments via
+`/repay` go entirely to principal, starting at INR 0.01. An unpaid current-month or overdue EMI
+must be covered first. `POST /installments/{installmentId}/pay` remains an explicit way to pay
+the next installment early, even when a principal-only top-up is available.
+
+`GET /api/v1/loans/{id}/repayment-options` returns the current minimum, maximum payoff,
+interest allocation, principal-only flag, regular EMI, remaining installment count and final
+due date. Payment execution rechecks these values under account locks. The maximum is
+outstanding principal plus the scheduled interest being settled, or principal alone for a
+top-up. Duplicate request IDs cannot post twice. A full payoff closes the account.
+
+Interest retains Nexa's monthly reducing-balance convention, rounded to paise; this does not
+introduce daily accrual, prepayment fees or retrospective refunds of settled EMI interest.
+
 ## Verification
 
 Run `mvn verify` (or the Maven wrapper). Tests cover authentication, conversations, product routing, source banking rules, database-backed postings and a complete authenticated account/deposit/history flow. Tests use isolated H2 databases; they do not connect to or migrate your Oracle database.

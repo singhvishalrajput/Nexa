@@ -54,4 +54,13 @@ public final class LoanModels {
       BigDecimal interestAmount,
       String status,
       LocalDateTime paidAt) {}
+
+  public record RepaymentOptions(
+      BigDecimal minimumAmount,
+      BigDecimal maximumAmount,
+      BigDecimal interestAmount,
+      boolean principalOnly,
+      BigDecimal regularEmi,
+      int remainingInstallments,
+      LocalDate finalDueDate) {}
 }
