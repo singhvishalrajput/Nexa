@@ -1,0 +1,45 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [rb-fe]
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [rb-fe]
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/backend-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build and test API
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build and verify
+        run: mvn --batch-mode verify
+
+      - name: Upload application JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexa-api
+          path: apps/api/target/nexa-api-0.0.1-SNAPSHOT.jar
+          if-no-files-found: error
