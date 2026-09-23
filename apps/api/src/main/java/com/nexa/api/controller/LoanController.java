@@ -45,12 +45,11 @@ public class LoanController {
     return rows == null ? List.of() : rows;
   }
 
-  @PostMapping
+  @PostMapping(consumes = "application/json")
   public ResponseEntity<?> create(
       @RequestBody com.nexa.api.service.CreditMandateService.LoanRequest request) {
-    var result = operations.createLoan(request);
-    return org.springframework.http.ResponseEntity.status(request.scheduled() ? 201 : 200)
-        .body(request.scheduled() ? service.detail(result.get("PRODUCT_ID").toString()) : result);
+    throw new com.nexa.api.exep.InvalidRequestException(
+        "Apply using multipart/form-data with the application and three monthly salary slips");
   }
 
   @PostMapping("/quote")
@@ -79,6 +78,13 @@ public class LoanController {
   public com.nexa.api.beans.LoanModels.Payment pay(
       @PathVariable String id, @PathVariable String installmentId) {
     return operations.payInstallment(id, installmentId);
+  }
+
+  @PostMapping("/{id}/repayment-preview")
+  public com.nexa.api.beans.LoanModels.RepaymentPreview preview(
+      @PathVariable String id,
+      @RequestBody com.nexa.api.beans.LoanModels.RepaymentPreviewRequest request) {
+    return operations.repaymentPreview(id, request.amount());
   }
 
   @GetMapping("/{id}/account")

@@ -1,4 +1,6 @@
 import { PayeeForm } from "./PayeeForm";
+import { LoanNavigation, LoanApplicationTimeline } from "./LoanTools";
+import { LoanSalarySlipPanel } from "./LoanSalarySlips";
 import { BillCreate, ProductCreate, ProductOperations, ProductStatusControl } from "./ProductOperations";
 import { t } from "../../services/locale";
 import { DemoAction, DemoHistory } from "./Showcase";
@@ -26,6 +28,7 @@ export function ProductsPage({ token, kind, id }: {
     const visible = rows.filter(p => productTitle(p).toLowerCase().includes(search.toLowerCase()));
     return <><PageHeading title={id ? productNames[kind].replace(/s$/, "") + " details" : productNames[kind]} description={descriptions[kind]}/>
  {receipt && <p role="status" class="bank-notice">{receipt}</p>}
+ {kind === "loans" && <LoanNavigation current="loans"/>}
  {kind === "beneficiaries" && <PayeeForm token={token} id={id} name={detail ? productTitle(detail) : ""} reload={data.reload}/>}
  {!id && kind === "bills" && <BillCreate token={token} reload={data.reload}/>}
  {!id && (kind === "mandates" || kind === "loans") && <ProductCreate token={token} kind={kind} reload={data.reload}/>}
@@ -43,6 +46,8 @@ function ProductDetail({ product: p, kind, token, reload, onPosted }: {
 }) {
     return <div class="bank-detail-grid"><Panel className="bank-product-summary"><span class="bank-tile-symbol">◇</span><h2>{productTitle(p)}</h2><Status value={p.status}/>{amount(p) !== undefined && <>{kind === "loans" && <span class="loan-balance-label">Outstanding principal</span>}<strong>{formatMoney(amount(p)!, p.currencyCode || "INR")}</strong>{kind === "loans" && <small class="loan-balance-note">Borrowed amount still unpaid · excludes future interest</small>}</>}<p>{p.numberMasked ? safeMask(p.numberMasked) : p.accountNumberMasked ? safeMask(p.accountNumberMasked) : p.reference}</p><a href={"#/" + kind}>{t("← Back to")} {productNames[kind].toLowerCase()}</a></Panel><Panel title={t("Details")}><dl>{p.bankName && <Detail label={t("Bank")}>{p.bankName}</Detail>}{p.cardType && <Detail label={t("Card type")}>{humanize(p.cardType)}</Detail>}{p.cardType !== "DEBIT" && p.availableLimit !== undefined && <Detail label={t("Available limit")}>{formatMoney(p.availableLimit, p.currencyCode)}</Detail>}{p.cardType !== "DEBIT" && p.creditLimit !== undefined && <Detail label={t("Credit limit")}>{formatMoney(p.creditLimit, p.currencyCode)}</Detail>}{p.cardType !== "DEBIT" && p.minimumPayment !== undefined && <Detail label={t("Minimum payment")}>{formatMoney(p.minimumPayment, p.currencyCode)}</Detail>}{p.dueAt && <Detail label={t("Due date")}>{formatDate(p.dueAt)}</Detail>}{p.nextDebit && <Detail label={t("Next debit")}>{formatDate(p.nextDebit)}</Detail>}{p.frequency && <Detail label={t("Frequency")}>{humanize(p.frequency)}</Detail>}{p.interestRate && <Detail label={t(kind === "loans" ? "Annual interest rate" : "Interest rate")}>{p.interestRate}%</Detail>}{p.nextEmi != null && <Detail label={t(kind === "loans" ? "Next EMI (includes interest)" : "Next instalment")}>{formatMoney(p.nextEmi, p.currencyCode)}</Detail>}{p.accountId && <Detail label={t("Linked account")}><a href={"#/accounts/" + encodeURIComponent(p.accountId)}>{t("View account ↗")}</a></Detail>}{p.reference && <Detail label={t("Reference")}>{p.reference}</Detail>}</dl></Panel>
  {(kind === "mandates" || kind === "loans") && <ProductOperations token={token} kind={kind} product={p} reload={reload} onPosted={onPosted}/>}
+ {kind === "loans" && <LoanApplicationTimeline token={token} product={p}/>}
+ {kind === "loans" && <LoanSalarySlipPanel token={token} loanId={p.id} pending={p.status === "PENDING_APPROVAL"}/>}
  {(kind === "bills" || kind === "mandates") && <ProductStatusControl token={token} kind={kind} product={p} reload={reload} onPosted={onPosted}/>}
  {kind === "cards" && <Panel title={t("Card controls")}><div class="bank-form-actions">{["FREEZE_CARD", "UNFREEZE_CARD", "REPLACE_CARD"].map(operation => <DemoAction key={operation} token={token} request={{operation, targetId: p.id}} label={humanize(operation)}/>)}</div></Panel>}
  {kind === "cards" && <DemoHistory token={token}/>}

@@ -348,7 +348,9 @@ public class ChatFirstIntegrationTest {
 
   JsonNode postJson(String path, Object body, int status) throws Exception {
     var request =
-        post(path).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body));
+        path.equals("/api/v1/loans")
+            ? com.nexa.api.banking.LoanTestSupport.application(json.writeValueAsString(body))
+            : post(path).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body));
     if (auth != null) request.header("Authorization", auth);
     return json.readTree(
         mvc.perform(request)
@@ -821,7 +823,7 @@ public class ChatFirstIntegrationTest {
   }
 
   @Test
-  void chatScheduledLoanAllowsExtraPrincipalThenSmallTopup() throws Exception {
+  void chatScheduledLoanRoutesExtraPrincipalToTheExplicitChoiceScreen() throws Exception {
     if (db.queryForObject("SELECT COUNT(*) FROM accounts WHERE account_number='NEXA-LOAN-INTEREST'", Integer.class) == 0)
       db.update("INSERT INTO accounts(account_number,account_name,account_type,account_category,currency_code,balance,status,version,created_at,updated_at)"
           + " VALUES('NEXA-LOAN-INTEREST','Loan interest','CLEARING','SYSTEM','INR',0,'ACTIVE',0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
@@ -831,18 +833,14 @@ public class ChatFirstIntegrationTest {
     com.nexa.api.banking.LoanTestSupport.approvedFixture(db, id);
     postJson("/api/v1/loans/" + id + "/accept", Map.of(), 200);
     var review = say("repay 5000 to Education loan").get("workflow");
-    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
-    var result = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
-    assertThat(result.get("workflow").get("status").asText()).isEqualTo("COMPLETED");
+    assertThat(review.get("status").asText()).isNotEqualTo("REVIEW");
+    assertThat(review.get("message").asText()).contains("compare reduce-tenure or reduce-EMI");
     assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?",
-        java.math.BigDecimal.class, id)).isEqualByComparingTo("7145");
+        java.math.BigDecimal.class, id)).isEqualByComparingTo("12000");
     var topup = say("repay 50 to Education loan").get("workflow");
-    assertThat(topup.get("status").asText()).isEqualTo("REVIEW");
-    var paid = command(topup.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(topup.get("status").asText()).isNotEqualTo("REVIEW");
     assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?",
-        java.math.BigDecimal.class, id)).isEqualByComparingTo("7095");
-    assertThat(db.queryForObject("SELECT interest_component FROM transactions WHERE id=?",
-        java.math.BigDecimal.class, paid.get("workflow").get("reference").asText())).isZero();
+        java.math.BigDecimal.class, id)).isEqualByComparingTo("12000");
   }
 
   @Test

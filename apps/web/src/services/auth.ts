@@ -46,10 +46,11 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, accessToken?: string, core = false): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, accessToken?: string, core = false, binary = false): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  if (init.body) headers.set("Content-Type", "application/json");
+  if (typeof FormData !== "undefined" && init.body instanceof FormData) headers.delete("Content-Type");
+  else if (init.body) headers.set("Content-Type", "application/json");
   if (accessToken) headers.set("Authorization", "Bearer " + accessToken);
   const controller = new AbortController();
   const abort = () => controller.abort();
@@ -61,6 +62,7 @@ async function request<T>(path: string, init: RequestInit = {}, accessToken?: st
     if (init.signal?.aborted) controller.abort();
     const response = await fetch((core ? API_BASE_URL.replace(/\/v1\/?$/, "") : API_BASE_URL) + path, {...init, headers, signal: controller.signal});
     if (response.status === 204) return undefined as T;
+    if (binary && response.ok) return await response.blob() as T;
     let body: ApiErrorBody & T;
     try { body = await response.json(); }
     catch (error) {
@@ -86,14 +88,18 @@ export function authenticatedRequest<T>(path: string, accessToken: string, init:
   return authorized<T>(path, accessToken, init);
 }
 
+export function authenticatedBlobRequest(path: string, accessToken: string): Promise<Blob> {
+  return authorized<Blob>(path, accessToken, { cache: "no-store" }, false, true);
+}
+
 let refreshInFlight: Promise<StoredAuthentication> | null = null;
 let sessionGeneration = 0;
 
-async function authorized<T>(path: string, accessToken: string, init: RequestInit, core = false): Promise<T> {
+async function authorized<T>(path: string, accessToken: string, init: RequestInit, core = false, binary = false): Promise<T> {
   const generation = sessionGeneration;
   const stored = readStoredAuthentication();
   const token = stored?.accessToken || accessToken;
-  try { return await request<T>(path, init, token, core); }
+  try { return await request<T>(path, init, token, core, binary); }
   catch (error) {
     if (!(error instanceof ApiRequestError) || error.status !== 401) throw error;
     if (generation !== sessionGeneration) throw error;
@@ -109,7 +115,7 @@ async function authorized<T>(path: string, accessToken: string, init: RequestIni
       throw cause;
     }
     // A permission failure on the original resource does not invalidate a session.
-    try { return await request<T>(path, init, refreshed.accessToken, core); }
+    try { return await request<T>(path, init, refreshed.accessToken, core, binary); }
     catch (cause) {
       if (generation === sessionGeneration && cause instanceof ApiRequestError && cause.status === 401) {
         clearAuthentication(); window.dispatchEvent(new Event("nexa-session-expired"));

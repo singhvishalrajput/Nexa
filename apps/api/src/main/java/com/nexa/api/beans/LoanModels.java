@@ -10,6 +10,23 @@ public final class LoanModels {
 
   public record QuoteRequest(BigDecimal amount, Integer tenureMonths) {}
 
+  public enum PrepaymentOption { REDUCE_TENURE, REDUCE_EMI }
+
+  public record RepaymentPreviewRequest(BigDecimal amount) {}
+
+  public record PrepaymentResult(
+      PrepaymentOption option, boolean available, String unavailableReason,
+      BigDecimal regularEmi, BigDecimal finalEmi, int remainingInstallments,
+      LocalDate finalDueDate, BigDecimal futureInterest, BigDecimal futureRepayment,
+      BigDecimal interestSaved, int installmentsSaved, java.util.List<Installment> schedule) {}
+
+  public record RepaymentPreview(
+      String previewToken, BigDecimal paymentAmount, BigDecimal interestAmount,
+      BigDecimal principalAmount, BigDecimal extraPrincipalAmount, BigDecimal remainingPrincipal,
+      BigDecimal annualInterestRate, BigDecimal currentEmi, int baselineInstallments,
+      LocalDate baselineFinalDueDate, BigDecimal baselineFutureInterest, boolean closesLoan,
+      java.util.List<PrepaymentResult> options) {}
+
   public record Quote(
       BigDecimal amount,
       String currencyCode,
@@ -62,5 +79,6 @@ public final class LoanModels {
       boolean principalOnly,
       BigDecimal regularEmi,
       int remainingInstallments,
-      LocalDate finalDueDate) {}
+      LocalDate finalDueDate,
+      BigDecimal minimumExtraPrincipal) {}
 }

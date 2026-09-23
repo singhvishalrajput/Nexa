@@ -1,8 +1,10 @@
 import { useRef, useState } from "preact/hooks";
-import { authenticatedRequest } from "../../services/auth";
+import { authenticatedRequest, ApiRequestError } from "../../services/auth";
+import { PrepaymentCalculator, PrepaymentComparison, PrepaymentOption, RepaymentPreview, isPartialPrepayment, validRepayment } from "./LoanPrepayment";
 import { bankApi, Product } from "./api";
 import { Panel, useLoad } from "./ui";
 import { formatMoney, formatDate } from "../../services/banking-content";
+import { SalarySlipFields, appendSalarySlips } from "./LoanSalarySlips";
 type Kind = "mandates" | "loans";
 type LoanRepaymentOptions = {
     minimumAmount: number;
@@ -12,6 +14,7 @@ type LoanRepaymentOptions = {
     regularEmi: number | null;
     remainingInstallments: number;
     finalDueDate: string | null;
+    minimumExtraPrincipal?: number | null;
     nextInstallment?: {
         dueDate: string;
         principalAmount: number;
@@ -29,6 +32,8 @@ export function ProductCreate({ token, kind, reload }: {
     const inFlight = useRef(false);
     const applicationKey = useRef(crypto.randomUUID());
     const accounts = useLoad(() => bankApi.accounts(token), [token]);
+    const salaryMonths = useLoad(() => kind === "loans"
+        ? authenticatedRequest<string[]>("/loans/salary-slip-requirements", token) : Promise.resolve([]), [token, kind]);
     const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
     async function submit(event: Event) {
         event.preventDefault();
@@ -40,7 +45,14 @@ export function ProductCreate({ token, kind, reload }: {
         setError("");
         try {
             const common = { purpose: form.get("name"), accountId: Number(form.get("account")), amount: form.get("amount"), tenureMonths: Number(form.get("tenure")), applicationKey: applicationKey.current };
-            await write(token, "/" + kind, kind === "loans" ? common : { sourceAccountId: Number(form.get("account")), beneficiaryAccountNumber: form.get("beneficiary"), payee: form.get("name"), limit: form.get("amount"), startDate: form.get("start"), endDate: form.get("end") || null });
+            if (kind === "loans") {
+                const body = new FormData();
+                body.append("application", new Blob([JSON.stringify(common)], { type: "application/json" }));
+                appendSalarySlips(body, form, salaryMonths.data || []);
+                await authenticatedRequest("/loans", token, { method: "POST", body });
+            } else {
+                await write(token, "/" + kind, { sourceAccountId: Number(form.get("account")), beneficiaryAccountNumber: form.get("beneficiary"), payee: form.get("name"), limit: form.get("amount"), startDate: form.get("start"), endDate: form.get("end") || null });
+            }
             applicationKey.current = crypto.randomUUID();
             setOpen(false);
             reload();
@@ -53,14 +65,17 @@ export function ProductCreate({ token, kind, reload }: {
             setBusy(false);
         }
     }
-    return <Panel title={kind === "loans" ? "New loan" : "New direct debit"}><button onClick={() => setOpen(!open)}>{open ? "Close" : kind === "loans" ? "Request a loan" : "Create mandate"}</button>{open && <form class="bank-form" onSubmit={submit}>
+    return <Panel title={kind === "loans" ? "New loan" : "New direct debit"}><button disabled={busy} onClick={() => setOpen(!open)}>{open ? "Close" : kind === "loans" ? "Request a loan" : "Create mandate"}</button>{open && <form class="bank-form" onSubmit={submit}>
+ <fieldset disabled={busy} class="loan-application-fields">
  <label>{kind === "loans" ? "Loan name" : "Payee name"}<input name="name" required maxLength={120}/></label>
  <label>{kind === "loans" ? "Disbursement and repayment account" : "Pay from"}<select name="account" required><option value="">Choose an account</option>{accounts.data?.filter(a => ["SAVINGS", "CURRENT"].includes(a.accountType) && a.status === "ACTIVE").map(a => <option value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}</select></label>
  {kind === "mandates" && <label>Beneficiary Nexa account number<input name="beneficiary" required inputMode="numeric"/></label>}
  <label>{kind === "loans" ? "Principal (INR)" : "Maximum per payment (INR)"}<input name="amount" type="number" min={kind === "loans" ? "1000" : "0.01"} max={kind === "loans" ? "1000000" : undefined} step="0.01" required/></label>
  {kind === "loans" ? <label>Loan tenure (months)<input name="tenure" type="number" min="1" max="60" step="1" required/><small>The bank sets the annual rate. Review your approved terms before accepting the loan.</small></label> : <><label>Effective date<input name="start" type="date" required/></label><label>End date (optional)<input name="end" type="date"/></label></>}
- <p>{kind === "loans" ? "Your request goes to the administrator for approval. No money moves until approval and your acceptance." : "Creation records a pending authorization. Activate it from its details page before making payments."}</p>
- {error && <p role="alert">{error}</p>}<button type="submit" disabled={busy}>{busy ? "Saving…" : "Create"}</button></form>}</Panel>;
+ {kind === "loans" && <>{salaryMonths.loading && <p role="status">Loading required salary-slip months…</p>}{salaryMonths.error && <p role="alert">{salaryMonths.error}<button type="button" onClick={salaryMonths.reload}>Retry</button></p>}{salaryMonths.data?.length === 3 && <SalarySlipFields months={salaryMonths.data}/>}</>}
+ <p>{kind === "loans" ? "Your request and salary slips go to the administrator for verification. No money moves until approval and your acceptance." : "Creation records a pending authorization. Activate it from its details page before making payments."}</p>
+ </fieldset>
+ {error && <p role="alert">{error}</p>}<button type="submit" disabled={busy || kind === "loans" && (salaryMonths.loading || !!salaryMonths.error || salaryMonths.data?.length !== 3)}>{busy ? "Saving…" : kind === "loans" ? "Submit loan application" : "Create"}</button></form>}</Panel>;
 }
 export function BillCreate({ token, reload }: { token: string; reload: () => void; }) {
     const inFlight = useRef(false);
@@ -136,6 +151,8 @@ export function ProductOperations({ token, kind, product, reload, onPosted }: {
     const [amount, setAmount] = useState("");
     const [key, setKey] = useState(() => crypto.randomUUID());
     const [review, setReview] = useState(false);
+    const [comparison, setComparison] = useState<{ basis: string; preview: RepaymentPreview } | null>(null);
+    const [prepaymentOption, setPrepaymentOption] = useState<PrepaymentOption>();
     const activeLoan = kind === "loans" && ["ACTIVE", "OVERDUE"].includes(product.status);
     const repayment = useLoad(async () => {
         if (!activeLoan) return null;
@@ -151,36 +168,58 @@ export function ProductOperations({ token, kind, product, reload, onPosted }: {
     const annualRate = terms.data?.INTEREST_RATE ?? product.interestRate;
     const money = (value: string | number) => formatMoney(String(value), "INR");
     const amountInPaise = Math.round(Number(amount) * 100);
+    const basis = JSON.stringify([product.id, product.outstanding, product.nextEmi, options, amount]);
+    const preview = comparison?.basis === basis ? comparison.preview : null;
+    const needsChoice = activeLoan && !!options && isPartialPrepayment(amount, options);
     const validAmount = Number.isFinite(Number(amount)) && Number(amount) > 0
         && /^\d+(\.\d{1,2})?$/.test(amount)
-        && (!activeLoan || !!options && amountInPaise >= Math.round(options.minimumAmount * 100)
-            && amountInPaise <= Math.round(options.maximumAmount * 100));
+        && (!activeLoan || !!options && validRepayment(amount, options));
     function chooseAmount(value: string) {
         setAmount(value);
         setKey(crypto.randomUUID());
         setReview(false);
+        setComparison(null);
+        setPrepaymentOption(undefined);
+    }
+    async function reviewPayment() {
+        if (!validAmount || inFlight.current) return;
+        if (!needsChoice) { setReview(true); return; }
+        inFlight.current = true; setBusy(true); setError(""); setReview(false);
+        setComparison(null); setPrepaymentOption(undefined);
+        try {
+            const result = await authenticatedRequest<RepaymentPreview>("/loans/" + encodeURIComponent(product.id) + "/repayment-preview", token, { method: "POST", body: JSON.stringify({ amount }) });
+            setComparison({ basis, preview: result }); setReview(true);
+        } catch (e) { setError(e instanceof Error ? e.message : "Unable to compare repayment options."); }
+        finally { inFlight.current = false; setBusy(false); }
     }
     async function act(operation: string, money = false) { if (inFlight.current)
-        return; inFlight.current = true; setBusy(true); setError(""); try {
-        const result = await write(token, "/" + kind + "/" + encodeURIComponent(product.id) + "/" + operation, money ? { amount, requestId: key } : {});
+        return;
+        if (money && (!validAmount || needsChoice && (!preview || !prepaymentOption || !preview.options.some(o => o.option === prepaymentOption && o.available)))) return;
+        inFlight.current = true; setBusy(true); setError(""); try {
+        const result = await write(token, "/" + kind + "/" + encodeURIComponent(product.id) + "/" + operation, money ? { amount, requestId: key, ...(needsChoice ? { prepaymentOption, previewToken: preview!.previewToken } : {}) } : {});
         const message = result.transactionId ? "Payment posted. Transaction: " + result.transactionId : "Status updated";
         setReceipt(message);
         onPosted?.(message);
         setReview(false);
         setKey(crypto.randomUUID());
         setAmount("");
+        setComparison(null); setPrepaymentOption(undefined);
         repayment.reload();
         terms.reload();
         reload();
     }
     catch (e) {
         setError(e instanceof Error ? e.message : "The operation could not be completed.");
+        if (e instanceof ApiRequestError && e.status === 409) {
+            setReview(false); setComparison(null); setPrepaymentOption(undefined);
+            repayment.reload(); terms.reload(); reload();
+        }
     }
     finally {
         inFlight.current = false;
         setBusy(false);
     } }
-    return <Panel title={kind === "loans" ? "Loan payments" : "Mandate controls"} className={kind === "loans" ? "loan-payment-panel" : undefined}>
+    return <><Panel title={kind === "loans" ? "Loan payments" : "Mandate controls"} className={kind === "loans" ? "loan-payment-panel" : undefined}>
  <div class={kind === "loans" ? "loan-payment-body" : undefined}>
  {terms.error && <p role="alert">{terms.error}<button onClick={terms.reload}>Retry account details</button></p>}
  {terms.data && !activeLoan && <p>{kind === "loans" ? "Original loan: " + (terms.data.PRINCIPAL_AMOUNT != null ? money(terms.data.PRINCIPAL_AMOUNT) : "not recorded") + " · Annual rate: " + terms.data.INTEREST_RATE + "%" : "Effective: " + terms.data.EFFECTIVE_DATE + (terms.data.END_DATE ? " to " + terms.data.END_DATE : "")}</p>}
@@ -192,7 +231,7 @@ export function ProductOperations({ token, kind, product, reload, onPosted }: {
  {activeLoan && repayment.error && <p role="alert">{repayment.error}<button onClick={repayment.reload}>Retry repayment details</button></p>}
  {activeLoan && repayment.loading && <p role="status">Loading repayment limits…</p>}
  {activeLoan && options && <>
- <div class="loan-payment-status"><span class={options.principalOnly ? "loan-payment-badge is-paid" : "loan-payment-badge"}>{options.principalOnly ? "This month’s EMI paid" : "EMI payment available"}</span><span>{options.principalOnly ? "Extra payments go to principal." : "Pay your EMI or add extra principal."}</span></div>
+ <div class="loan-payment-status"><span class={options.principalOnly ? "loan-payment-badge is-paid" : "loan-payment-badge"}>{options.principalOnly ? "Principal prepayment available" : "EMI payment available"}</span><span>{options.principalOnly ? "Extra payments go to principal." : "Pay your EMI or add extra principal."} Fixed rate: {annualRate}%.</span></div>
  <div class="loan-payment-comparison">
  <div class="loan-payment-figure is-payoff"><span>Close loan today</span><strong>{money(options.maximumAmount)}</strong><small>{options.principalOnly ? "Remaining principal only" : "Principal + interest due"}</small></div>
  {nextInstallment && <div class="loan-payment-figure"><span>{options.remainingInstallments === 1 ? "Final EMI" : "Next EMI"} <span class="loan-payment-date">· {formatDate(nextInstallment.dueDate)}</span></span><strong>{money(nextInstallment.totalAmount)}</strong><small>Includes {money(nextInstallment.interestAmount)} interest</small></div>}
@@ -208,7 +247,7 @@ export function ProductOperations({ token, kind, product, reload, onPosted }: {
  </dl>
  {product.outstanding != null && annualRate != null && <p class="loan-interest-equation">{money(product.outstanding)} × {annualRate}% ÷ 12 = <strong>{money(nextInstallment.interestAmount)}</strong> interest</p>}
  <p>{options.principalOnly ? "Paying off now clears the principal. The scheduled EMI includes monthly interest if that balance remains." : "An EMI repays part of the loan; the payoff amount clears all remaining principal and the interest due."}</p>
- <p>Monthly calculation, rounded to paise. Extra principal payments reduce future interest; the regular EMI stays unchanged.</p>
+ <p>Monthly calculation, rounded to paise; not daily interest accrual. Extra principal payments reduce future interest. Choose to keep EMI and shorten tenure, or reduce EMI and keep the current end date. Your annual rate stays fixed.</p>
  {options.finalDueDate && <p>Scheduled finish: {formatDate(options.finalDueDate)}</p>}
  </div></details>}
  <dl class="loan-payment-facts">
@@ -220,9 +259,12 @@ export function ProductOperations({ token, kind, product, reload, onPosted }: {
  {(product.status === "ACTIVE" || (kind === "loans" && product.status === "OVERDUE")) && <div class={kind === "loans" ? "loan-repayment-form" : undefined}>
  <label>{kind === "loans" ? "Repayment amount (INR)" : "Amount (INR)"}<input type="number" min={activeLoan && options ? options.minimumAmount : "0.01"} max={activeLoan && options ? options.maximumAmount : undefined} step="0.01" placeholder={activeLoan && options ? Number(options.minimumAmount).toFixed(2) : undefined} disabled={busy || activeLoan && !options} value={amount} onInput={e => chooseAmount(e.currentTarget.value)}/></label>
  {activeLoan && options && <div class="loan-payment-shortcuts"><span>Min. {money(options.minimumAmount)}</span><div>{!options.principalOnly && <button type="button" disabled={busy} onClick={() => chooseAmount(Number(options.minimumAmount).toFixed(2))}>Use EMI amount</button>}<button type="button" disabled={busy} onClick={() => chooseAmount(Number(options.maximumAmount).toFixed(2))}>Use payoff amount</button></div></div>}
- <button class={kind === "loans" ? "bank-button loan-review-button" : undefined} disabled={busy || !validAmount} onClick={() => setReview(true)}>{kind === "loans" ? "Review repayment" : "Review mandate payment"}</button>
- {review && <div class={kind === "loans" ? "loan-payment-review" : undefined} role="region" aria-label="Payment review"><p>Pay {money(amount)} from the linked account.</p>{activeLoan && options && <dl class="loan-interest-breakdown"><div><dt>Interest in this payment</dt><dd>{money(options.interestAmount)}</dd></div><div><dt>Principal reduction</dt><dd>{money(((amountInPaise - Math.round(options.interestAmount * 100)) / 100).toFixed(2))}</dd></div></dl>}<div class={kind === "loans" ? "loan-review-actions" : undefined}><button class={kind === "loans" ? "bank-button" : undefined} disabled={busy || !validAmount} onClick={() => act(kind === "loans" ? "repay" : "execute", true)}>Confirm payment</button><button class={kind === "loans" ? "bank-button secondary" : undefined} disabled={busy} onClick={() => setReview(false)}>Back</button></div></div>}
+ {activeLoan && options?.regularEmi != null && <p class="loan-calculation-note">Extra principal minimum: {money(options.minimumExtraPrincipal ?? options.regularEmi)}. A smaller full payoff is allowed. When an EMI is payable, this minimum is in addition to that EMI.</p>}
+ <button class={kind === "loans" ? "bank-button loan-review-button" : undefined} disabled={busy || !validAmount} onClick={reviewPayment}>{kind === "loans" ? "Review repayment" : "Review mandate payment"}</button>
+ {review && needsChoice && preview && <PrepaymentComparison preview={preview} selected={prepaymentOption} disabled={busy} onSelect={option => { setPrepaymentOption(option); setKey(crypto.randomUUID()); }}/>}
+ {review && (!needsChoice || !!preview) && <div class={kind === "loans" ? "loan-payment-review" : undefined} role="region" aria-label="Payment review"><p>Pay {money(amount)} from the linked account.</p>{activeLoan && options && <dl class="loan-interest-breakdown"><div><dt>Interest in this payment</dt><dd>{money(options.interestAmount)}</dd></div><div><dt>Principal reduction</dt><dd>{money(((amountInPaise - Math.round(options.interestAmount * 100)) / 100).toFixed(2))}</dd></div></dl>}<div class={kind === "loans" ? "loan-review-actions" : undefined}><button class={kind === "loans" ? "bank-button" : undefined} disabled={busy || !validAmount || needsChoice && (!preview || !prepaymentOption)} onClick={() => act(kind === "loans" ? "repay" : "execute", true)}>Confirm payment</button><button class={kind === "loans" ? "bank-button secondary" : undefined} disabled={busy} onClick={() => setReview(false)}>Back</button></div></div>}
  </div>}
  {kind === "mandates" && !["CANCELLED", "REVOKED"].includes(product.status) && <button disabled={busy} onClick={() => act("revoke")}>Revoke mandate</button>}
- {error && <p role="alert">{error}</p>}{receipt && <p role="status">{receipt}</p>}</div></Panel>;
+ {error && <p role="alert">{error}</p>}{receipt && <p role="status">{receipt}</p>}</div></Panel>
+ {activeLoan && options?.regularEmi != null && <PrepaymentCalculator token={token} loanId={product.id} limits={options} revision={JSON.stringify([product.outstanding, product.nextEmi, options])}/>}</>;
 }

@@ -63,7 +63,7 @@ class SixTableBankingIntegrationTest {
   String auth, otherAuth, source, destination, email;
 
   JsonNode postJson(String path, Object data, String token, int status) throws Exception {
-    var q =
+    var q = path.equals("/api/v1/loans") ? LoanTestSupport.application(json.writeValueAsString(data)) :
         post(path).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(data));
     if (token != null) q.header("Authorization", token);
     return json.readTree(
@@ -357,7 +357,7 @@ class SixTableBankingIntegrationTest {
   }
 
   @Test
-  void onlySixBankingTablesRemain() {
+  void sixBankingTablesAndPrivateLoanDocumentStoreRemain() {
     List<String> tables =
         ORACLE
             ? db.queryForList(
@@ -377,7 +377,8 @@ class SixTableBankingIntegrationTest {
             "ACCOUNTS",
             "TRANSACTIONS",
             "JOURNAL_ENTRIES",
-            "LEDGER_ENTRIES");
+            "LEDGER_ENTRIES",
+            "LOAN_SALARY_SLIPS");
   }
 
   @Test

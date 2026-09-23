@@ -11,6 +11,35 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class LoanCalculationServiceTest {
+  @Test
+  void reducedEmiKeepsDatesAndPrincipalAndBothOptionsUseSameFixedRate() {
+    for (String rateText : List.of("0", "14.50", "50")) {
+      BigDecimal rate = new BigDecimal(rateText);
+      var original = service.schedule(new BigDecimal("100000"), rate, 24, LocalDate.of(2028, 1, 31));
+      var unpaid = original.subList(1, original.size());
+      var smaller = service.reduceEmi(new BigDecimal("50000"), rate, unpaid);
+      var shorter = service.recalculate(new BigDecimal("50000"), rate, original.get(0).totalAmount(), unpaid);
+      assertThat(smaller).extracting(Installment::dueDate)
+          .containsExactlyElementsOf(unpaid.stream().map(Installment::dueDate).toList());
+      assertThat(smaller.get(0).totalAmount()).isLessThan(original.get(0).totalAmount());
+      assertThat(shorter).hasSizeLessThan(smaller.size());
+      for (var rows : List.of(smaller, shorter))
+        assertThat(rows.stream().map(Installment::principalAmount).reduce(BigDecimal.ZERO, BigDecimal::add))
+            .isEqualByComparingTo("50000");
+      assertThat(shorter.stream().map(Installment::interestAmount).reduce(BigDecimal.ZERO, BigDecimal::add))
+          .isLessThanOrEqualTo(smaller.stream().map(Installment::interestAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
+    }
+  }
+
+  @Test
+  void reducedEmiHandlesFullPayoffAndUnrepresentableTinyInstallments() {
+    var original = service.schedule(new BigDecimal("12000"), new BigDecimal("14.50"), 12, LocalDate.of(2026, 1, 31));
+    assertThat(service.reduceEmi(BigDecimal.ZERO, new BigDecimal("14.50"), original)).isEmpty();
+    assertThatThrownBy(() -> service.reduceEmi(new BigDecimal("0.01"), BigDecimal.ZERO, original))
+        .isInstanceOf(InvalidRequestException.class);
+    var one = service.reduceEmi(new BigDecimal("100.01"), BigDecimal.ZERO, original.subList(0, 1));
+    assertThat(one.get(0).totalAmount()).isEqualByComparingTo("100.01");
+  }
   private final LoanCalculationService service =
       new LoanCalculationService(new BigDecimal("14.50"));
 

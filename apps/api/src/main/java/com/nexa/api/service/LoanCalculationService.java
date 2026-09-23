@@ -52,6 +52,23 @@ public class LoanCalculationService {
 
   public List<Installment> schedule(
       BigDecimal principal, BigDecimal rate, int months, LocalDate date) {
+    BigDecimal emi = emi(principal, rate, months);
+    BigDecimal monthlyRate = rate.divide(new BigDecimal("1200"), PRECISION);
+    BigDecimal remaining = principal.setScale(2);
+    List<Installment> result = new ArrayList<>();
+    for (int i = 1; i <= months; i++) {
+      BigDecimal interest = remaining.multiply(monthlyRate).setScale(2, RoundingMode.HALF_UP);
+      BigDecimal capital = i == months ? remaining : emi.subtract(interest).min(remaining);
+      result.add(new Installment(null, null, i, date.plusMonths(i), capital, interest,
+          capital.add(interest), "PENDING", null));
+      remaining = remaining.subtract(capital);
+    }
+    return result;
+  }
+
+  public BigDecimal emi(BigDecimal principal, BigDecimal rate, int months) {
+    if (months < 1 || months > 60 || principal.signum() <= 0 || rate.signum() < 0)
+      throw new InvalidRequestException("A positive balance and 1 to 60 installments are required");
     BigDecimal monthlyRate = rate.divide(new BigDecimal("1200"), PRECISION);
     BigDecimal emi;
     if (monthlyRate.signum() == 0) {
@@ -65,25 +82,16 @@ public class LoanCalculationService {
               .divide(factor.subtract(BigDecimal.ONE), PRECISION)
               .setScale(2, RoundingMode.HALF_UP);
     }
-    BigDecimal remaining = principal.setScale(2);
-    List<Installment> result = new ArrayList<>();
-    for (int i = 1; i <= months; i++) {
-      BigDecimal interest = remaining.multiply(monthlyRate).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal capital = i == months ? remaining : emi.subtract(interest).min(remaining);
-      result.add(
-          new Installment(
-              null,
-              null,
-              i,
-              date.plusMonths(i),
-              capital,
-              interest,
-              capital.add(interest),
-              "PENDING",
-              null));
-      remaining = remaining.subtract(capital);
-    }
-    return result;
+    return emi;
+  }
+
+  /** Keep existing unpaid dates and identities, including the current projected maturity. */
+  public List<Installment> reduceEmi(BigDecimal principal, BigDecimal rate, List<Installment> unpaid) {
+    if (principal.signum() == 0) return List.of();
+    var revised = recalculate(principal, rate, emi(principal, rate, unpaid.size()), unpaid);
+    if (revised.size() != unpaid.size())
+      throw new InvalidRequestException("Balance is too small to retain all due dates; choose reduce tenure");
+    return revised;
   }
 
   /** Keep contractual EMI and existing due dates; only unpaid projections are replaced. */

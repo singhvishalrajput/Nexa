@@ -16,6 +16,7 @@ import { ConversationWorkspace } from "../../components/chat/ConversationWorkspa
 import { bankApi, ProductKind } from "./api";
 import { Overview, AccountsPage, TransactionsPage } from "./Accounts";
 import { ProductsPage, productNames } from "./Products";
+import { LoanCalculatorPage, LoanApplicationsPage } from "./LoanTools";
 import { PaymentsPage, OperationsPage } from "./Payments";
 import { PageHeading, Panel, State, Modal, Detail, useLoad } from "./ui";
 import { go, initials, parseRoute } from "./utils";
@@ -97,6 +98,10 @@ function Workspace({ session, setSession, signOut, route }: {
             return <MoneyTransfer token={session.accessToken} userId={session.user.id}/>;
         if (page === "payments")
             return <PaymentsPage token={session.accessToken} accounts={accounts}/>;
+        if (page === "loans" && route.id === "calculator")
+            return <LoanCalculatorPage token={session.accessToken}/>;
+        if (page === "loans" && route.id === "applications")
+            return <LoanApplicationsPage token={session.accessToken}/>;
         if (page in productNames)
             return <ProductsPage key={page} token={session.accessToken} kind={page as ProductKind} id={route.id}/>;
         if (page === "settings")

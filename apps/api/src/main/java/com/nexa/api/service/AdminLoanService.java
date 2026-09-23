@@ -11,10 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminLoanService {
   private final JdbcTemplate db;
   private final CurrentUserProvider user;
+  private final LoanDocumentService documents;
 
-  public AdminLoanService(JdbcTemplate db, CurrentUserProvider user) {
+  public AdminLoanService(JdbcTemplate db, CurrentUserProvider user, LoanDocumentService documents) {
     this.db = db;
     this.user = user;
+    this.documents = documents;
   }
 
   private void authorize() {
@@ -36,7 +38,7 @@ public class AdminLoanService {
             + " AND a.product_status='PENDING_APPROVAL' ORDER BY a.created_at,a.id");
   }
 
-  public record Decision(String reason) {}
+  public record Decision(String reason, List<String> verifiedSalarySlipIds) {}
 
   public Map<String, Object> decide(String productId, Decision request, boolean approve) {
     authorize();
@@ -57,6 +59,7 @@ public class AdminLoanService {
       throw new ConflictException("This loan request has already been reviewed");
     if (!"ACTIVE".equals(loan.get("STATUS")))
       throw new InvalidRequestException("The loan account must be active");
+    if (approve) documents.verifyForApproval(loan, request.verifiedSalarySlipIds());
     if (db.queryForObject(
             "SELECT COUNT(*) FROM accounts a JOIN customers c ON c.id=a.customer_id WHERE a.id=?"
                 + " AND a.customer_id=? AND a.status='ACTIVE' AND c.status='ACTIVE' AND"

@@ -608,6 +608,60 @@ html, .bank-app, .bank-app.bank-app * { scrollbar-color: auto; scrollbar-width: 
 @media(max-width:700px){.admin-overview-grid{grid-template-columns:1fr}.admin-account-summary{flex-wrap:wrap;gap:16px}.admin-account-summary>div{width:100%}.admin-filters label{flex:1}.admin-filters .bank-search-label{flex-basis:100%;min-width:0}.admin-sections a{padding:12px}.admin-mandate dl{grid-template-columns:1fr}.admin-table th,.admin-table td{padding:12px}.admin-table{min-width:640px}.admin-actions{flex-wrap:wrap}}
 .admin-app .bank-panel > .admin-mandate { padding: 24px; }
 
+/* Loan tools and prepayment decisions. */
+.bank-app .loan-tools-nav { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 24px; }
+.bank-app .loan-tools-nav a { padding:11px 16px; border-radius:12px; background:var(--nexa-background); color:var(--nexa-text); text-decoration:none; border:1px solid var(--nexa-border); }
+.bank-app .loan-tools-nav a[aria-current=page] { background:var(--nexa-soft); border-color:var(--nexa-action); }
+.bank-app .loan-calculator-grid { display:grid; grid-template-columns:1.2fr 1fr; gap:24px; align-items:start; }
+.bank-app .loan-calculator-grid .bank-panel { margin:0; }
+.bank-app .loan-quote-body { padding:24px; display:grid; gap:18px; }
+.bank-app .loan-quote-body > p,.bank-app .loan-calculator-form > p { font-size:13px; line-height:1.6; color:var(--nexa-text-secondary); }
+.bank-app .loan-quote-hero { display:grid; gap:12px; border-radius:18px; padding:24px; background:var(--nexa-soft); }
+.bank-app .loan-quote-hero strong { font-size:clamp(28px,4vw,44px); letter-spacing:-.04em; overflow-wrap:anywhere; }
+.bank-app .loan-quote-placeholder { padding:28px 0; color:var(--nexa-text-secondary); }
+.bank-app .loan-application-card { gap:12px; }
+.bank-app .loan-application-state { font-weight:600; color:var(--nexa-text); }
+.bank-app .loan-timeline-body { padding:24px; }
+.bank-app .loan-timeline { display:grid; gap:22px; list-style:none; margin:0; padding:0 0 0 12px; border-left:2px solid var(--nexa-border); }
+.bank-app .loan-timeline li { display:grid; gap:6px; padding-left:10px; color:var(--nexa-text-secondary); }
+.bank-app .loan-timeline .is-complete strong { color:var(--nexa-success); }
+.bank-app .loan-timeline .is-current strong,.bank-app .loan-timeline .is-rejected strong { color:var(--nexa-text); }
+.bank-app .loan-prepayment-panel { grid-column:1 / -1; }
+.bank-app .loan-prepayment-body { display:grid; gap:18px; padding:24px; }
+.bank-app .loan-prepayment-body > p { margin:0; }
+.bank-app .loan-prepayment-form { display:flex; gap:16px; align-items:end; flex-wrap:wrap; }
+.bank-app .loan-prepayment-form label { display:grid; gap:8px; flex:1; min-width:min(100%,240px); }
+.bank-app .loan-prepayment-form input[type="number"] { width:100%; min-height:48px; padding:12px; border:1px solid var(--nexa-border-control); border-radius:10px; background:var(--nexa-surface); color:var(--nexa-text); font:inherit; }
+.bank-app .loan-prepayment-results { display:grid; gap:16px; }
+.bank-app .loan-prepayment-summary { display:flex; flex-wrap:wrap; gap:12px 24px; padding:16px; background:var(--nexa-soft); border-radius:12px; }
+.bank-app .loan-prepayment-summary span { display:grid; gap:5px; font-size:13px; }
+.bank-app .loan-prepayment-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.bank-app .loan-prepayment-option { border:1px solid var(--nexa-border); border-radius:16px; padding:20px; min-width:0; }
+.bank-app .loan-prepayment-option.is-selected { border-color:var(--nexa-action); box-shadow:inset 0 0 0 1px var(--nexa-action); background:var(--nexa-soft); }
+.bank-app .loan-prepayment-choice { display:grid; grid-template-columns:20px minmax(0,1fr); gap:12px; align-items:center; min-height:52px; width:100%; cursor:pointer; }
+.bank-app .loan-prepayment-choice input[type="radio"] { appearance:auto; width:20px; height:20px; min-width:20px; min-height:20px; max-width:20px; margin:0; padding:0; accent-color:var(--nexa-action); cursor:inherit; }
+.bank-app .loan-prepayment-choice-copy { display:grid; gap:5px; min-width:0; text-align:left; white-space:normal; overflow-wrap:normal; word-break:normal; }
+.bank-app .loan-prepayment-choice-title { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; font-size:16px; line-height:1.4; }
+.bank-app .loan-prepayment-choice-description { color:var(--nexa-text-secondary); font-size:13px; line-height:1.5; }
+.bank-app .loan-prepayment-selected { padding:3px 8px; border-radius:999px; background:var(--nexa-action); color:var(--nexa-surface); font-size:11px; font-weight:600; }
+.bank-app .loan-prepayment-choice.is-disabled { cursor:not-allowed; opacity:.6; }
+.bank-app .loan-prepayment-option:focus-within { outline:2px solid var(--nexa-action); outline-offset:3px; }
+.bank-app .loan-prepayment-emi { display:grid; gap:4px; margin:18px 0; }
+.bank-app .loan-prepayment-emi strong { font-size:28px; letter-spacing:-.03em; overflow-wrap:anywhere; }
+.bank-app .loan-prepayment-emi span { color:var(--nexa-text-secondary); font-size:13px; }
+.bank-app .loan-prepayment-option p,.bank-app .loan-prepayment-results > p,.bank-app .loan-calculation-note { font-size:13px; line-height:1.6; color:var(--nexa-text-secondary); }
+.bank-app .loan-prepayment-option .loan-interest-breakdown { padding:0; display:grid; gap:10px; font-size:13px; }
+.bank-app .loan-prepayment-option summary { cursor:pointer; padding:10px 0; font-weight:600; }
+.bank-app .loan-schedule-scroll { overflow-x:auto; }
+.bank-app .loan-schedule-scroll table { width:100%; border-collapse:collapse; font-size:12px; }
+.bank-app .loan-schedule-scroll th,.bank-app .loan-schedule-scroll td { padding:10px 6px; text-align:right; border-bottom:1px solid var(--nexa-border); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.bank-app .loan-schedule-scroll th:first-child,.bank-app .loan-schedule-scroll td:first-child { text-align:left; }
+.bank-app .loan-payment-panel .loan-prepayment-options { grid-template-columns:1fr; }
+@media (max-width:760px) {
+  .bank-app .loan-calculator-grid,.bank-app .loan-prepayment-options { grid-template-columns:1fr; }
+  .bank-app .loan-prepayment-body,.bank-app .loan-quote-body { padding:18px; }
+}
+
 /* Loan repayment: separate today's payoff from the scheduled installment. */
 .bank-app .loan-payment-panel { container-type: inline-size; }
 .bank-app .loan-payment-body { display: grid; gap: 18px; padding: 22px; }
@@ -639,12 +693,27 @@ html, .bank-app, .bank-app.bank-app * { scrollbar-color: auto; scrollbar-width: 
 .bank-app .loan-payment-facts dd { margin: 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .bank-app .loan-repayment-form { display: grid; gap: 10px; border-top: 1px solid var(--nexa-border); padding-top: 18px; }
 .bank-app .loan-repayment-form > label { display: grid; gap: 8px; font-size: 13px; font-weight: 600; }
-.bank-app .loan-repayment-form input { width: 100%; min-width: 0; min-height: 48px; padding: 11px 14px; border: 1px solid var(--nexa-border-control); border-radius: 10px; background: var(--nexa-surface); color: var(--nexa-text); font-size: 18px; font-variant-numeric: tabular-nums; }
+.bank-app .loan-repayment-form input[type="number"] { width: 100%; min-width: 0; min-height: 48px; padding: 11px 14px; border: 1px solid var(--nexa-border-control); border-radius: 10px; background: var(--nexa-surface); color: var(--nexa-text); font-size: 18px; font-variant-numeric: tabular-nums; }
 .bank-app .loan-payment-shortcuts { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--nexa-text-muted); }
 .bank-app .loan-payment-shortcuts > div { display: flex; gap: 8px; flex-wrap: wrap; }
 .bank-app .loan-payment-shortcuts button { border: 1px solid var(--nexa-border); background: var(--nexa-background); color: var(--nexa-text); border-radius: 7px; padding: 7px 10px; font-size: 12px; min-height: 36px; }
 .bank-app .loan-payment-shortcuts button:hover:not(:disabled) { background: var(--nexa-soft); }
 .bank-app .loan-payment-panel .loan-review-button { width: 100%; margin-top: 6px; min-height: 46px; font-size: 14px !important; }
+.bank-app .loan-application-fields { display:grid; gap:16px; border:0; padding:0; margin:0; min-width:0; }
+.bank-app .loan-slip-fields { display:grid; gap:12px; border:1px solid var(--nexa-border); border-radius:14px; padding:18px; min-width:0; margin:0; }
+.bank-app .loan-slip-fields legend { padding:0 6px; font-weight:600; font-size:15px; }
+.bank-app .loan-slip-fields p { margin:0; font-size:13px; color:var(--nexa-text-secondary); line-height:1.6; }
+.bank-app .loan-slip-inputs { display:grid; gap:12px; }
+.bank-app .loan-slip-inputs label { display:grid; gap:8px; min-width:0; font-size:13px; font-weight:600; }
+.bank-app .loan-slip-inputs input[type="file"] { width:100%; min-width:0; padding:10px; border:1px solid var(--nexa-border); border-radius:10px; font-size:13px; }
+.bank-app .loan-slip-body { padding:24px; }
+.bank-app .loan-slip-documents { display:grid; gap:12px; }
+.bank-app .loan-slip-document { display:flex; flex-wrap:wrap; align-items:center; gap:12px; border:1px solid var(--nexa-border); padding:16px; border-radius:12px; }
+.bank-app .loan-slip-document > div { display:grid; gap:5px; flex:1; min-width:0; overflow-wrap:anywhere; }
+.bank-app .loan-slip-document span,.bank-app .loan-slip-documents small,.bank-app .loan-slip-fields small { color:var(--nexa-text-secondary); font-size:13px; line-height:1.5; }
+.bank-app .loan-slip-document .loan-slip-check { display:grid; grid-template-columns:18px minmax(0,1fr); align-items:start; gap:10px; width:100%; cursor:pointer; }
+.bank-app .loan-slip-check input[type="checkbox"] { appearance:auto; width:18px; height:18px; min-height:18px; margin:2px 0 0; padding:0; accent-color:var(--nexa-action); }
+.bank-app .loan-slip-body form { display:grid; gap:16px; }
 .bank-app .loan-payment-review { display: grid; gap: 14px; margin-top: 8px; padding: 16px; border: 1px solid var(--nexa-border); border-radius: 12px; background: var(--nexa-background); }
 .bank-app .loan-payment-review p { margin: 0; font-size: 14px; }
 .bank-app .loan-review-actions { display: flex; gap: 10px; flex-wrap: wrap; }

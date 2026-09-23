@@ -6,6 +6,23 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public final class LoanTestSupport {
   private LoanTestSupport() {}
 
+  public static org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder application(String json) {
+    var request = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/loans")
+        .file(new org.springframework.mock.web.MockMultipartFile("application", "", "application/json",
+            json.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    var month = java.time.YearMonth.now(java.time.ZoneId.of("Asia/Kolkata"));
+    for (int i = 3; i >= 1; i--) {
+      String period = month.minusMonths(i).toString();
+      request.param("months", period).file(slip(period));
+    }
+    return request;
+  }
+
+  public static org.springframework.mock.web.MockMultipartFile slip(String month) {
+    return new org.springframework.mock.web.MockMultipartFile("files", month + ".pdf", "application/pdf",
+        ("%PDF-1.4\n% Salary fixture " + month + "\n%%EOF").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+  }
+
   public static void bank(JdbcTemplate db) {
     for (String number : java.util.List.of("NEXA-BANK-FUNDING", "NEXA-LOAN-CONTROL")) {
       if (db.queryForObject(

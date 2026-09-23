@@ -63,7 +63,7 @@ class LoanIntegrationTest {
   String auth, otherAuth, source, destination, email;
 
   JsonNode postJson(String path, Object data, String token, int status) throws Exception {
-    var q =
+    var q = path.equals("/api/v1/loans") ? LoanTestSupport.application(json.writeValueAsString(data)) :
         post(path).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(data));
     if (token != null) q.header("Authorization", token);
     return json.readTree(
@@ -177,6 +177,10 @@ class LoanIntegrationTest {
                   "db/migration/V21__admin_loan_approval_and_bank_funding.sql"))
           .execute(db.getDataSource());
       db.update("UPDATE accounts SET balance=10000000 WHERE account_number='NEXA-BANK-FUNDING'");
+      db.execute("DROP TABLE loan_salary_slips");
+      new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(
+          new org.springframework.core.io.ClassPathResource("db/migration/V23__loan_salary_slips.sql"))
+          .execute(db.getDataSource());
     }
     LoanTestSupport.bank(db);
     email = "six-" + UUID.randomUUID() + "@example.com";
@@ -240,13 +244,114 @@ class LoanIntegrationTest {
   void approve(String id) throws Exception {
     postJson(
         "/api/v1/admin/loans/" + id + "/approve",
-        Map.of("reason", "Approved for integration scenario"),
+        Map.of("reason", "Approved for integration scenario", "verifiedSalarySlipIds", documentIds(id)),
         adminToken(),
         200);
   }
 
   String root(String id) {
     return "/api/v1/loans/" + id;
+  }
+
+  List<String> documentIds(String id) {
+    return db.queryForList("SELECT d.id FROM loan_salary_slips d JOIN accounts a ON a.id=d.loan_account_id"
+        + " WHERE a.product_id=? ORDER BY d.salary_month", String.class, id);
+  }
+
+  @Test
+  void salarySlipsAreMandatoryAndInvalidUploadsRollBackTheApplication() throws Exception {
+    mvc.perform(post("/api/v1/loans").header("Authorization", auth)
+        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(application("no-documents", 3))))
+        .andExpect(status().isBadRequest());
+    var missing = multipart("/api/v1/loans").header("Authorization", auth)
+        .file(new org.springframework.mock.web.MockMultipartFile("application", "", "application/json",
+            json.writeValueAsBytes(application("missing-documents", 3))));
+    mvc.perform(missing).andExpect(status().isBadRequest());
+    var bad = LoanTestSupport.application(json.writeValueAsString(application("bad-documents", 3)));
+    bad.file(new org.springframework.mock.web.MockMultipartFile("files", "extra.pdf", "application/pdf",
+        "%PDF-extra".getBytes()));
+    mvc.perform(bad.header("Authorization", auth)).andExpect(status().isBadRequest());
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM accounts WHERE application_key IN"
+        + " ('no-documents','missing-documents','bad-documents')", Integer.class)).isZero();
+  }
+
+  @Test
+  void salarySlipsRejectWrongMonthsDuplicateContentUnsupportedTypesAndOversizedFiles() throws Exception {
+    var current = java.time.YearMonth.now(java.time.ZoneId.of("Asia/Kolkata"));
+    for (String problem : List.of("wrong-month", "duplicate", "unsupported", "oversized")) {
+      var request = multipart("/api/v1/loans")
+          .file(new org.springframework.mock.web.MockMultipartFile("application", "", "application/json",
+              json.writeValueAsBytes(application(problem, 3))));
+      for (int i = 3; i >= 1; i--) {
+        String month = current.minusMonths(i).toString();
+        request.param("months", problem.equals("wrong-month") && i == 1 ? current.toString() : month);
+        if (problem.equals("unsupported") && i == 1)
+          request.file(new org.springframework.mock.web.MockMultipartFile("files", "fake.pdf", "application/pdf",
+              "<html>not a PDF</html>".getBytes()));
+        else if (problem.equals("oversized") && i == 1)
+          request.file(new org.springframework.mock.web.MockMultipartFile("files", "large.pdf", "application/pdf",
+              new byte[com.nexa.api.service.LoanDocumentService.MAX_BYTES + 1]));
+        else request.file(LoanTestSupport.slip(problem.equals("duplicate") ? "same-file" : month));
+      }
+      mvc.perform(request.header("Authorization", auth)).andExpect(status().isBadRequest());
+      assertThat(db.queryForObject("SELECT COUNT(*) FROM accounts WHERE application_key=?", Integer.class, problem)).isZero();
+    }
+  }
+
+  @Test
+  void salarySlipsArePrivateAndAdminMustExplicitlyVerifyAllThreeBeforeApproval() throws Exception {
+    String id = postJson("/api/v1/loans", application("salary-review", 3), auth, 201).get("id").asText();
+    String path = root(id) + "/salary-slips", admin = adminToken();
+    var bundle = getJson(path, auth);
+    assertThat(bundle.get("documents").size()).isEqualTo(3);
+    assertThat(bundle.toString()).doesNotContain("fileContent", "%PDF");
+    mvc.perform(get(path)).andExpect(status().isUnauthorized());
+    mvc.perform(get(path).header("Authorization", otherAuth)).andExpect(status().isNotFound());
+    String doc = documentIds(id).get(0);
+    mvc.perform(get(path + "/" + doc).header("Authorization", otherAuth)).andExpect(status().isNotFound());
+    mvc.perform(get(path + "/" + doc).header("Authorization", admin))
+        .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+        .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+        .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.startsWith("attachment;")))
+        .andExpect(content().contentType("application/pdf"));
+    String approval = "/api/v1/admin/loans/" + id + "/approve";
+    postJson(approval, Map.of("reason", "Checked"), admin, 400);
+    postJson(approval, Map.of("reason", "Checked", "verifiedSalarySlipIds", List.of(doc)), admin, 400);
+    postJson(approval, Map.of("reason", "Checked", "verifiedSalarySlipIds", documentIds(id)), auth, 403);
+    assertThat(getJson(root(id), auth).get("status").asText()).isEqualTo("PENDING_APPROVAL");
+    postJson(approval, Map.of("reason", "All three slips cross-checked", "verifiedSalarySlipIds", documentIds(id)), admin, 200);
+    assertThat(getJson(path, auth).get("documents")).allSatisfy(slip -> {
+      assertThat(slip.get("verifiedBy").asText()).isNotBlank();
+      assertThat(slip.get("verifiedAt").isNull()).isFalse();
+    });
+    var replay = postJson("/api/v1/loans", application("salary-review", 3), auth, 201);
+    assertThat(replay.get("id").asText()).isEqualTo(id);
+    assertThat(documentIds(id)).hasSize(3);
+  }
+
+  @Test
+  void olderPendingApplicationCanSupplySlipsButCannotBeApprovedWithoutThem() throws Exception {
+    String id = postJson("/api/v1/loans", application("old-pending", 3), auth, 201).get("id").asText();
+    db.update("DELETE FROM loan_salary_slips WHERE loan_account_id=(SELECT id FROM accounts WHERE product_id=?)", id);
+    postJson("/api/v1/admin/loans/" + id + "/approve",
+        Map.of("reason", "Missing slips", "verifiedSalarySlipIds", List.of("a","b","c")), adminToken(), 400);
+    String path = root(id) + "/salary-slips";
+    var request = multipart(path);
+    for (var month : getJson(path, auth).get("requiredMonths"))
+      request.param("months", month.asText()).file(LoanTestSupport.slip(month.asText()));
+    mvc.perform(request.header("Authorization", otherAuth)).andExpect(status().isNotFound());
+    var ownerRequest = multipart(path);
+    for (var month : getJson(path, auth).get("requiredMonths"))
+      ownerRequest.param("months", month.asText()).file(LoanTestSupport.slip(month.asText()));
+    mvc.perform(ownerRequest.header("Authorization", auth)).andExpect(status().isOk());
+    approve(id);
+    assertThat(getJson(root(id), auth).get("status").asText()).isEqualTo("APPROVED");
+  }
+
+  Map<String, Object> prepayment(String id, BigDecimal amount, String option) throws Exception {
+    var preview = postJson(root(id) + "/repayment-preview", Map.of("amount", amount), auth, 200);
+    return Map.of("amount", amount, "requestId", UUID.randomUUID().toString(),
+        "prepaymentOption", option, "previewToken", preview.get("previewToken").asText());
   }
 
   String pay(String id, String installment) {
@@ -375,7 +480,7 @@ class LoanIntegrationTest {
     var first = before.get(0);
     BigDecimal emi = first.get("totalAmount").decimalValue();
     BigDecimal payment = emi.add(new BigDecimal("5000"));
-    var request = Map.of("amount", payment, "requestId", UUID.randomUUID().toString());
+    var request = prepayment(id, payment, "REDUCE_TENURE");
     var responses = together(() -> postJson(root(id) + "/repay", request, auth, 200));
     assertThat(responses.get(0)).isEqualTo(responses.get(1));
     BigDecimal principal = first.get("principalAmount").decimalValue().add(new BigDecimal("5000"));
@@ -409,6 +514,87 @@ class LoanIntegrationTest {
   }
 
   @Test
+  void comparisonIsReadOnlyAndReducedEmiMatchesPreviewWithoutChangingRateOrDates() throws Exception {
+    String id = apply("compare-emi", 12);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    var before = getJson(root(id) + "/schedule", auth);
+    BigDecimal bankBefore = balance(source);
+    var preview = postJson(root(id) + "/repayment-preview", Map.of("amount", "5000"), auth, 200);
+    assertThat(getJson(root(id) + "/schedule", auth)).isEqualTo(before);
+    assertThat(balance(source)).isEqualByComparingTo(bankBefore);
+    assertThat(preview.get("annualInterestRate").decimalValue()).isEqualByComparingTo("14.50");
+    var reduced = preview.get("options").get(1);
+    assertThat(reduced.get("option").asText()).isEqualTo("REDUCE_EMI");
+    assertThat(reduced.get("remainingInstallments").asInt()).isEqualTo(11);
+    assertThat(reduced.get("finalDueDate")).isEqualTo(before.get(11).get("dueDate"));
+    assertThat(preview.at("/options/0/futureInterest").decimalValue())
+        .isLessThan(reduced.get("futureInterest").decimalValue());
+    var request = Map.of("amount", "5000", "requestId", UUID.randomUUID().toString(),
+        "prepaymentOption", "REDUCE_EMI", "previewToken", preview.get("previewToken").asText());
+    var response = postJson(root(id) + "/repay", request, auth, 200);
+    assertThat(postJson(root(id) + "/repay", request, auth, 200)).isEqualTo(response);
+    var after = getJson(root(id) + "/schedule", auth);
+    assertThat(after.size()).isEqualTo(before.size());
+    for (int i = 1; i < after.size(); i++) {
+      assertThat(after.get(i).get("dueDate")).isEqualTo(before.get(i).get("dueDate"));
+      assertThat(after.get(i).get("totalAmount")).isEqualTo(reduced.get("schedule").get(i - 1).get("totalAmount"));
+    }
+    var detail = getJson(root(id), auth);
+    assertThat(detail.at("/terms/annualInterestRate").decimalValue()).isEqualByComparingTo("14.50");
+    assertThat(detail.at("/terms/tenureMonths").asInt()).isEqualTo(12);
+    assertThat(detail.at("/terms/emiAmount")).isEqualTo(reduced.get("regularEmi"));
+    assertThat(db.queryForObject("SELECT audit_reason FROM transactions WHERE id=?", String.class,
+        response.get("transactionId").asText())).startsWith("PREPAYMENT:REDUCE_EMI:");
+    var changed = new HashMap<String, Object>(request);
+    changed.put("prepaymentOption", "REDUCE_TENURE");
+    postJson(root(id) + "/repay", changed, auth, 409);
+    // A later top-up can choose the other strategy; it keeps the newly reduced regular EMI.
+    var nextRequest = prepayment(id, new BigDecimal("1000"), "REDUCE_TENURE");
+    postJson(root(id) + "/repay", nextRequest, auth, 200);
+    assertThat(getJson(root(id), auth).at("/terms/emiAmount")).isEqualTo(reduced.get("regularEmi"));
+    balanced();
+  }
+
+  @Test
+  void missingChoiceStalePreviewAndCrossOwnerPreviewCannotPost() throws Exception {
+    String id = apply("preview-safety", 6);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    postJson(root(id) + "/repayment-preview", Map.of("amount", "5000"), otherAuth, 404);
+    postJson(root(id) + "/repay", Map.of("amount", "5000", "requestId", UUID.randomUUID().toString()), auth, 400);
+    var old = prepayment(id, new BigDecimal("5000"), "REDUCE_TENURE");
+    var first = getJson(root(id) + "/schedule", auth).get(0);
+    postJson(root(id) + "/repay", Map.of("amount", first.get("totalAmount").decimalValue(),
+        "requestId", UUID.randomUUID().toString()), auth, 200);
+    BigDecimal before = balance(source);
+    var schedule = getJson(root(id) + "/schedule", auth);
+    postJson(root(id) + "/repay", old, auth, 409);
+    assertThat(balance(source)).isEqualByComparingTo(before);
+    assertThat(getJson(root(id) + "/schedule", auth)).isEqualTo(schedule);
+    var wrong = new HashMap<String, Object>(prepayment(id, new BigDecimal("5000"), "REDUCE_EMI"));
+    wrong.put("prepaymentOption", "INVALID");
+    postJson(root(id) + "/repay", wrong, auth, 400);
+    balanced();
+  }
+
+  @Test
+  void extraPrincipalMinimumAppliesToCombinedPaymentsAndPayoffRemainsAllowed() throws Exception {
+    String id = apply("extra-minimum", 6);
+    postJson(root(id) + "/accept", Map.of(), auth, 200);
+    var first = getJson(root(id) + "/schedule", auth).get(0);
+    BigDecimal amount = first.get("totalAmount").decimalValue().add(new BigDecimal("10"));
+    postJson(root(id) + "/repayment-preview", Map.of("amount", amount), auth, 400);
+    postJson(root(id) + "/repay", Map.of("amount", amount, "requestId", UUID.randomUUID().toString()), auth, 400);
+    var options = getJson(root(id) + "/repayment-options", auth);
+    var payoff = postJson(root(id) + "/repayment-preview", Map.of("amount", options.get("maximumAmount").decimalValue()), auth, 200);
+    assertThat(payoff.get("closesLoan").asBoolean()).isTrue();
+    assertThat(payoff.get("options").get(0).get("remainingInstallments").asInt()).isZero();
+    postJson(root(id) + "/repay", Map.of("amount", options.get("maximumAmount").decimalValue(),
+        "requestId", UUID.randomUUID().toString()), auth, 200);
+    assertThat(getJson(root(id), auth).get("status").asText()).isEqualTo("CLOSED");
+    balanced();
+  }
+
+  @Test
   void additionalPaymentAfterEarlyEmiIsPrincipalOnlyAndCanCloseLoan() throws Exception {
     String id = apply("principal-topup", 6);
     postJson(root(id) + "/accept", Map.of(), auth, 200);
@@ -417,10 +603,12 @@ class LoanIntegrationTest {
     var before = getJson(root(id) + "/schedule", auth);
     var options = getJson(root(id) + "/repayment-options", auth);
     assertThat(options.get("principalOnly").asBoolean()).isTrue();
-    assertThat(options.get("minimumAmount").decimalValue()).isEqualByComparingTo("0.01");
+    assertThat(options.get("minimumAmount").decimalValue())
+        .isEqualByComparingTo(options.get("regularEmi").decimalValue());
     assertThat(options.get("interestAmount").decimalValue()).isZero();
     BigDecimal principalBefore = options.get("maximumAmount").decimalValue();
-    var request = Map.of("amount", "50.00", "requestId", UUID.randomUUID().toString());
+    postJson(root(id) + "/repay", Map.of("amount", "50.00", "requestId", UUID.randomUUID().toString()), auth, 400);
+    var request = prepayment(id, new BigDecimal("2500"), "REDUCE_TENURE");
     var receipt = postJson(root(id) + "/repay", request, auth, 200);
     assertThat(postJson(root(id) + "/repay", request, auth, 200)).isEqualTo(receipt);
     var after = getJson(root(id) + "/schedule", auth);
@@ -433,7 +621,7 @@ class LoanIntegrationTest {
     assertThat(getJson(root(id) + "/payments", auth).toString()).contains("PRINCIPAL_PREPAYMENT");
     var payoff = getJson(root(id) + "/repayment-options", auth);
     assertThat(payoff.get("maximumAmount").decimalValue())
-        .isEqualByComparingTo(principalBefore.subtract(new BigDecimal("50")));
+        .isEqualByComparingTo(principalBefore.subtract(new BigDecimal("2500")));
     var close = Map.of("amount", payoff.get("maximumAmount").decimalValue(),
         "requestId", UUID.randomUUID().toString());
     var closed = postJson(root(id) + "/repay", close, auth, 200);
@@ -448,7 +636,7 @@ class LoanIntegrationTest {
   void reducedFinalInstallmentIsAcceptedBelowRegularEmi() throws Exception {
     String id = apply("small-final", 6);
     postJson(root(id) + "/accept", Map.of(), auth, 200);
-    postJson(root(id) + "/repay", Map.of("amount", "12000", "requestId", UUID.randomUUID().toString()), auth, 200);
+    postJson(root(id) + "/repay", prepayment(id, new BigDecimal("12000"), "REDUCE_TENURE"), auth, 200);
     var rows = getJson(root(id) + "/schedule", auth);
     assertThat(rows.size()).isEqualTo(2);
     assertThat(rows.get(1).get("principalAmount").decimalValue()).isEqualByComparingTo("145");
@@ -484,7 +672,8 @@ class LoanIntegrationTest {
     for (String amount : List.of("0", "-1", "0.001", "50", "12145.01"))
       postJson(root(id) + "/repay", Map.of("amount", amount, "requestId", UUID.randomUUID().toString()), auth, 400);
     db.update("UPDATE accounts SET balance=3000 WHERE id=?", Long.valueOf(source));
-    postJson(root(id) + "/repay", Map.of("amount", "5000", "requestId", UUID.randomUUID().toString()), auth, 400);
+    var payment = prepayment(id, new BigDecimal("5000"), "REDUCE_EMI");
+    postJson(root(id) + "/repay", payment, auth, 400);
     db.update("UPDATE accounts SET balance=13000 WHERE id=?", Long.valueOf(source));
     long bank = db.queryForObject("SELECT id FROM accounts WHERE account_number='NEXA-BANK-FUNDING'", Long.class);
     BigDecimal bankBefore = balance(Long.toString(bank));
@@ -492,7 +681,7 @@ class LoanIntegrationTest {
     db.execute("ALTER TABLE ledger_entries ADD CONSTRAINT prepayment_failure CHECK(account_id<>"
         + bank + " OR journal_entry_id<=" + lastJournal + ")");
     try {
-      postJson(root(id) + "/repay", Map.of("amount", "5000", "requestId", UUID.randomUUID().toString()), auth, 503);
+      postJson(root(id) + "/repay", payment, auth, 503);
     } finally {
       db.execute("ALTER TABLE ledger_entries DROP CONSTRAINT prepayment_failure");
     }
@@ -601,7 +790,7 @@ class LoanIntegrationTest {
         .andExpect(status().isForbidden());
     assertThat(getJson("/api/v1/admin/loans", admin).toString()).contains(id);
     postJson(endpoint + "/approve", Map.of("reason", ""), admin, 400);
-    var decision = Map.of("reason", "Income and repayment capacity verified");
+    var decision = Map.of("reason", "Income and repayment capacity verified", "verifiedSalarySlipIds", documentIds(id));
     var results = together(() -> postJson(endpoint + "/approve", decision, admin, 200));
     assertThat(results.get(0).get("PRODUCT_STATUS").asText()).isEqualTo("APPROVED");
     assertThat(

@@ -26,21 +26,38 @@ The management APIs use numeric account/customer/journal/ledger IDs and positive
 
 Scheduled loans accept the next EMI or a larger payment through `POST /api/v1/loans/{id}/repay`
 with `amount` and a UUID `requestId`. The scheduled interest is paid first; the rest reduces
-principal. Extra principal reduces future projected interest and shortens the schedule while
-the contractual EMI stays unchanged. The final installment can be smaller. Existing paid
+principal. For a partial extra-principal payment, the customer must explicitly choose
+`REDUCE_TENURE` (keep EMI) or `REDUCE_EMI` (keep the current remaining due dates).
+The annual rate remains fixed. The final installment can be smaller. Existing paid
 installments and payment receipts remain unchanged; superseded unpaid projections are removed.
 These rules apply to existing scheduled loans without a database migration.
 
 Once the current month's EMI is covered (including an EMI paid early), further payments via
-`/repay` go entirely to principal, starting at INR 0.01. An unpaid current-month or overdue EMI
+`/repay` go entirely to principal, with a minimum of one current regular EMI or the
+smaller full payoff. When combining an EMI with extra principal, the extra portion must
+also be at least one regular EMI (full payoff is exempt). No EMI-multiple rule applies.
+An unpaid current-month or overdue EMI
 must be covered first. `POST /installments/{installmentId}/pay` remains an explicit way to pay
 the next installment early, even when a principal-only top-up is available.
 
 `GET /api/v1/loans/{id}/repayment-options` returns the current minimum, maximum payoff,
 interest allocation, principal-only flag, regular EMI, remaining installment count and final
-due date. Payment execution rechecks these values under account locks. The maximum is
+due date and minimum extra principal. `POST /api/v1/loans/{id}/repayment-preview` with
+`{ "amount": 5000 }` returns both options, unpaid schedules, future interest, savings,
+and a snapshot token without moving money. Confirm a partial prepayment through `/repay`
+with `amount`, UUID `requestId`, `prepaymentOption`, and `previewToken`.
+Payment execution rechecks these values under account locks and rejects stale previews.
+The maximum is
 outstanding principal plus the scheduled interest being settled, or principal alone for a
-top-up. Duplicate request IDs cannot post twice. A full payoff closes the account.
+top-up. Duplicate request IDs cannot post twice or change the selected option. A full
+payoff closes the account and does not require an option. The chosen preference and token
+are retained in the repayment transaction's audit reason.
+
+The frontend has an EMI calculator at `#/loans/calculator`, application tracking at
+`#/loans/applications`, and a read-only prepayment calculator on active scheduled loan
+details. The payment review uses the same backend comparison and requires an explicit
+selection. Chat still supports ordinary EMI/payoff payments; extra-principal requests
+direct the customer to loan details to compare and choose.
 
 Interest retains Nexa's monthly reducing-balance convention, rounded to paise; this does not
 introduce daily accrual, prepayment fees or retrospective refunds of settled EMI interest.

@@ -4,9 +4,29 @@ const fs=require('node:fs');const vm=require('node:vm');const ts=require('typesc
 function load(file,fetcher,stored){
  const map=new Map(stored?[['nexa-auth-session',JSON.stringify(stored)]]:[]);const events=[];
  const exports={};const window={NEXA_API_BASE_URL:'http://localhost:8088/api/v1',setTimeout,clearTimeout,dispatchEvent:e=>events.push(e.type),sessionStorage:{getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)}};
- vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2021}}).outputText,{exports,window,require:name=>{if(name.endsWith("locale"))return load("src/services/locale.ts").api;if(name.endsWith("banking-content"))return load("src/services/banking-content.ts").api;throw Error(name);},fetch:fetcher,Headers,Response,AbortController,Event,URLSearchParams,BigInt,setTimeout,clearTimeout});return {api:exports,map,events,window};
+ vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2021}}).outputText,{exports,window,require:name=>{if(name.endsWith("locale"))return load("src/services/locale.ts").api;if(name.endsWith("banking-content"))return load("src/services/banking-content.ts").api;throw Error(name);},fetch:fetcher,FormData,Blob,Headers,Response,AbortController,Event,URLSearchParams,BigInt,setTimeout,clearTimeout});return {api:exports,map,events,window};
 }
 const authFile='src/services/auth.ts';
+
+test('multipart uploads leave the Content-Type boundary to the browser',async()=>{
+ const body=new FormData();body.append('months','2026-08');
+ const {api}=load(authFile,async(url,init)=>{
+  assert.equal(init.body,body);assert.equal(init.headers.has('Content-Type'),false);
+  assert.equal(init.headers.get('Authorization'),'Bearer owner');
+  return new Response('{}',{headers:{'Content-Type':'application/json'}});
+ });
+ await api.authenticatedRequest('/loans','owner',{method:'POST',body});
+});
+
+test('private salary-slip downloads use bearer authentication and return bytes',async()=>{
+ const {api}=load(authFile,async(url,init)=>{
+  assert.equal(init.headers.get('Authorization'),'Bearer owner');
+  assert.equal(init.cache,'no-store');
+  return new Response('%PDF-salary',{headers:{'Content-Type':'application/pdf'}});
+ });
+ const blob=await api.authenticatedBlobRequest('/loans/L-1/salary-slips/D-1','owner');
+ assert.equal(await blob.text(),'%PDF-salary');
+});
 const session={accessToken:'old',refreshToken:'refresh',user:{id:'owner',email:'test@example.com',role:'CUSTOMER'}};
 const ok=value=>new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});
 test('money validation and totals preserve paise',()=>{const {api}=load('src/features/banking/utils.ts');for(const value of ['0','-1','1e3','1.001','01','NaN',''])assert.equal(api.validAmount(value),false,value);for(const value of ['0.01','12','999.99'])assert.equal(api.validAmount(value),true,value);assert.equal(api.sumMoney(['0.10','0.20','-0.01']),'0.29');});

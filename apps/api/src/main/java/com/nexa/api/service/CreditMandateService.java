@@ -63,7 +63,12 @@ public class CreditMandateService {
     }
   }
 
-  public record Execution(BigDecimal amount, String requestId) {}
+  public record Execution(BigDecimal amount, String requestId,
+      LoanModels.PrepaymentOption prepaymentOption, String previewToken) {
+    public Execution(BigDecimal amount, String requestId) {
+      this(amount, requestId, null, null);
+    }
+  }
 
   private record A(
       long id, String owner, String type, String status, String currency, BigDecimal balance) {}
@@ -376,6 +381,7 @@ public class CreditMandateService {
   }
 
   public String repay(String id, Execution r) {
+    if (r == null) throw new InvalidRequestException("Repayment details are required");
     money(r.amount);
     String tx = requestId(r);
     var preview = loan(id, false);
@@ -530,9 +536,15 @@ public class CreditMandateService {
     return repaymentOptions(l, schedule(id), false);
   }
 
+  @Transactional(readOnly = true,
+      noRollbackFor = {InvalidRequestException.class, ResourceNotFoundException.class})
   public void validateRepayment(String id, BigDecimal amount) {
     money(amount);
-    validateRepayment(amount, repaymentOptions(id));
+    var options = repaymentOptions(id);
+    validateRepayment(amount, options);
+    if (requiresChoice(amount, options))
+      throw new InvalidRequestException(
+          "For extra principal payments, open the loan details and compare reduce-tenure or reduce-EMI options before confirming.");
   }
 
   private void validateRepayment(BigDecimal amount, LoanModels.RepaymentOptions options) {
@@ -541,6 +553,86 @@ public class CreditMandateService {
     if (amount.compareTo(options.maximumAmount()) > 0)
       throw new InvalidRequestException(
           "Repayment exceeds the payoff amount: " + options.maximumAmount());
+    if (!options.principalOnly() && options.regularEmi() != null
+        && amount.compareTo(options.minimumAmount()) > 0
+        && amount.compareTo(options.maximumAmount()) < 0
+        && amount.subtract(options.minimumAmount()).compareTo(options.minimumExtraPrincipal()) < 0)
+      throw new InvalidRequestException(
+          "Extra principal must be at least one regular EMI, or pay the full payoff amount");
+  }
+
+  private boolean requiresChoice(BigDecimal amount, LoanModels.RepaymentOptions options) {
+    return options.regularEmi() != null && amount.compareTo(options.maximumAmount()) < 0
+        && (options.principalOnly() || amount.compareTo(options.minimumAmount()) > 0);
+  }
+
+  public LoanModels.RepaymentPreview repaymentPreview(String id, BigDecimal amount) {
+    money(amount);
+    // Hold a consistent read of the balance and schedule without posting money.
+    var l = loan(id, true);
+    return repaymentPreview(l, schedule(id), amount);
+  }
+
+  private LoanModels.RepaymentPreview repaymentPreview(
+      Map<String, Object> l, List<LoanModels.Installment> rows, BigDecimal amount) {
+    var limits = repaymentOptions(l, rows, false);
+    validateRepayment(amount, limits);
+    if (limits.regularEmi() == null)
+      throw new InvalidRequestException("A scheduled EMI loan is required for this calculator");
+    if (!requiresChoice(amount, limits) && amount.compareTo(limits.maximumAmount()) != 0)
+      throw new InvalidRequestException("Enter an extra principal payment to compare options");
+    var pending = rows.stream().filter(r -> !"PAID".equals(r.status())).toList();
+    var unpaid = limits.principalOnly() ? pending : pending.subList(1, pending.size());
+    BigDecimal principal = amount.subtract(limits.interestAmount());
+    BigDecimal remaining = ((BigDecimal) l.get("BALANCE")).subtract(principal);
+    if (remaining.signum() > 0 && unpaid.stream().anyMatch(r -> r.dueDate().isBefore(loanDate())))
+      throw new InvalidRequestException("Settle overdue installments before changing the repayment schedule");
+    BigDecimal rate = (BigDecimal) l.get("INTEREST_RATE");
+    BigDecimal baselineInterest = unpaid.stream().map(LoanModels.Installment::interestAmount)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    var choices = new ArrayList<LoanModels.PrepaymentResult>();
+    for (var option : LoanModels.PrepaymentOption.values()) {
+      try {
+        var revised = option == LoanModels.PrepaymentOption.REDUCE_EMI
+            ? calculation.reduceEmi(remaining, rate, unpaid)
+            : calculation.recalculate(remaining, rate, limits.regularEmi(), unpaid);
+        BigDecimal futureInterest = revised.stream().map(LoanModels.Installment::interestAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal regular = revised.isEmpty() ? BigDecimal.ZERO
+            : option == LoanModels.PrepaymentOption.REDUCE_EMI
+                ? calculation.emi(remaining, rate, unpaid.size()) : limits.regularEmi();
+        choices.add(new LoanModels.PrepaymentResult(option, true, null, regular,
+            revised.isEmpty() ? BigDecimal.ZERO : revised.get(revised.size() - 1).totalAmount(),
+            revised.size(), revised.isEmpty() ? null : revised.get(revised.size() - 1).dueDate(),
+            futureInterest, remaining.add(futureInterest),
+            baselineInterest.subtract(futureInterest), unpaid.size() - revised.size(), revised));
+      } catch (InvalidRequestException ex) {
+        if (option != LoanModels.PrepaymentOption.REDUCE_EMI) throw ex;
+        choices.add(new LoanModels.PrepaymentResult(option, false, ex.getMessage(), null, null,
+            0, null, null, null, null, 0, List.of()));
+      }
+    }
+    // Binds the confirmation to this balance, schedule, rate, calendar mode and payment amount.
+    String fingerprint = value(l, "PRODUCT_ID") + "|" + l.get("BALANCE") + "|"
+        + rate + "|" + limits.regularEmi() + "|" + loanDate() + "|"
+        + amount.setScale(2) + "|" + limits.principalOnly() + "|" + rows;
+    String token;
+    try {
+      token = HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+          .digest(fingerprint.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    } catch (java.security.NoSuchAlgorithmException ex) {
+      throw new IllegalStateException(ex);
+    }
+    return new LoanModels.RepaymentPreview(token, amount, limits.interestAmount(), principal,
+        limits.principalOnly() ? amount : amount.subtract(pending.get(0).totalAmount()),
+        remaining, rate, limits.regularEmi(), unpaid.size(),
+        unpaid.isEmpty() ? null : unpaid.get(unpaid.size() - 1).dueDate(),
+        baselineInterest, remaining.signum() == 0, choices);
+  }
+
+  private String prepaymentAudit(Execution execution) {
+    return execution == null || execution.prepaymentOption() == null ? null
+        : "PREPAYMENT:" + execution.prepaymentOption() + ":" + execution.previewToken();
   }
 
   private LoanModels.RepaymentOptions repaymentOptions(
@@ -550,13 +642,13 @@ public class CreditMandateService {
     BigDecimal balance = (BigDecimal) l.get("BALANCE");
     if (l.get("TENURE_MONTHS") == null)
       return new LoanModels.RepaymentOptions(
-          new BigDecimal("0.01"), balance, BigDecimal.ZERO, true, null, 0, null);
+          new BigDecimal("0.01"), balance, BigDecimal.ZERO, true, null, 0, null, null);
     var unpaid = rows.stream().filter(r -> !"PAID".equals(r.status())).toList();
     if (unpaid.isEmpty()) throw new InvalidRequestException("No unpaid loan installments remain");
     var next = unpaid.get(0);
     LocalDate monthStart = loanDate().withDayOfMonth(1);
     // Paying a future EMI early also covers the current month. Overdue/current-month EMIs
-    // must still be settled before a small payment may go entirely to principal.
+    // must still be settled before a payment may go entirely to principal.
     boolean principalOnly =
         !explicitInstallment
             && !next.dueDate().isBefore(monthStart.plusMonths(1))
@@ -564,14 +656,16 @@ public class CreditMandateService {
                 .anyMatch(
                     r -> "PAID".equals(r.status()) && !r.dueDate().isBefore(monthStart));
     BigDecimal interest = principalOnly ? BigDecimal.ZERO : next.interestAmount();
+    BigDecimal regularEmi = (BigDecimal) l.get("PERIODIC_PAYMENT");
     return new LoanModels.RepaymentOptions(
-        principalOnly ? new BigDecimal("0.01") : next.totalAmount(),
+        principalOnly ? regularEmi.min(balance) : next.totalAmount(),
         balance.add(interest),
         interest,
         principalOnly,
-        (BigDecimal) l.get("PERIODIC_PAYMENT"),
+        regularEmi,
         unpaid.size(),
-        unpaid.get(unpaid.size() - 1).dueDate());
+        unpaid.get(unpaid.size() - 1).dueDate(),
+        regularEmi);
   }
 
   private LoanModels.Payment payInstallment(String id, String installmentId, Execution execution) {
@@ -591,8 +685,13 @@ public class CreditMandateService {
     lockLoanAccounts(loanId, funding, income);
     var l = loan(id, false);
     String tx = execution == null ? id("TX-") : requestId(execution);
-    if (execution != null && retry(tx, id, "LOAN_REPAYMENT", execution.amount))
+    if (execution != null && retry(tx, id, "LOAN_REPAYMENT", execution.amount)) {
+      String priorChoice = db.queryForObject("SELECT audit_reason FROM transactions WHERE id=?",
+          String.class, tx);
+      if (!Objects.equals(priorChoice, prepaymentAudit(execution)))
+        throw new ConflictException("requestId was already used with a different prepayment choice");
       return loanPayments(id).stream().filter(p -> tx.equals(p.id())).findFirst().orElseThrow();
+    }
     var rows = schedule(id);
     var installment =
         rows.stream()
@@ -617,6 +716,19 @@ public class CreditMandateService {
     BigDecimal interest = options.interestAmount();
     BigDecimal principal = amount.subtract(interest);
     BigDecimal remaining = ((BigDecimal) l.get("BALANCE")).subtract(principal);
+    LoanModels.PrepaymentResult chosen = null;
+    if (requiresChoice(amount, options)) {
+      if (execution == null || execution.prepaymentOption() == null)
+        throw new InvalidRequestException("Choose reduce tenure or reduce EMI before paying extra principal");
+      var comparison = repaymentPreview(l, rows, amount);
+      if (!comparison.previewToken().equals(execution.previewToken()))
+        throw new ConflictException("Loan details changed or preview expired. Compare the options again.");
+      chosen = comparison.options().stream()
+          .filter(o -> o.option() == execution.prepaymentOption()).findFirst().orElseThrow();
+      if (!chosen.available()) throw new InvalidRequestException(chosen.unavailableReason());
+    } else if (execution != null && (execution.prepaymentOption() != null || execution.previewToken() != null)) {
+      throw new InvalidRequestException("A prepayment choice is only needed for a partial principal prepayment");
+    }
     A source = account(funding, false);
     owned(source);
     depositAccount(source);
@@ -636,9 +748,10 @@ public class CreditMandateService {
         income,
         interest);
     db.update(
-        "UPDATE transactions SET principal_component=?,interest_component=? WHERE id=?",
+        "UPDATE transactions SET principal_component=?,interest_component=?,audit_reason=? WHERE id=?",
         principal,
         interest,
+        prepaymentAudit(execution),
         tx);
     change(funding, amount.negate());
     change(loanId, principal.negate());
@@ -657,8 +770,10 @@ public class CreditMandateService {
             .toList();
     if (options.principalOnly() || amount.compareTo(installment.totalAmount()) > 0) {
       var revised =
-          calculation.recalculate(
+          chosen != null ? chosen.schedule() : calculation.recalculate(
               remaining, (BigDecimal) l.get("INTEREST_RATE"), options.regularEmi(), unpaid);
+      if (chosen != null && chosen.option() == LoanModels.PrepaymentOption.REDUCE_EMI)
+        db.update("UPDATE accounts SET periodic_payment=? WHERE id=?", chosen.regularEmi(), loanId);
       for (var row : revised)
         db.update(
             "UPDATE transactions SET principal_component=?,interest_component=?,amount=? WHERE id=?",

@@ -53,6 +53,7 @@ public class ApiExceptionHandler {
   }
 
   @ExceptionHandler({
+    org.springframework.web.multipart.support.MissingServletRequestPartException.class,
     org.springframework.http.converter.HttpMessageNotReadableException.class,
     org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
     org.springframework.web.bind.MissingServletRequestParameterException.class,
@@ -64,6 +65,12 @@ public class ApiExceptionHandler {
         "INVALID_REQUEST",
         "Check the request fields and their formats.",
         List.of());
+  }
+
+  @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+  ResponseEntity<ApiError> uploadTooLarge(Exception exception) {
+    return response(HttpStatus.PAYLOAD_TOO_LARGE, "UPLOAD_TOO_LARGE",
+        "Upload three salary slips of at most 5 MB each.", List.of());
   }
 
   @ExceptionHandler(org.springframework.dao.DataAccessException.class)
