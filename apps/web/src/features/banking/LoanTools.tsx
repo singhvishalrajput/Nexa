@@ -83,7 +83,7 @@ export function LoanCalculatorPage({ token, draft, onDraftChange }: { token: str
         } finally { inFlight.current = false; setBusy(false); }
     }
     return <section class="bank-service-page">
-        <PageHeading eyebrow="PLAN YOUR BORROWING" title="EMI calculator" description="Explore a monthly payment before requesting a loan."/>
+        <PageHeading title="EMI calculator" description="Explore a monthly payment before requesting a loan."/>
         <LoanNavigation current="calculator"/>
         <div class="loan-calculator-grid">
             <Panel title="Build your estimate"><form class="bank-form loan-calculator-form" onSubmit={calculate}>

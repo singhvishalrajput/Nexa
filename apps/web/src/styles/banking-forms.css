@@ -99,8 +99,11 @@
 .experience-workspace .bank-service-page .bank-detail a { min-height: 0; font-size: inherit; }
 .experience-workspace .bank-service-page .bank-panel > .bank-form-actions { padding: 16px 20px; flex-wrap: wrap; justify-content: flex-start; }
 .experience-workspace .bank-service-page .loan-tools-nav { display: flex; width: fit-content; max-width: 100%; gap: 4px; padding: 4px; margin-bottom: 20px; border: 1px solid var(--nexa-border); border-radius: 10px; background: var(--nexa-background); }
-.experience-workspace .bank-service-page .loan-tools-nav a { min-height: 34px; padding: 7px 12px; border-radius: 7px; font-size: 12px; background: transparent; }
-.experience-workspace .bank-service-page .loan-tools-nav a[aria-current=page] { background: var(--nexa-surface); color: var(--nexa-text); box-shadow: 0 1px 3px var(--nexa-reference-29292905); }
+.experience-workspace .bank-service-page .loan-tools-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 7px 12px; border: 1px solid transparent; border-radius: 7px; font-size: 12px; font-weight: 650; background: transparent; color: var(--nexa-text-secondary); }
+.experience-workspace .bank-service-page .loan-tools-nav a:hover:not([aria-current=page]) { background: var(--nexa-hover); color: var(--nexa-text); }
+.experience-workspace .bank-service-page .loan-tools-nav a[aria-current=page] { background: var(--nexa-action); border-color: var(--nexa-action); color: var(--nexa-on-action); box-shadow: var(--nexa-shadow-card); }
+.experience-workspace .bank-service-page .loan-tools-nav a[aria-current=page]:hover { background: var(--nexa-action-hover); border-color: var(--nexa-action-hover); color: var(--nexa-on-action); }
+.experience-workspace .bank-service-page .loan-tools-nav a:focus-visible { outline: 2px solid var(--nexa-focus); outline-offset: 3px; }
 .experience-workspace .bank-service-page :is(.loan-quote-body,.loan-timeline-body,.loan-payment-body,.loan-prepayment-body) { padding: 20px; }
 .experience-workspace .bank-service-page .loan-quote-body dl { padding: 0; }
 .experience-workspace .bank-service-page .loan-timeline strong { font-size: 13px; }

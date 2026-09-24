@@ -26,6 +26,30 @@ function harness(file, api) {
 }
 const limits = {minimumAmount: 100, maximumAmount: 5000, regularEmi: 100, minimumExtraPrincipal: 100, principalOnly: false};
 
+test('EMI heading has no borrowing eyebrow and loan navigation identifies exactly one active page', () => {
+  const app = harness('LoanTools');
+  const heading = app.render('LoanCalculatorPage', {token:'owner'}).find(n=>n.type==='heading');
+  assert.equal(heading.props.title, 'EMI calculator');
+  assert.equal(heading.props.eyebrow, undefined);
+  for (const current of ['new','loans','calculator','applications']) {
+    const links = app.render('LoanNavigation', {current}).filter(n=>n.type==='a');
+    const selected = links.filter(n=>n.props['aria-current']==='page');
+    assert.equal(selected.length, 1);
+    assert.equal(selected[0].props.href, current==='loans' ? '#/loans' : '#/loans/'+current);
+  }
+});
+
+test('loan navigation keeps the active tab high contrast, including on hover', () => {
+  const css = fs.readFileSync('src/styles/banking-forms.css', 'utf8');
+  for (const suffix of ['', ':hover']) {
+    const selector = '.experience-workspace .bank-service-page .loan-tools-nav a[aria-current=page]'+suffix;
+    const body = css.slice(css.indexOf(selector)).split('}')[0];
+    assert.match(body, /background: var\(--nexa-action(?:-hover)?\)/);
+    assert.match(body, /color: var\(--nexa-on-action\)/);
+  }
+  assert.ok(css.includes('.loan-tools-nav a:focus-visible'));
+});
+
 test('minimum applies to the extra portion, not EMI multiples, with payoff exceptions', () => {
   const {validRepayment, isPartialPrepayment} = harness('LoanPrepayment').exports;
   for (const value of ['99.99', '100.001', '-1', 'NaN', 'Infinity', '150', '5000.01'])
