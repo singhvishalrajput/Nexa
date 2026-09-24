@@ -1,4 +1,4 @@
-import { useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { authenticatedRequest, ApiRequestError } from "../../services/auth";
 import { PrepaymentCalculator, PrepaymentComparison, PrepaymentOption, RepaymentPreview, isPartialPrepayment, validRepayment } from "./LoanPrepayment";
 import { bankApi, Product } from "./api";
@@ -24,17 +24,19 @@ type LoanRepaymentOptions = {
     };
 };
 const write = (token: string, path: string, value: unknown = {}) => authenticatedRequest<Record<string, unknown>>(path, token, { method: "POST", body: JSON.stringify(value) });
-export function ProductCreate({ token, kind, reload }: {
+export function ProductCreate({ token, kind, reload, initiallyOpen = false }: {
     token: string;
     kind: Kind;
     reload: () => void;
+    initiallyOpen?: boolean;
 }) {
     const inFlight = useRef(false);
     const applicationKey = useRef(crypto.randomUUID());
     const accounts = useLoad(() => bankApi.accounts(token), [token]);
     const salaryMonths = useLoad(() => kind === "loans"
         ? authenticatedRequest<string[]>("/loans/salary-slip-requirements", token) : Promise.resolve([]), [token, kind]);
-    const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
+    const [open, setOpen] = useState(initiallyOpen), [busy, setBusy] = useState(false), [error, setError] = useState("");
+    useEffect(() => { setOpen(initiallyOpen); }, [initiallyOpen]);
     async function submit(event: Event) {
         event.preventDefault();
         if (inFlight.current)
@@ -79,9 +81,10 @@ export function ProductCreate({ token, kind, reload }: {
  </fieldset>
  {error && <p role="alert">{error}</p>}<div class="bank-editor-actions"><button class="bank-button" type="submit" disabled={busy || kind === "loans" && (salaryMonths.loading || !!salaryMonths.error || salaryMonths.data?.length !== 3)}>{busy ? "Saving…" : kind === "loans" ? "Submit loan application" : "Create"}</button></div></form>}</Panel>;
 }
-export function BillCreate({ token, reload }: { token: string; reload: () => void; }) {
+export function BillCreate({ token, reload, initiallyOpen = false }: { token: string; reload: () => void; initiallyOpen?: boolean; }) {
     const inFlight = useRef(false);
-    const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
+    const [open, setOpen] = useState(initiallyOpen), [busy, setBusy] = useState(false), [error, setError] = useState("");
+    useEffect(() => { setOpen(initiallyOpen); }, [initiallyOpen]);
     async function submit(event: Event) {
         event.preventDefault();
         if (inFlight.current)

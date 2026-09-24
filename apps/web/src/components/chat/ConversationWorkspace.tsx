@@ -1,8 +1,7 @@
-import { WorkspaceRail } from "../design/WorkspaceRail";
 import { Action } from "../design/Action";
 import "ojs/ojinputtext";
 import { BankingIcon } from "../BankingIcon";
-import { SidebarBrand, SidebarNavigation } from "../SidebarNavigation";
+import { SidebarBrand, SidebarFooter, SidebarNavigation } from "../SidebarNavigation";
 import { getLocale, setLocale, t } from "../../services/locale";
 import { AccountContext, QuickAction } from "./ConversationTools";
 import { AccountSnapshot } from "../../services/banking-content";
@@ -363,14 +362,14 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
       </div>
       {historySearch && !conversations.some(item => item.title.toLocaleLowerCase().includes(historySearch.toLocaleLowerCase())) && <p role="status">{t("No matching conversations.")}</p>}
       <details class="experience-banking-menu"><summary><BankingIcon name="accounts"/><span>{t("More banking")}</span><BankingIcon name="chevron"/></summary><SidebarNavigation page="assistant" admin={session.user.role === "ADMIN"} expanded/></details>
+      <SidebarFooter page="assistant" onLogout={() => runCommand("sign out")} disabled={busy || listening || !!pending.current}/>
   </>;
   const context = <AccountContext accounts={accounts} loading={accountsLoading} error={accountsError} hidden={balancesHidden} onToggle={() => setBalancesHidden(value => !value)} onRetry={onRefreshAccounts}/>;
   const conversationTitle = (current?.title || t("New conversation")).replace(/\.$/, "").replace(/^./, letter => letter.toUpperCase());
 
   return <div class="nexa-messenger experience-chat" lang={language}>
-    <div class="experience-rail-container" inert={historyModal}><WorkspaceRail page="assistant" name={session.profile.fullName} onLogout={onLogout}/></div>
     <a class="conversation-skip" href="#nexa-conversation-input" onClick={event => { event.preventDefault(); textarea.current?.focus(); }}>{t("Skip to conversation")}</a>
-    {wideLayout && <aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history messenger-history-sidebar" aria-label={t("Banking navigation and history")}>{historyContents}</aside>}
+    {wideLayout && <aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history messenger-history-sidebar" aria-label={t("Nexa workspace and conversation history")}>{historyContents}</aside>}
     <main class="messenger-main" aria-label={t("Nexa banking conversation")} inert={historyModal}>
       <header class="messenger-header">
         <button type="button" class="messenger-icon" onClick={onClose} aria-label={t("Open banking overview")}><ChatIcon name="back" /><span>{t("Banking")}</span></button>
@@ -463,6 +462,6 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
       </footer>
     </main>
     {contextOpen && <Modal title={t("Your accounts")} onClose={() => setContextOpen(false)}>{context}</Modal>}
-    {!wideLayout && <div hidden={!historyModal} inert={!historyModal} class="messenger-drawer-backdrop" onClick={closeHistory}><aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history" role="dialog" aria-modal="true" aria-label={t("Banking navigation and history")} onClick={(event) => event.stopPropagation()}>{historyContents}</aside></div>}
+    {!wideLayout && <div hidden={!historyModal} inert={!historyModal} class="messenger-drawer-backdrop" onClick={closeHistory}><aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history" role="dialog" aria-modal="true" aria-label={t("Nexa workspace and conversation history")} onClick={(event) => event.stopPropagation()}>{historyContents}</aside></div>}
   </div>;
 }

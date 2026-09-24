@@ -12,7 +12,8 @@ function setup(api=async()=>({}), download=async()=>new Blob(['%PDF-data'])){
   let cursor=0; const slots=[], clicks=[];
   const hooks={
     useState(v){const i=cursor++;if(!(i in slots))slots[i]=typeof v==='function'?v():v;return[slots[i],v=>slots[i]=typeof v==='function'?v(slots[i]):v];},
-    useRef(v){const i=cursor++;return slots[i]||(slots[i]={current:v});}
+    useRef(v){const i=cursor++;return slots[i]||(slots[i]={current:v});},
+    useEffect(effect,deps){const i=cursor++;if(!slots[i]||deps.some((value,index)=>value!==slots[i][index])){slots[i]=deps;effect();}}
   };
   const jsx=(type,props)=>({type,props}), slips={}, products={};
   const dependencies=n=>n==='preact/hooks'?hooks:n==='preact/jsx-runtime'?{jsx,jsxs:jsx}:
@@ -34,6 +35,21 @@ const form=()=>new FormDataFixture({entries:[
   ['name','Education'],['account','12'],['amount','100000'],['tenure','12'],
   ...months.map(month=>['slip-'+month,{name:month+'.pdf',type:'application/pdf',size:100}])
 ]});
+
+test('creation deep links open the correct form and react to navigation changes',()=>{
+  for(const [component,kind] of [['ProductCreate','loans'],['ProductCreate','mandates'],['BillCreate',undefined]]){
+    const app=setup(),props={token:'owner',kind,reload(){},initiallyOpen:true};
+    let tree=app.render(app.products[component],props);
+    assert.ok(tree.some(n=>n.type==='form'),component+' opens directly');
+    const closed={...props,initiallyOpen:false};
+    app.render(app.products[component],closed);
+    tree=app.render(app.products[component],closed);
+    assert.equal(tree.some(n=>n.type==='form'),false);
+    app.render(app.products[component],props);
+    tree=app.render(app.products[component],props);
+    assert.ok(tree.some(n=>n.type==='form'),'Request navigation opens the form again');
+  }
+});
 test('salary-slip fields require a separate upload for each of the three months',()=>{
   const app=setup(), tree=app.render(app.slips.SalarySlipFields,{months});
   const inputs=tree.filter(n=>n.type==='input');

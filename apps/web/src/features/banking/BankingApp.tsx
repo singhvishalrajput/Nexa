@@ -16,7 +16,7 @@ import { ConversationWorkspace } from "../../components/chat/ConversationWorkspa
 import { bankApi, ProductKind } from "./api";
 import { Overview, AccountsPage, TransactionsPage } from "./Accounts";
 import { ProductsPage, productNames } from "./Products";
-import { LoanCalculatorPage, LoanApplicationsPage } from "./LoanTools";
+import { LoanCalculatorDraft, LoanCalculatorPage, LoanApplicationsPage } from "./LoanTools";
 import { PaymentsPage, OperationsPage } from "./Payments";
 import { PageHeading, Panel, State, Modal, Detail, useLoad } from "./ui";
 import { go, parseRoute } from "./utils";
@@ -74,12 +74,13 @@ function Workspace({ session, setSession, signOut, route }: {
 }) {
     const [menu, setMenu] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
+    const [loanCalculatorDraft, setLoanCalculatorDraft] = useState<LoanCalculatorDraft>({ amount: "100000", months: "12" });
     const heading = useRef<HTMLElement>(null);
     const data = useLoad(() => bankApi.accounts(session.accessToken), [session.user.id, route.page]);
     const accounts = data.data || [];
     const page = route.page === "login" || route.page === "register" ? "assistant" : route.page;
     const pageTitle = [...primaryNavigation, ...secondaryNavigation].find(n => n.page === page)?.label || ({settings: "Profile & settings", security: "Security & session", assistant: "Chat", operations: "Banking operations"} as Record<string, string>)[page] || "Page not found";
-    useEffect(() => { setMenu(false); window.scrollTo(0, 0); document.title = pageTitle + " · Nexa"; heading.current?.querySelector<HTMLElement>("h1")?.focus(); }, [page, route.id, data.loading]);
+    useEffect(() => { setMenu(false); window.scrollTo(0, 0); document.title = pageTitle + " · Nexa"; heading.current?.querySelector<HTMLElement>("h1")?.focus(); }, [page, route.id]);
     const endSession = async () => { if (signingOut)
         return; setSigningOut(true); try { await signOut(); } finally { setSigningOut(false); } };
     if (page === "assistant")
@@ -99,11 +100,11 @@ function Workspace({ session, setSession, signOut, route }: {
         if (page === "payments")
             return <PaymentsPage token={session.accessToken} accounts={accounts}/>;
         if (page === "loans" && route.id === "calculator")
-            return <LoanCalculatorPage token={session.accessToken}/>;
+            return <LoanCalculatorPage token={session.accessToken} draft={loanCalculatorDraft} onDraftChange={setLoanCalculatorDraft}/>;
         if (page === "loans" && route.id === "applications")
             return <LoanApplicationsPage token={session.accessToken}/>;
         if (page in productNames)
-            return <ProductsPage key={page} token={session.accessToken} kind={page as ProductKind} id={route.id}/>;
+            return <ProductsPage key={page} token={session.accessToken} kind={page as ProductKind} id={["new", "create", "add", "request"].includes(route.id || "") ? undefined : route.id} initiallyOpen={["new", "create", "add", "request"].includes(route.id || "")}/>;
         if (page === "settings")
             return <><PageHeading title={t("Profile & settings")} description={t("Keep your personal banking details up to date.")}/><AccountSettings session={session} account={accounts[0]} onBack={() => go("accounts")} onLogout={endSession} onProfileUpdated={profile => setSession({ ...session, profile })}/></>;
         if (page === "security")

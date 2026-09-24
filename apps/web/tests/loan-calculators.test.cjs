@@ -89,6 +89,17 @@ test('EMI calculator uses server quote and clears old numbers when inputs change
   assert.doesNotMatch(JSON.stringify(tree), /₹9,000/);
 });
 
+test('EMI calculator restores the saved draft and reports edits back to the workspace', () => {
+  const app = harness('LoanTools'), changes = [];
+  const props = {token:'owner', draft:{amount:'250000',months:'24'}, onDraftChange:value=>changes.push(value)};
+  const tree = app.render('LoanCalculatorPage', props);
+  assert.equal(tree.find(n=>n.type==='input' && n.props.name==='amount').props.value, '250000');
+  assert.equal(tree.find(n=>n.type==='input' && n.props.name==='tenure').props.value, '24');
+  tree.find(n=>n.type==='input' && n.props.name==='amount').props.onInput({currentTarget:{value:'300000'}});
+  assert.equal(changes[0].amount, '300000');
+  assert.equal(changes[0].months, '24');
+});
+
 test('prepayment selection has compact labelled radios and a visible selected state', () => {
   const app = harness('LoanPrepayment'), choices = [];
   const preview = {annualInterestRate: 14.5, remainingPrincipal: 500, extraPrincipalAmount: 200,

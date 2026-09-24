@@ -14,6 +14,7 @@ export type MandateSnapshot = {
 };
 export type UpcomingSnapshot = {
   id: string; payee: string; amount: Money; currencyCode: string; dueAt: string; status: string;
+  reference?: string | null;
 };
 export type BeneficiarySnapshot = {
   id: string; displayName: string; bankName?: string; accountNumberMasked: string; status: string;

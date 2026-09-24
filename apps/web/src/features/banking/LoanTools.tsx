@@ -29,16 +29,31 @@ export function loanApplicationStatus(status: string): string {
     return "Status unavailable";
 }
 
-export function LoanNavigation({ current }: { current: "loans" | "calculator" | "applications" }) {
+type LoanSection = "new" | "loans" | "calculator" | "applications";
+
+/** Hash URLs remain deep-linkable while loan-tool changes stay client-side. */
+export function navigateLoanTool(event: MouseEvent) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.currentTarget as HTMLAnchorElement;
+    const destination = link.hash;
+    if (!destination || destination === window.location.hash) return;
+    event.preventDefault();
+    window.location.hash = destination;
+}
+
+export function LoanNavigation({ current }: { current: LoanSection }) {
     return <nav class="loan-tools-nav" aria-label="Loan tools">
-        <a href="#/loans" aria-current={current === "loans" ? "page" : undefined}>My loans</a>
-        <a href="#/loans/calculator" aria-current={current === "calculator" ? "page" : undefined}>EMI calculator</a>
-        <a href="#/loans/applications" aria-current={current === "applications" ? "page" : undefined}>Track application</a>
+        <a href="#/loans/new" onClick={navigateLoanTool} aria-current={current === "new" ? "page" : undefined}>Request loan</a>
+        <a href="#/loans" onClick={navigateLoanTool} aria-current={current === "loans" ? "page" : undefined}>My loans</a>
+        <a href="#/loans/calculator" onClick={navigateLoanTool} aria-current={current === "calculator" ? "page" : undefined}>EMI calculator</a>
+        <a href="#/loans/applications" onClick={navigateLoanTool} aria-current={current === "applications" ? "page" : undefined}>Track application</a>
     </nav>;
 }
 
-export function LoanCalculatorPage({ token }: { token: string }) {
-    const [amount, setAmount] = useState("100000"), [months, setMonths] = useState("12");
+export type LoanCalculatorDraft = { amount: string; months: string };
+
+export function LoanCalculatorPage({ token, draft, onDraftChange }: { token: string; draft?: LoanCalculatorDraft; onDraftChange?: (draft: LoanCalculatorDraft) => void }) {
+    const [amount, setAmount] = useState(draft?.amount || "100000"), [months, setMonths] = useState(draft?.months || "12");
     const [quote, setQuote] = useState<LoanQuote | null>(null);
     const [busy, setBusy] = useState(false), [error, setError] = useState("");
     const generation = useRef(0);
@@ -48,7 +63,9 @@ export function LoanCalculatorPage({ token }: { token: string }) {
         generation.current++;
         setQuote(null);
         setError("");
+        const next = field === "amount" ? { amount: value, months } : { amount, months: value };
         if (field === "amount") setAmount(value); else setMonths(value);
+        onDraftChange?.(next);
     }
     async function calculate(event: Event) {
         event.preventDefault();
@@ -87,7 +104,7 @@ export function LoanCalculatorPage({ token }: { token: string }) {
                             <Detail label="Final installment">{formatMoney(quote.finalEmiAmount, quote.currencyCode)}</Detail>
                         </dl>
                         <p>Indicative quote, not approval. Assumes every payment follows the schedule. The rate is fixed for the loan; prepayments can reduce total interest or monthly EMI.</p>
-                        <a class="bank-button secondary" href="#/loans">Request a loan →</a>
+                        <a class="bank-button secondary" href="#/loans/new" onClick={navigateLoanTool}>Request a loan →</a>
                     </> : <div class="loan-quote-placeholder"><span aria-hidden="true">◇</span><h3>A clearer view of your repayments</h3><p>Enter an amount and tenure, then calculate to see EMI, interest and total repayment.</p></div>}
                 </div>
             </Panel>

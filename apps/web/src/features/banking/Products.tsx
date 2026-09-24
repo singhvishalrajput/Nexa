@@ -15,10 +15,11 @@ export const productTitle = (p: Product) => p.displayName || p.billerName || p.p
 const productIcons: Record<ProductKind, BankingIconName> = { cards: "cards", bills: "transactions", beneficiaries: "people", mandates: "repeat", loans: "accounts", "scheduled-payments": "clock" };
 function amount(p: Product) { if (p.cardType === "DEBIT")
     return undefined; return p.outstanding ?? p.amount ?? p.limit; }
-export function ProductsPage({ token, kind, id }: {
+export function ProductsPage({ token, kind, id, initiallyOpen = false }: {
     token: string;
     kind: ProductKind;
     id?: string;
+    initiallyOpen?: boolean;
 }) {
     const [receipt, setReceipt] = useState("");
     const [page, setPage] = useState(0);
@@ -30,10 +31,10 @@ export function ProductsPage({ token, kind, id }: {
     const visible = rows.filter(p => productTitle(p).toLowerCase().includes(search.toLowerCase()));
     return <section class={"bank-service-page bank-service-" + kind}><PageHeading title={id ? productNames[kind].replace(/s$/, "") + " details" : productNames[kind]} description={descriptions[kind]}/>
  {receipt && <p role="status" class="bank-notice">{receipt}</p>}
- {kind === "loans" && <LoanNavigation current="loans"/>}
+ {kind === "loans" && <LoanNavigation current={initiallyOpen ? "new" : "loans"}/> }
  {kind === "beneficiaries" && <PayeeForm token={token} id={id} name={detail ? productTitle(detail) : ""} reload={data.reload}/>}
- {!id && kind === "bills" && <BillCreate token={token} reload={data.reload}/>}
- {!id && (kind === "mandates" || kind === "loans") && <ProductCreate token={token} kind={kind} reload={data.reload}/>}
+ {!id && kind === "bills" && <BillCreate token={token} initiallyOpen={initiallyOpen} reload={() => { setPage(0); setFilter(""); setSearch(""); data.reload(); }}/>}
+ {!id && (kind === "mandates" || kind === "loans") && <ProductCreate token={token} kind={kind} initiallyOpen={initiallyOpen} reload={() => { setPage(0); setFilter(""); setSearch(""); data.reload(); }}/>}
  {!id && <div class="bank-filters bank-product-filters"><label class="bank-search-label">{t("Search")}<input type="search" placeholder={"Search " + productNames[kind].toLowerCase()} value={search} onInput={e => setSearch(e.currentTarget.value)}/></label>{kind !== "beneficiaries" && <label>{t("Status")}<select value={filter} onChange={e => { setFilter(e.currentTarget.value); setPage(0); }}><option value="">{t("All statuses")}</option>{(kind === "cards" ? ["ACTIVE", "BLOCKED", "CLOSED"] : kind === "bills" ? ["UPCOMING", "DUE", "OVERDUE", "PAID", "FAILED"] : kind === "mandates" ? ["PENDING", "ACTIVE", "PAUSED", "CANCELLED", "EXPIRED", "ACTION_REQUIRED"] : kind === "loans" ? ["PENDING_APPROVAL", "APPROVED", "REJECTED", "ACTIVE", "OVERDUE", "PAID", "CLOSED"] : ["SCHEDULED", "PENDING", "COMPLETED", "FAILED", "CANCELLED"]).map(s => <option value={s}>{humanize(s)}</option>)}</select></label>}</div>}
  <State loading={data.loading} error={data.error} retry={data.reload} empty={!data.loading && !data.error && !id && !visible.length ? "No " + productNames[kind].toLowerCase() + " to show" : undefined}>
   {detail ? <ProductDetail key={detail.id} token={token} product={detail} kind={kind} reload={data.reload} onPosted={setReceipt}/> : <div class={(kind === "cards" ? "bank-card-grid" : "bank-product-grid") + " bank-product-grid--" + kind}>
@@ -63,6 +64,6 @@ function ProductDetail({ product: p, kind, token, reload, onPosted }: {
  {(kind === "bills" || kind === "mandates") && <ProductStatusControl token={token} kind={kind} product={p} reload={reload} onPosted={onPosted}/>}
  {kind === "cards" && <Panel title={t("Card controls")}><div class="bank-form-actions">{["FREEZE_CARD", "UNFREEZE_CARD", "REPLACE_CARD"].map(operation => <DemoAction key={operation} token={token} request={{operation, targetId: p.id}} label={humanize(operation)}/>)}</div></Panel>}
  {kind === "cards" && <DemoHistory token={token}/>}
- {p.paymentHistory && <Panel title={t("Payment history")}><State empty={!p.paymentHistory.length ? "No payments recorded" : undefined}>{p.paymentHistory.map(t => <div class="bank-record" key={t.id}><div><strong>{t.payee}</strong><small>{formatDate(t.dueAt)}</small></div><Status value={t.status}/><strong>{formatMoney(t.amount, t.currencyCode)}</strong></div>)}</State></Panel>}
+ {p.paymentHistory && <Panel title={t("Payment history")}><State empty={!p.paymentHistory.length ? "No payments recorded" : undefined}>{p.paymentHistory.map(t => <div class="bank-record" key={t.id}><div><strong>{t.payee}</strong><small>{formatDate(t.dueAt, true)}</small>{t.reference?.startsWith("TX-") && <a href={"#/transactions/" + encodeURIComponent(t.reference)}>View transaction · {t.reference}</a>}</div><Status value={t.status}/><strong>{formatMoney(t.amount, t.currencyCode)}</strong></div>)}</State></Panel>}
  {p.transactions && <Panel title={t("Card activity")}><State empty={!p.transactions.length ? "No card activity recorded" : undefined}>{p.transactions.map(t => <div class="bank-record" key={t.id}><div><strong>{t.merchantName || t.type}</strong><small>{formatDate(t.occurredAt)}</small></div><Status value={t.status}/><strong>{formatMoney(t.amount, t.currencyCode, true)}</strong></div>)}</State></Panel>}</div>;
 }
