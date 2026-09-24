@@ -1,6 +1,6 @@
 const {test}=require('node:test'), assert=require('node:assert/strict');
 const fs=require('node:fs'), vm=require('node:vm'), ts=require('typescript');
-const nodes=n=>!n||typeof n!=='object'?[]:Array.isArray(n)?n.flatMap(nodes):[n,...nodes(n.props?.children)];
+const nodes=n=>!n||typeof n!=='object'?[]:Array.isArray(n)?n.flatMap(nodes):[n,...nodes(n.props?.action),...nodes(n.props?.children)];
 const months=['2026-06','2026-07','2026-08'];
 class FormDataFixture {
   constructor(form){this.entries=form?.entries ? [...form.entries] : [];}

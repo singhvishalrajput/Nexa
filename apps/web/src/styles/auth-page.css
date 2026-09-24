@@ -131,6 +131,52 @@
   flex-direction: column;
   gap: 15px;
 }
+.na-password-control {
+  position: relative;
+}
+.na-password-label {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--nexa-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+.na-password-control > :is(oj-input-text, oj-input-password) {
+  display: block;
+  width: 100%;
+}
+.na-password-eye {
+  position: absolute;
+  z-index: 2;
+  right: 10px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--nexa-text-muted);
+  cursor: pointer;
+}
+.na-password-eye:hover:not(:disabled) {
+  background: var(--nexa-soft);
+  color: var(--nexa-text);
+}
+.na-password-eye:focus-visible {
+  outline: 2px solid var(--nexa-focus);
+  outline-offset: 2px;
+}
+.na-password-eye:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+.na-password-eye svg {
+  width: 18px;
+  height: 18px;
+}
 .na-field label {
   display: block;
   font-size: 12px;
@@ -345,6 +391,29 @@
   width: 16px;
 }
 
+/* Registration contains one additional field, so it uses a tighter rhythm and
+   remains fully visible in normal laptop-height windows. */
+.na-register .na-form-wrap {
+  max-width: 470px;
+  padding: 0;
+}
+.na-register .na-form-intro {
+  margin: 8px 0 16px;
+}
+.na-register .na-form {
+  gap: 10px;
+  margin-top: 18px;
+}
+.na-register .na-password-hint {
+  margin-top: 0;
+  font-size: 9px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.na-register .experience-auth-switch {
+  margin-top: 14px;
+}
+
 @keyframes na-art-enter {
   from {
     opacity: 0;
@@ -392,6 +461,30 @@
   .na-panel-footer {
     padding-top: 10px;
   }
+  .na-register .na-form-panel {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .na-register .na-header {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .na-register .na-layout {
+    padding-bottom: 4px;
+  }
+  .na-register .na-form-panel h1 {
+    font-size: 28px;
+  }
+  .na-register .na-form-intro {
+    margin-bottom: 12px;
+  }
+  .na-register .na-form {
+    gap: 7px;
+  }
+  .na-register .na-password-hint {
+    font-size: 10px;
+    line-height: 1.4;
+  }
 }
 @media (max-width: 760px) {
   .na-shell {
@@ -415,6 +508,13 @@
   .na-form-panel {
     padding: 12px 0;
   }
+  .na-register .na-form-panel {
+    justify-content: flex-start;
+    overflow: visible;
+  }
+  .na-register .na-form-wrap {
+    margin: 0;
+  }
   .na-form-wrap {
     max-width: 390px;
   }
@@ -423,6 +523,10 @@
   }
   .na-form-intro {
     margin-bottom: 24px;
+  }
+  .na-register .na-password-hint {
+    white-space: normal;
+    font-size: 11px;
   }
   .na-input-wrap input {
     font-size: 16px;

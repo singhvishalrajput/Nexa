@@ -2,7 +2,7 @@ import { WorkspaceRail } from "../design/WorkspaceRail";
 import { Action } from "../design/Action";
 import "ojs/ojinputtext";
 import { BankingIcon } from "../BankingIcon";
-import { SidebarBrand, SidebarNavigation, SidebarFooter } from "../SidebarNavigation";
+import { SidebarBrand, SidebarNavigation } from "../SidebarNavigation";
 import { getLocale, setLocale, t } from "../../services/locale";
 import { AccountContext, QuickAction } from "./ConversationTools";
 import { AccountSnapshot } from "../../services/banking-content";
@@ -61,6 +61,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   const [outgoing, setOutgoing] = useState<{ text: string; source: "TEXT" | "VOICE"; createdAt: string } | null>(null);
   const [hasNew, setHasNew] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
+  const [historySearchFocused, setHistorySearchFocused] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [wideLayout, setWideLayout] = useState(() => window.matchMedia("(min-width: 900px)").matches);
   const historyModal = historyOpen && !wideLayout;
@@ -354,28 +355,26 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
 
   const historyContents = <>
       <SidebarBrand action={!wideLayout && <button type="button" class="messenger-icon" aria-label={t("Close history")} onClick={closeHistory}><ChatIcon name="close"/></button>}/>
-      <Action className="experience-new-chat" primary disabled={busy || listening || !!pending.current} onAction={() => void submit("new conversation")} label={t("New conversation")}/>
-      <oj-input-text class="experience-history-search" labelHint={t("Search conversations")} labelEdge="inside" value={historySearch} onrawValueChanged={event => setHistorySearch(event.detail.value || "")}/>
+      <Action className="experience-new-chat" primary disabled={busy || listening || !!pending.current} onAction={() => void submit("new conversation")} label={t("New conversation")}><BankingIcon name="plus"/><span>{t("New conversation")}</span></Action>
+      <oj-input-text class="experience-history-search" aria-label={t("Search conversations")} labelEdge="none" placeholder={historySearchFocused ? "" : t("Search conversations")} value={historySearch} onfocusin={() => setHistorySearchFocused(true)} onfocusout={() => setHistorySearchFocused(false)} onrawValueChanged={event => setHistorySearch(event.detail.value || "")}/>
       <header class="sidebar-history-heading"><h2 id="messenger-history-title">{t("Recent conversations")}</h2></header>
       <div class="messenger-history-list" role="region" aria-labelledby="messenger-history-title">{conversations.length ? conversations.filter(item => item.title.toLocaleLowerCase().includes(historySearch.toLocaleLowerCase())).map(item => <ConversationHistoryItem key={item.id} conversation={item} current={item.id === current?.id} hasDraft={!!input.trim()} disabled={busy || listening || !!pending.current} onSelect={() => void select(item)} onDelete={() => removeConversation(item)}/>) : <p>{t("Your conversations will appear here.")}</p>}
         {moreHistory && <button type="button" disabled={busy || listening} onClick={more}>{t("Load more conversations")}</button>}
       </div>
       {historySearch && !conversations.some(item => item.title.toLocaleLowerCase().includes(historySearch.toLocaleLowerCase())) && <p role="status">{t("No matching conversations.")}</p>}
-      <details class="experience-banking-menu"><summary>{t("More banking")}</summary><SidebarNavigation page="assistant" admin={session.user.role === "ADMIN"}/></details>
-      <SidebarFooter page="assistant" onLogout={() => runCommand("sign out")} disabled={busy || listening || !!pending.current}>
-        <button class="sidebar-link" type="button" onClick={() => { setHistoryOpen(false); showGuidance("help"); }}><BankingIcon name="support"/><span>{t("Support")}</span></button>
-      </SidebarFooter>
+      <details class="experience-banking-menu"><summary><BankingIcon name="accounts"/><span>{t("More banking")}</span><BankingIcon name="chevron"/></summary><SidebarNavigation page="assistant" admin={session.user.role === "ADMIN"} expanded/></details>
   </>;
   const context = <AccountContext accounts={accounts} loading={accountsLoading} error={accountsError} hidden={balancesHidden} onToggle={() => setBalancesHidden(value => !value)} onRetry={onRefreshAccounts}/>;
+  const conversationTitle = (current?.title || t("New conversation")).replace(/\.$/, "").replace(/^./, letter => letter.toUpperCase());
 
   return <div class="nexa-messenger experience-chat" lang={language}>
-    <div class="experience-rail-container" inert={historyModal}><WorkspaceRail page="assistant" name={session.profile.fullName}/></div>
+    <div class="experience-rail-container" inert={historyModal}><WorkspaceRail page="assistant" name={session.profile.fullName} onLogout={onLogout}/></div>
     <a class="conversation-skip" href="#nexa-conversation-input" onClick={event => { event.preventDefault(); textarea.current?.focus(); }}>{t("Skip to conversation")}</a>
     {wideLayout && <aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history messenger-history-sidebar" aria-label={t("Banking navigation and history")}>{historyContents}</aside>}
     <main class="messenger-main" aria-label={t("Nexa banking conversation")} inert={historyModal}>
       <header class="messenger-header">
         <button type="button" class="messenger-icon" onClick={onClose} aria-label={t("Open banking overview")}><ChatIcon name="back" /><span>{t("Banking")}</span></button>
-        <div class="messenger-identity"><h1>{t("Your conversation")}</h1></div>
+        <div class="messenger-identity"><h1 class="messenger-conversation-title" title={conversationTitle}>{conversationTitle}</h1></div>
         <button type="button" class="messenger-icon conversation-context-toggle" aria-label={t("Account context")} aria-expanded={contextOpen} onClick={() => setContextOpen(true)}><BankingIcon name="accounts"/></button>
         <button ref={historyToggle} type="button" class="messenger-icon" onClick={() => { setMenuOpen(false); setHistoryOpen(true); }} aria-label={t("Conversation history")} aria-expanded={wideLayout || historyOpen} aria-controls="messenger-history"><ChatIcon name="history" /><span>{t("History")}</span></button>
         <div class="messenger-menu-wrap">
@@ -385,7 +384,6 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
             <button type="button" disabled={busy || listening} onClick={() => runCommand(readAloud ? "stop reading" : "read aloud")}>{readAloud ? t("Turn off spoken replies") : t("Read replies aloud")}</button>
             <button type="button" disabled={busy || listening} onClick={() => runCommand("repeat")}>{t("Read last reply")}</button>
             <button type="button" disabled={!current || busy || listening || !!pending.current} onClick={() => runCommand("delete conversation")}>{t("Delete conversation")}</button>
-            <button type="button" disabled={busy || listening} onClick={() => { setMenuOpen(false); void onLogout(); }}>{t("Sign out")}</button>
           </div>}
         </div>
       </header>

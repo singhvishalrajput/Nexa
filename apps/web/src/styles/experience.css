@@ -68,6 +68,105 @@ a { text-decoration:none; }
 .admin-sections a { border-radius:10px; }
 .admin-sections a[aria-current=page] { background:var(--nexa-soft); color:var(--nexa-reference-a34431); }
 
+/* Administration uses a quieter operations-console hierarchy than customer banking. */
+html:has(.experience-admin), body:has(.experience-admin),
+html:has(.experience-workspace), body:has(.experience-workspace) { background:var(--nexa-reference-efefec); }
+.experience-admin { border:1px solid var(--nexa-reference-deddda); box-shadow:0 0 0 1px var(--nexa-reference-deddda); background:var(--nexa-background); }
+.experience-admin { grid-template-rows:minmax(0,1fr); height:calc(100dvh - 24px); min-height:0; }
+.experience-admin-body { display:grid; grid-template-rows:auto minmax(0,1fr); height:100%; min-height:0; overflow:hidden; background:var(--nexa-background); }
+.experience-admin .experience-rail { background:var(--nexa-surface); }
+.experience-admin .experience-rail > a { position:relative; }
+.experience-admin .experience-rail > a::after { position:absolute; left:calc(100% + 10px); z-index:30; padding:6px 8px; border:1px solid var(--nexa-border); border-radius:7px; background:var(--nexa-text); color:var(--nexa-surface); content:attr(aria-label); font:11px/1.2 var(--nexa-font); opacity:0; pointer-events:none; transform:translateX(-4px); transition:opacity 140ms var(--nexa-motion),transform 140ms var(--nexa-motion); white-space:nowrap; }
+.experience-admin .experience-rail > a:hover::after,.experience-admin .experience-rail > a:focus-visible::after { opacity:1; transform:translateX(0); }
+.experience-admin .bank-main { box-sizing:border-box; max-width:none; height:100%; min-height:0; padding:30px 38px 42px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.admin-topbar { display:flex; align-items:center; min-height:76px; padding:0 38px; border-bottom:1px solid var(--nexa-border); background:color-mix(in srgb,var(--nexa-surface) 94%,var(--nexa-soft)); }
+.admin-brand { display:inline-flex; align-items:baseline; gap:9px; color:var(--nexa-text); text-decoration:none; }
+.admin-brand strong { font:650 22px/1 var(--nexa-heading-font); letter-spacing:-.06em; }
+.admin-brand span { padding-left:9px; border-left:1px solid var(--nexa-border); color:var(--nexa-text-secondary); font:500 12px/1 var(--nexa-font); letter-spacing:.08em; text-transform:uppercase; }
+.admin-session { display:flex; align-items:center; gap:14px; }
+.admin-session > span { display:grid; gap:2px; color:var(--nexa-text-secondary); font-size:13px; text-align:right; }
+.admin-session small { color:var(--nexa-text-muted); font-size:10px; letter-spacing:.08em; text-transform:uppercase; }
+.experience-admin .bank-button { min-height:38px; padding:8px 14px; border-radius:10px; font-size:12px!important; font-weight:650!important; box-shadow:none; }
+.experience-admin .bank-button.secondary { border-color:var(--nexa-border-control); background:var(--nexa-surface); color:var(--nexa-text)!important; }
+.experience-admin .bank-button.secondary:hover:not(:disabled) { border-color:var(--nexa-reference-a34431); background:var(--nexa-soft); color:var(--nexa-reference-a34431)!important; }
+.experience-admin .bank-button:not(.secondary) { background:var(--nexa-text); color:var(--nexa-surface)!important; }
+.experience-admin .bank-button:not(.secondary):hover:not(:disabled) { background:var(--nexa-reference-a34431); border-color:var(--nexa-reference-a34431); }
+.experience-admin .bank-button:not(.secondary):hover:not(:disabled) .oj-button-text { color:var(--nexa-surface)!important; }
+.experience-admin .bank-button.secondary:hover:not(:disabled) .oj-button-text { color:var(--nexa-reference-a34431)!important; }
+.experience-admin .admin-primary-nav { gap:8px; margin:0 0 30px; padding:7px; border:1px solid var(--nexa-border); border-radius:14px; background:var(--nexa-surface); }
+.experience-admin .admin-sections a { min-height:38px; padding:9px 15px; border:0; border-radius:9px; color:var(--nexa-text-secondary); font-size:12px; font-weight:600; }
+.experience-admin .admin-sections a:hover { background:var(--nexa-background); color:var(--nexa-text); }
+.experience-admin .admin-sections a[aria-current=page] { background:var(--nexa-soft); color:var(--nexa-reference-a34431); box-shadow:inset 0 0 0 1px var(--nexa-reference-ffe3d9); }
+.experience-admin .bank-page-heading { align-items:flex-end; margin-bottom:28px; }
+.experience-admin .bank-page-heading .bank-eyebrow:empty { display:none; }
+.experience-admin .bank-page-heading h1 { margin:2px 0 7px; font-size:clamp(28px,3vw,38px); font-weight:500; letter-spacing:-.06em; }
+.experience-admin .bank-page-heading .bank-eyebrow { color:var(--nexa-reference-a34431); font-size:10px; letter-spacing:.16em; }
+.experience-admin .bank-page-heading p:last-child { max-width:720px; color:var(--nexa-text-secondary); font-size:14px; line-height:1.55; }
+.experience-admin .bank-panel { border:1px solid var(--nexa-border); border-radius:18px; background:var(--nexa-surface); box-shadow:0 8px 30px var(--nexa-reference-29292905); }
+.experience-admin .bank-panel-heading { padding:19px 22px; border-bottom:1px solid var(--nexa-border); }
+.experience-admin .bank-panel-heading h2 { font-size:16px; font-weight:650; }
+.experience-admin .admin-filters { display:grid; grid-template-columns:minmax(260px,1fr) 180px 180px auto; gap:12px; padding:20px 22px 16px; background:var(--nexa-background); border-bottom:1px solid var(--nexa-border); }
+.experience-admin .admin-filters label { gap:6px; color:var(--nexa-text-secondary); font-size:11px; font-weight:650; letter-spacing:.03em; }
+.experience-admin .admin-filters input,.experience-admin .admin-filters select { min-height:40px; padding:8px 11px; border-radius:9px; border-color:var(--nexa-border); font-size:13px; }
+.experience-admin .admin-filters input:focus,.experience-admin .admin-filters select:focus { border-color:var(--nexa-reference-a34431); outline:2px solid var(--nexa-reference-ffe3d9); outline-offset:1px; }
+.experience-admin .bank-page-heading > .bank-button,.experience-admin .admin-filters > .bank-button { min-height:32px; padding:6px 10px; border-radius:8px; font-size:11px!important; }
+.experience-admin .admin-result-count { margin:14px 22px 9px; color:var(--nexa-text-muted); font-size:12px; }
+.experience-admin .admin-table th { padding:12px 22px; background:var(--nexa-background); color:var(--nexa-text-muted); font-size:10px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; }
+.experience-admin .admin-table td { padding:15px 22px; color:var(--nexa-text-secondary); font-size:13px; vertical-align:middle; }
+.experience-admin .admin-table tbody tr { transition:background-color 140ms var(--nexa-motion); }
+.experience-admin .admin-table tbody tr:hover { background:var(--nexa-soft); }
+.experience-admin .admin-account-row { cursor:pointer; outline:0; }
+.experience-admin .admin-account-row:focus-visible { background:var(--nexa-soft); box-shadow:inset 3px 0 0 var(--nexa-reference-a34431); }
+.experience-admin .admin-account-link { min-height:28px; color:var(--nexa-text); font-size:14px; }
+.experience-admin .admin-account-link:hover { color:var(--nexa-reference-a34431); }
+.experience-admin .admin-table small { font-size:11px; }
+.experience-admin .bank-status { padding:4px 9px; border-radius:999px; font-size:11px; }
+.experience-admin .admin-pagination { padding:14px 22px; margin:0; border-top:1px solid var(--nexa-border); font-size:12px; }
+.experience-admin .admin-account-summary { gap:16px; min-height:104px; padding:16px 20px; margin-bottom:18px; border-radius:16px; border-color:var(--nexa-reference-ffe3d9); background:linear-gradient(120deg,var(--nexa-soft),var(--nexa-surface) 64%); box-shadow:none; }
+.experience-admin .admin-account-summary strong { font-size:1.7rem; }
+.experience-admin .admin-overview-grid { align-items:start; gap:14px; }
+.experience-admin .admin-overview-grid .bank-panel { box-shadow:none; }
+.experience-admin .admin-overview-grid .bank-panel-heading { padding:16px 20px; }
+.experience-admin .admin-overview-grid .bank-panel-heading h2,
+.experience-admin .admin-app .bank-panel-heading h2 { font-size:18px; font-weight:700; letter-spacing:-.025em; }
+.experience-admin .admin-overview-grid .bank-panel dl { padding:0 20px 14px; }
+.experience-admin .admin-overview-grid .bank-detail { padding:8px 0; font-size:12px; }
+.experience-admin .admin-overview-grid .bank-detail dt,
+.experience-admin .admin-app .bank-panel .bank-detail dt { color:var(--nexa-text-muted); font-size:11px; font-weight:600; letter-spacing:.025em; }
+.experience-admin .admin-overview-grid .bank-detail dd,
+.experience-admin .admin-app .bank-panel .bank-detail dd { color:var(--nexa-text); font-size:13px; font-weight:600; }
+.experience-admin .admin-overview-grid .bank-panel > p { margin:10px 20px; font-size:12px; }
+.experience-admin .admin-overview-grid .bank-panel > .bank-button { min-height:32px; margin:0 20px 16px; padding:6px 10px; font-size:11px!important; }
+.experience-admin .bank-panel > p { margin:16px 20px; color:var(--nexa-text-secondary); }
+.experience-admin .admin-sections:not(.admin-primary-nav) { gap:6px; margin:0 0 18px; padding:5px; border:1px solid var(--nexa-border); border-radius:12px; background:var(--nexa-surface); }
+.experience-admin .admin-sections:not(.admin-primary-nav) a { min-height:34px; padding:7px 12px; border:0; font-size:11px; }
+.experience-admin .admin-sections:not(.admin-primary-nav) a[aria-current=page] { box-shadow:inset 0 0 0 1px var(--nexa-reference-ffe3d9); }
+.experience-admin .bank-record { margin:0 18px 10px; padding:14px 16px; border:1px solid var(--nexa-border); border-radius:12px; background:var(--nexa-background); }
+.experience-admin .bank-record:first-of-type { margin-top:14px; }
+.experience-admin .bank-record:last-child { margin-bottom:18px; }
+.experience-admin .bank-record strong { color:var(--nexa-text); font-size:12px; }
+.experience-admin .bank-record p { margin:5px 0; color:var(--nexa-text-secondary); }
+.experience-admin .experience-profile-menu { align-self:center; flex:0 0 32px; inline-size:32px; block-size:32px; min-inline-size:32px; max-inline-size:32px; min-block-size:32px; max-block-size:32px; }
+.experience-admin .experience-profile-menu > summary { flex:0 0 32px; inline-size:32px; block-size:32px; min-inline-size:32px!important; max-inline-size:32px!important; min-block-size:32px!important; max-block-size:32px!important; font-size:11px; }
+.experience-admin .experience-profile-popover { width:198px; padding:10px; border-radius:14px; }
+.experience-admin .experience-profile-popover > span { padding:4px 6px 9px; font-size:11px; }
+.experience-admin .experience-profile-popover button { min-height:34px; padding:7px 6px; font-size:12px; font-weight:650; }
+.experience-admin .admin-mandate { margin:0; padding:18px 20px; border:1px solid var(--nexa-border); border-radius:12px; background:var(--nexa-background); }
+.experience-admin .bank-panel > .admin-mandate { margin:14px 20px; padding:18px; }
+.experience-admin .admin-mandate:last-child { margin-bottom:20px; }
+.experience-admin .admin-mandate > header { align-items:center; margin-bottom:12px; }
+.experience-admin .admin-mandate > header strong { color:var(--nexa-text); font-size:15px; font-weight:700; letter-spacing:-.015em; }
+.experience-admin .admin-mandate dl { gap:0 18px; margin:0; padding:0; }
+.experience-admin .admin-mandate .bank-detail { min-height:42px; padding:9px 0; font-size:13px; }
+.experience-admin .admin-mandate .bank-detail dt { color:var(--nexa-text-muted); font-size:10px; font-weight:650; letter-spacing:.06em; text-transform:uppercase; }
+.experience-admin .admin-mandate .bank-detail dd { color:var(--nexa-text); font-size:13px; font-weight:500; }
+.experience-admin .admin-mandate .bank-detail a { color:var(--nexa-text); font-weight:600; }
+.experience-admin .admin-mandate .bank-detail a:hover { color:var(--nexa-reference-a34431); }
+.experience-admin .admin-breadcrumb { margin-bottom:20px; font-size:12px; }
+.experience-admin .experience-profile-menu:hover .experience-profile-popover { display:grid; }
+@media(max-width:900px) { .experience-admin .bank-main { padding:24px; } .admin-topbar { padding:0 24px; } .experience-admin .admin-filters { grid-template-columns:minmax(220px,1fr) 150px 150px; } .experience-admin .admin-filters .bank-button { width:max-content; } }
+@media(max-width:700px) { .experience-admin .bank-main { padding:18px 14px 32px; } .admin-topbar { min-height:66px; padding:0 16px; } .admin-session > span { display:none; } .experience-admin .admin-primary-nav { margin-bottom:22px; } .experience-admin .bank-page-heading { align-items:flex-start; } .experience-admin .admin-filters { grid-template-columns:1fr 1fr; padding:16px; } .experience-admin .admin-filters .bank-search-label { grid-column:1 / -1; } .experience-admin .admin-filters .bank-button { grid-column:1 / -1; width:100%; } .experience-admin .bank-panel-heading { padding:17px; } .experience-admin .admin-table th,.experience-admin .admin-table td { padding:12px 15px; } }
+
 /* Conversation is deliberately a three-column workspace, without a dashboard rail. */
 .nexa-messenger.experience-chat { inset:calc(var(--messenger-top,0px) + 12px) 12px auto; height:calc(var(--messenger-height,100dvh) - 24px); border:1px solid var(--nexa-surface); border-radius:26px; grid-template-columns:68px 248px minmax(0,1fr); background:var(--nexa-surface); font-size:13px; }
 .experience-rail-container { min-height:0; }
@@ -84,7 +183,7 @@ a { text-decoration:none; }
 .experience-chat .messenger-header > button:first-child { display:none; }
 .experience-chat .messenger-header > button[aria-controls=messenger-history] { display:none; }
 .experience-chat .messenger-feed { background:var(--nexa-surface); }
-.experience-chat .messenger-timeline { max-width:850px; padding:30px 38px; }
+.experience-chat .messenger-timeline { max-width:760px; padding:22px 30px; }
 .experience-chat .messenger-timeline:has(.conversation-welcome) { min-height:100%; display:flex; flex-direction:column; justify-content:center; }
 .experience-chat .conversation-welcome { padding:8px 0 16px; }
 .experience-chat .conversation-welcome-mark { width:66px; height:66px; border:1px solid var(--nexa-reference-ffe3d9); border-radius:21px; transform:rotate(-7deg); background:var(--nexa-soft); margin-bottom:20px; }
@@ -118,14 +217,56 @@ a { text-decoration:none; }
 .experience-chat .messenger-history-list { flex:1; min-height:60px; overflow:auto; }
 .experience-chat .sidebar-history-heading h2 { font:400 11px/1.5 var(--nexa-font); letter-spacing:.09em; text-transform:uppercase; }
 .experience-chat .messenger-history-list button { font-size:12px; }
-.experience-banking-menu { font-size:12px; border-top:1px solid var(--nexa-border); padding-top:10px; }
-.experience-banking-menu > summary { display:flex; align-items:center; cursor:pointer; }
-.experience-banking-menu > summary::after { content:'+'; margin-left:auto; }
-.experience-banking-menu[open] > summary::after { content:'−'; }
+.experience-chat .experience-rail { padding:18px 0 16px; gap:12px; }
+.experience-chat .experience-rail a.experience-brand { margin-bottom:6px; }
+.experience-chat .experience-rail-bottom { gap:14px; }
+.experience-chat .nexa-sidebar { padding:18px 16px 16px; gap:12px; }
+.experience-chat .messenger-header { min-height:64px; height:64px; }
+.experience-chat .messenger-conversation-title { display:block; max-width:min(440px,100%); overflow:hidden; padding:0; border:0; border-radius:0; background:transparent; color:var(--nexa-text); text-overflow:ellipsis; white-space:nowrap; }
+.experience-banking-menu { margin-top:6px; font-size:12px; }
+.experience-banking-menu > summary { display:flex; align-items:center; gap:9px; min-height:42px; padding:0 10px; border:1px solid var(--nexa-border); border-radius:10px; background:var(--nexa-background); color:var(--nexa-text-secondary); cursor:pointer; list-style:none; }
+.experience-banking-menu > summary::-webkit-details-marker { display:none; }
+.experience-banking-menu > summary svg { width:17px; height:17px; }
+.experience-banking-menu > summary svg:last-child { margin-left:auto; width:14px; }
+.experience-banking-menu[open] > summary svg:last-child { transform:rotate(180deg); }
+.experience-banking-menu .sidebar-navigation { margin-top:6px; }
+.experience-banking-menu .sidebar-primary, .experience-banking-menu .sidebar-secondary { display:grid; grid-template-columns:1fr; gap:3px; }
+.experience-banking-menu .sidebar-primary .sidebar-link, .experience-banking-menu .sidebar-secondary .sidebar-link { min-height:36px; padding:7px 9px; font-size:11px; }
+.experience-banking-menu .sidebar-primary .sidebar-link svg, .experience-banking-menu .sidebar-secondary .sidebar-link svg { width:16px; height:16px; }
 .experience-chat .nexa-action { margin:0; }
 .experience-new-chat { width:100%; margin-top:8px!important; }
+.experience-new-chat .oj-button-text { display:flex; align-items:center; justify-content:center; gap:8px; }
+.experience-new-chat svg { width:16px; height:16px; }
 .experience-history-search { max-width:100%; }
-.experience-chat .messenger-history .sidebar-footer { gap:2px; }
+.experience-profile-menu { position:relative; }
+.experience-profile-menu > summary { display:grid; place-items:center; box-sizing:border-box; flex:0 0 36px; width:36px; height:36px; min-height:36px; aspect-ratio:1; padding:0; border:1px solid var(--nexa-reference-f8c6b8); border-radius:50%; background:var(--nexa-reference-ffebe5); color:var(--nexa-reference-a34431); line-height:1; cursor:pointer; }
+.experience-profile-menu > summary::-webkit-details-marker { display:none; }
+.experience-profile-popover { position:absolute; bottom:0; left:calc(100% + 10px); z-index:20; display:none; gap:5px; width:172px; padding:8px; border:1px solid var(--nexa-border); border-radius:12px; background:var(--nexa-surface); box-shadow:0 10px 26px var(--nexa-reference-29292905); font:12px/1.4 var(--nexa-font); }
+.experience-profile-menu[open] .experience-profile-popover { display:grid; }
+.experience-profile-popover > span { overflow:hidden; padding:3px 5px 7px; border-bottom:1px solid var(--nexa-border); color:var(--nexa-text-muted); text-overflow:ellipsis; white-space:nowrap; }
+.experience-profile-popover button { display:flex; align-items:center; gap:8px; width:100%; min-height:32px; padding:6px 5px; border:0; border-radius:7px; background:transparent; color:var(--nexa-text); text-align:left; cursor:pointer; }
+.experience-profile-popover button:hover { background:var(--nexa-soft); color:var(--nexa-reference-a34431); }
+.experience-profile-popover svg { width:16px; height:16px; }
+.experience-chat .experience-history-search .oj-inputtext-input:focus::placeholder { color:transparent; }
+.experience-chat .sidebar-history-heading { display:flex; align-items:center; min-height:28px; padding:4px 0 0; }
+.experience-chat .sidebar-history-heading h2 { margin:0; color:var(--nexa-text-secondary); font-weight:600; letter-spacing:.1em; }
+.experience-chat .messenger-composer { border-radius:14px; padding:4px; }
+.experience-chat .messenger-input-row { grid-template-columns:minmax(0,1fr) 38px 38px; }
+.experience-chat .messenger-input-row > textarea, .experience-chat .messenger-input-row > oj-text-area { min-height:40px; padding:8px 10px; font-size:13px; line-height:20px; }
+.experience-chat .messenger-input-row :is(.messenger-mic,.messenger-send) { width:38px; min-width:38px; height:38px; min-height:38px; }
+.experience-chat .messenger-banking-response { margin-bottom:16px; }
+.experience-chat .messenger-banking-surface { padding:16px 18px; }
+.experience-chat .bank-section-header { margin-bottom:8px; }
+.experience-chat .bank-response .bank-section-header h3 { font-size:15px; }
+.experience-chat .bank-collection-caption { margin-bottom:6px; }
+.experience-chat .bank-collection.is-comparison .bank-collection-items { gap:10px; }
+.experience-chat .bank-collection.is-comparison .bank-account { padding:12px; }
+.experience-chat .bank-response .bank-account h3 { font-size:14px; }
+.experience-chat .bank-account-kind { display:block; margin-top:3px; color:var(--nexa-text-muted); font-size:11px; }
+.experience-chat .bank-account-balance-label { display:block; margin-top:12px; color:var(--nexa-text-secondary); font-size:11px; font-weight:600; }
+.experience-chat .bank-account > .bank-secondary { margin:6px 0 2px; }
+.experience-chat .bank-account > .bank-money { font-size:26px; line-height:1.25; }
+.experience-chat .bank-account-footer { margin-top:5px; }
 .na-shell { z-index:20; }
 .na-shell h2 { margin:0; }
 .na-shell .na-form { gap:14px; }
@@ -133,8 +274,18 @@ a { text-decoration:none; }
 .na-shell .oj-label { font-size:12px; font-weight:500; color:var(--nexa-text-secondary); }
 .na-shell .oj-inputtext-input, .na-shell .oj-inputpassword-input { font-family:var(--nexa-font); font-size:13px; }
 .experience-auth-header { display:flex; align-items:center; gap:12px; }
+.experience-auth-header .experience-language-compact {
+  width:112px;
+  min-width:112px;
+  --oj-text-field-height:36px;
+}
+.experience-auth-header .experience-language-compact .oj-select-choice {
+  padding-inline:8px;
+}
+.experience-auth-header .experience-language-compact .oj-select-label {
+  padding-right:8px;
+}
 .experience-auth-submit { width:100%; }
-.experience-password-toggle { align-self:flex-end; margin-top:-10px; font-size:11px; }
 .experience-auth-switch { margin-top:20px; color:var(--nexa-text-muted); font-size:12px; }
 .experience-auth-switch .oj-button-text { color:var(--nexa-reference-a34431); }
 .na-password-hint { font-size:11px; line-height:1.6; color:var(--nexa-text-muted); margin:0; }
@@ -256,14 +407,14 @@ a { text-decoration:none; }
 .site-shell .closing-section, .site-shell .closing-copy :is(h2,em,p),
 .dream-move, .dream-move .dream-amount > span, .dream-move .dream-approval { color:var(--nexa-text); }
 .dream-move .dream-card-top img { filter:brightness(0); }
-.site-shell :is(.hero-small strong,.status-spark,.card-footer,.receipt-check,.payment-spark,.closing-try > span) { color:var(--nexa-accent-text); }
-.site-shell .portrait-caption { color:var(--nexa-text); background:var(--nexa-surface); border-radius:14px; padding:12px 16px; }
+.site-shell :is(.hero-small strong,.status-spark,.card-footer,.receipt-check,.payment-spark,.closing-try > span) { color:var(--nexa-coral); }
+.site-shell .portrait-caption { color:var(--nexa-surface); background:transparent; border-radius:0; padding:0; }
 
 .site-shell :is(.voice-art > span,.payment-receipt small,.payment-receipt strong > span,.spending-art > div > span,.spending-art small,.chart-bars span,.footer-top > span,.footer-bottom) { color:var(--nexa-text-muted); }
-.site-shell .done-art > i { color:var(--nexa-accent-text); }
+.site-shell .done-art > i { color:var(--nexa-coral); }
 
-.site-shell .headline-rotation { color:var(--nexa-accent-text); }
-.site-shell .arrow-circle { background:var(--nexa-accent-text); }
+.site-shell .headline-rotation { color:var(--nexa-coral); }
+.site-shell .arrow-circle { background:var(--nexa-coral); }
 
 /* Session actions share the landing navigation on desktop and its mobile menu. */
 .site-shell .landing-session-actions { display:flex; align-items:center; gap:14px; font-size:14px; }
@@ -347,4 +498,154 @@ a { text-decoration:none; }
   .experience-workspace .bank-filters { grid-template-columns:repeat(2,minmax(0,1fr)); padding:14px; gap:12px; }
   .experience-workspace .bank-filters > button { grid-row:2; }
   .activity-filter-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+/* Customer banking keeps the rail for identity, while the working area stays compact. */
+.experience-workspace .sidebar-brand { font-size:21px; }
+.experience-workspace .bank-topbar { height:68px; padding-inline:24px; }
+.experience-workspace .bank-topbar > div { gap:14px; }
+.experience-workspace .experience-language-compact { width:108px; min-width:108px; --oj-text-field-height:36px; }
+.experience-workspace .experience-language-compact .oj-select-choice { padding-inline:8px; }
+.experience-workspace .bank-main { max-width:1180px; padding:26px clamp(20px,2.5vw,34px) 24px; }
+.experience-workspace .bank-page-heading { margin-bottom:22px; }
+.experience-workspace .bank-page-heading h1 { font-size:clamp(25px,2.2vw,31px); }
+.experience-workspace .bank-page-heading > div > p:last-child { font-size:13px; }
+.experience-workspace .bank-page-heading > .bank-button { min-height:38px; padding:8px 14px; }
+.experience-workspace .bank-overview-grid { gap:16px; margin-bottom:24px; }
+.experience-workspace .bank-balance-hero { min-height:216px; padding:24px; }
+.experience-workspace .bank-balance-hero > strong { margin-top:12px; font-size:clamp(32px,3.4vw,43px); }
+.experience-workspace .bank-balance-hero > footer { margin-top:20px; }
+.experience-workspace .bank-next-step { padding:20px 22px; }
+.experience-workspace .bank-next-step h2 { font-size:20px; }
+.experience-workspace .bank-next-step > p:not(.bank-eyebrow) { font-size:12px; line-height:1.55; margin-bottom:16px; }
+.experience-workspace .bank-account-grid { gap:14px; margin-bottom:24px; }
+.experience-workspace .bank-account-tile { padding:17px 18px; }
+.experience-workspace .bank-account-tile > div { margin-bottom:13px; }
+.experience-workspace .bank-account-tile > strong { margin-top:10px; font-size:22px; }
+.experience-workspace .bank-section-title { margin-bottom:12px; }
+@media(max-width:600px) {
+  .experience-workspace .bank-topbar { height:64px; padding-inline:14px; }
+  .experience-workspace .experience-language-compact { width:96px; min-width:96px; }
+  .experience-workspace .bank-main { padding:20px 16px 92px; }
+}
+
+/* A compact overview makes the balance and next action easier to scan at a glance. */
+.experience-workspace .bank-page-heading h1 { font-size:clamp(23px,2vw,28px); line-height:1.18; }
+.experience-workspace .bank-eyebrow { font-size:9px; letter-spacing:.15em; }
+.experience-workspace :is(.bank-page-heading .bank-eyebrow,.bank-next-step .bank-eyebrow) { color:var(--nexa-text-secondary); font-size:10px; font-weight:650; letter-spacing:.1em; line-height:1.35; }
+.experience-workspace .bank-page-heading > div > p:last-child { font-size:12px; line-height:1.45; }
+.experience-workspace .bank-page-heading > .bank-button { min-height:36px; padding:7px 12px; font-size:12px!important; }
+.experience-workspace .bank-assistant-link { display:inline-flex; align-items:center; min-height:36px; padding:0 12px; border:0; border-radius:10px; background:var(--nexa-soft); color:var(--nexa-text)!important; font-size:12px; font-weight:650; }
+.experience-workspace .bank-assistant-link:hover { background:var(--nexa-reference-ffe3d9); color:var(--nexa-reference-a34431)!important; }
+.experience-workspace .bank-overview-grid { gap:14px; margin-bottom:20px; }
+.experience-workspace .bank-balance-hero { min-height:174px; padding:19px 22px; }
+.experience-workspace .bank-balance-hero > strong { margin-top:8px; font-size:clamp(30px,3vw,38px); line-height:1.2; }
+.experience-workspace .bank-balance-hero > p { margin:4px 0 0; font-size:12px; }
+.experience-workspace .bank-balance-hero > footer { gap:16px; margin-top:15px; font-size:12px; }
+.experience-workspace .bank-balance-hero > footer .bank-button { min-height:34px; padding:6px 11px; font-size:12px!important; }
+.experience-workspace .bank-balance-hero .bank-button.bank-white:hover:not(:disabled),
+.experience-workspace .bank-balance-hero .bank-button.bank-white:focus-visible { background:var(--nexa-surface); border-color:var(--nexa-text); color:var(--nexa-text)!important; }
+.experience-workspace .bank-balance-hero .bank-button.bank-white:hover:not(:disabled) span,
+.experience-workspace .bank-balance-hero .bank-button.bank-white:focus-visible span { color:var(--nexa-text)!important; }
+.experience-workspace .bank-next-step { padding:18px 20px; }
+.experience-workspace .bank-next-step .bank-tile-symbol { width:32px; height:32px; font-size:18px; }
+.experience-workspace .bank-next-step h2 { max-width:210px; margin:6px 0 8px; font-size:18px; line-height:1.25; }
+.experience-workspace .bank-next-step > p:not(.bank-eyebrow) { max-width:245px; margin-bottom:13px; font-size:11px; line-height:1.5; }
+.experience-workspace .bank-next-step .bank-button { min-height:34px; padding:6px 11px; font-size:12px!important; }
+.experience-workspace .bank-section-title h2 { font-size:16px; }
+.experience-workspace .bank-section-title { align-items:center; padding-top:2px; }
+.experience-workspace .bank-section-title h2 > span { border-color:var(--nexa-reference-ffe3d9); border-radius:7px; color:var(--nexa-reference-a34431); font-size:10px; }
+.experience-workspace .bank-section-title > a { color:var(--nexa-text-secondary); font-size:12px; font-weight:600; }
+.experience-workspace .bank-section-title > a:hover { color:var(--nexa-reference-a34431); }
+.experience-workspace .bank-overview-accounts { grid-template-columns:repeat(auto-fit,minmax(250px,360px)); gap:14px; }
+.experience-workspace .bank-overview-accounts .bank-account-tile { min-height:174px; border-color:var(--nexa-border); background:linear-gradient(145deg,var(--nexa-surface),var(--nexa-background)); box-shadow:0 8px 24px var(--nexa-reference-29292905); }
+.experience-workspace .bank-overview-accounts .bank-account-tile:hover { border-color:var(--nexa-reference-f8c6b8); box-shadow:var(--nexa-shadow-hover); transform:translateY(-1px); }
+.experience-workspace .bank-overview-accounts .bank-tile-symbol { width:30px; height:30px; border-radius:9px; font-size:18px; }
+.experience-workspace .bank-overview-accounts .bank-account-tile h3 { margin:0 0 4px; font-size:16px; line-height:1.3; }
+.experience-workspace .bank-overview-accounts .bank-account-tile > span { font-size:11px; }
+.experience-workspace .bank-overview-accounts .bank-account-tile > strong { margin-top:12px; font-size:23px; font-weight:600; }
+.experience-workspace .bank-overview-accounts .bank-account-tile footer { margin-top:6px; font-size:11px; }
+.experience-workspace .bank-activity-grid { gap:16px; }
+.experience-workspace .bank-activity-grid .bank-panel { overflow:hidden; border-color:var(--nexa-border); box-shadow:0 8px 24px var(--nexa-reference-29292905); }
+.experience-workspace .bank-activity-grid .bank-panel-heading { padding:16px 20px; background:var(--nexa-surface); }
+.experience-workspace .bank-activity-grid .bank-panel-heading h2 { font-size:16px; font-weight:650; }
+.experience-workspace .bank-activity-grid .bank-panel-heading > a { color:var(--nexa-reference-a34431); font-size:11px; font-weight:650; }
+.experience-workspace .bank-inline-filter { padding:12px 20px; background:var(--nexa-background); border-bottom:1px solid var(--nexa-border); }
+.experience-workspace .bank-inline-filter label { font-size:11px; font-weight:600; }
+.experience-workspace .bank-inline-filter select { min-height:34px; border-radius:9px; font-size:12px; }
+.experience-workspace .bank-app .activity-row { min-height:68px; padding:12px 20px; }
+.experience-workspace .activity-icon { width:32px; height:32px; border-radius:10px; font-size:16px; }
+.experience-workspace .activity-identity { gap:3px; }
+.experience-workspace .activity-identity > strong,.experience-workspace .activity-value > strong { font-size:13px; }
+.experience-workspace .activity-identity > span,.experience-workspace .activity-outcome { font-size:11px; }
+.experience-workspace .activity-summary-body { padding:14px 18px 16px; }
+.experience-workspace .bank-app .activity-summary .activity-summary-scope { margin-bottom:12px; color:var(--nexa-text-secondary); font-size:11px; }
+.experience-workspace .activity-totals { gap:10px; }
+.experience-workspace .activity-totals > div { gap:5px; border-radius:10px; padding:10px 12px; }
+.experience-workspace .activity-totals span { font-size:11px; }
+.experience-workspace .activity-totals strong { font-size:18px; }
+.experience-workspace .activity-category-heading { margin:16px 0 11px; }
+.experience-workspace .bank-app .activity-category-heading h3 { font-size:14px; }
+.experience-workspace .activity-categories { gap:11px; }
+.experience-workspace .activity-categories li > div { font-size:11px; margin-bottom:5px; }
+.experience-workspace .bank-app .activity-summary .activity-summary-note { margin-top:14px; font-size:10px; }
+
+/* Product and payment journeys share a calm, compact banking workspace. */
+.experience-workspace .bank-filters { margin:0 0 18px; padding:14px 16px; border:1px solid var(--nexa-border); border-radius:14px; background:var(--nexa-background); }
+.experience-workspace .bank-filters label { color:var(--nexa-text-secondary); font-size:11px; font-weight:650; }
+.experience-workspace .bank-filters :is(input,select) { min-height:36px; border-radius:9px; font-size:12px; }
+.experience-workspace :is(.bank-product-grid,.bank-card-grid) { grid-template-columns:repeat(auto-fill,minmax(240px,310px)); gap:14px; }
+.experience-workspace .bank-product { position:relative; display:grid; min-height:172px; padding:17px 18px; border-radius:16px; border-color:var(--nexa-border); background:linear-gradient(145deg,var(--nexa-surface),var(--nexa-background)); box-shadow:0 7px 22px var(--nexa-reference-29292905); transition:border-color 140ms var(--nexa-motion),box-shadow 140ms var(--nexa-motion),transform 140ms var(--nexa-motion); }
+.experience-workspace .bank-product:hover { border-color:var(--nexa-reference-f8c6b8); box-shadow:var(--nexa-shadow-hover); transform:translateY(-1px); }
+.experience-workspace .bank-product header { margin-bottom:10px; }
+.experience-workspace .bank-product .bank-tile-symbol { width:30px; height:30px; border-radius:9px; font-size:16px; }
+.experience-workspace .bank-product h2 { margin:0 0 4px; font-size:16px; font-weight:650; line-height:1.3; }
+.experience-workspace .bank-product > p { margin:0; color:var(--nexa-text-muted); font-size:11px; line-height:1.45; }
+.experience-workspace .bank-product-amount { margin-top:13px; }
+.experience-workspace .bank-product-amount > span { color:var(--nexa-text-muted); font-size:10px; font-weight:650; letter-spacing:.04em; text-transform:uppercase; }
+.experience-workspace .bank-product-amount > strong { font-size:22px; font-weight:600; letter-spacing:-.035em; }
+.experience-workspace .bank-product footer { align-self:end; margin-top:12px; color:var(--nexa-text-secondary); font-size:11px; }
+.experience-workspace .bank-product-grid--cards .bank-product { min-height:184px; border-color:var(--nexa-reference-e4dfda); background:linear-gradient(135deg,var(--nexa-surface),var(--nexa-soft)); }
+.experience-workspace .bank-product-grid--cards .bank-tile-symbol { background:var(--nexa-text); color:var(--nexa-surface); }
+.experience-workspace .bank-product-grid--beneficiaries .bank-tile-symbol { color:var(--nexa-reference-a34431); font-size:12px; font-weight:700; }
+.experience-workspace .bank-product-grid--bills .bank-product-amount > strong { color:var(--nexa-reference-a34431); }
+.experience-workspace .bank-product-grid--scheduled-payments .bank-product { border-left:3px solid var(--nexa-reference-f8c6b8); }
+.experience-workspace .bank-product-grid--loans .bank-product { border-left:3px solid var(--nexa-reference-a34431); }
+.experience-workspace .bank-product-grid--loans .bank-product-amount > strong { color:var(--nexa-reference-a34431); }
+.experience-workspace .bank-status { padding:3px 7px; border-radius:999px; font-size:10px; }
+
+.experience-workspace .transfer-workflow { max-width:600px; }
+.experience-workspace .transfer-workflow .bank-panel { border-radius:16px; box-shadow:0 8px 24px var(--nexa-reference-29292905); }
+.experience-workspace .transfer-workflow .bank-panel-heading { padding:16px 20px; }
+.experience-workspace .transfer-workflow .bank-panel-heading h2 { font-size:16px; font-weight:650; }
+.experience-workspace .transfer-workflow .bank-form { padding:18px 20px 20px; }
+.experience-workspace .bank-transfer-fields { gap:14px; }
+.experience-workspace .experience-transfer-form :is(oj-select-one,oj-input-text) { --oj-text-field-height:54px; }
+.experience-workspace .experience-transfer-form .oj-label { margin-bottom:5px; color:var(--nexa-text-secondary); font-size:11px; font-weight:650; letter-spacing:.01em; }
+.experience-workspace .experience-transfer-form :is(.oj-select-chosen,.oj-inputtext-input) { color:var(--nexa-text); font-family:var(--nexa-font); font-size:13px!important; }
+.experience-workspace .experience-transfer-form :is(.oj-select-choice,.oj-inputtext-container) { border-radius:9px; }
+.experience-workspace .experience-transfer-form small { display:block; margin-top:5px; color:var(--nexa-text-muted); font-size:10px; line-height:1.45; }
+.experience-workspace .bank-transfer-fields > p { margin:0; padding:10px 12px; border-radius:10px; background:var(--nexa-background); color:var(--nexa-text-secondary); font-size:11px; line-height:1.5; }
+.experience-workspace .bank-transfer-fields > p strong { color:var(--nexa-text); margin-left:6px; }
+.experience-workspace .transfer-action { min-height:38px; border-radius:10px; font-size:12px; }
+
+.experience-workspace .payee-editor { margin-bottom:18px; border-radius:16px; box-shadow:0 7px 22px var(--nexa-reference-29292905); }
+.experience-workspace .payee-editor > p { max-width:600px; margin:14px 20px; font-size:12px; line-height:1.5; color:var(--nexa-text-secondary); }
+.experience-workspace .payee-editor > button { min-height:36px; margin:0 20px 16px; padding:7px 12px; border:1px solid var(--nexa-border-control); border-radius:9px; background:var(--nexa-surface); color:var(--nexa-text); font:650 12px var(--nexa-font); }
+.experience-workspace .payee-editor .bank-form { padding:18px 20px 20px; border-top:1px solid var(--nexa-border); }
+
+.experience-workspace .loan-tools-nav { gap:7px; margin-bottom:18px; padding:5px; border:1px solid var(--nexa-border); border-radius:12px; background:var(--nexa-surface); }
+.experience-workspace .loan-tools-nav a { padding:7px 11px; border:0; border-radius:8px; font-size:11px; font-weight:650; color:var(--nexa-text-secondary); }
+.experience-workspace .loan-tools-nav a[aria-current=page] { background:var(--nexa-soft); color:var(--nexa-reference-a34431); }
+.experience-workspace .loan-calculator-grid { gap:16px; }
+.experience-workspace .loan-calculator-grid .bank-panel { border-radius:16px; box-shadow:0 7px 22px var(--nexa-reference-29292905); }
+.experience-workspace .loan-quote-body { padding:18px; gap:14px; }
+.experience-workspace .loan-quote-hero { gap:7px; padding:16px; border-radius:12px; }
+.experience-workspace .loan-quote-hero strong { font-size:clamp(25px,2.8vw,34px); }
+.experience-workspace .loan-quote-body > p,.experience-workspace .loan-calculator-form > p { font-size:11px; line-height:1.5; }
+.experience-workspace .loan-application-card { min-height:180px; }
+.experience-workspace .loan-application-state { color:var(--nexa-reference-a34431); font-size:11px; }
+@media(max-width:700px) {
+  .experience-workspace :is(.bank-product-grid,.bank-card-grid) { grid-template-columns:1fr; }
+  .experience-workspace .bank-product { min-height:156px; }
 }

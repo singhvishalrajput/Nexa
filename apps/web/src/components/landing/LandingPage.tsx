@@ -1,7 +1,6 @@
 import type { AuthSession } from "../../services/auth";
 import { Action } from "../design/Action";
-import { useEffect, useState } from "preact/hooks";
-import "ojs/ojbutton";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { GoalsSequence } from "./goals-sequence";
 function Icon({ name = "arrow", size = 20 }: { name?: string; size?: number }) {
   const paths: Record<string, any> = {
@@ -104,6 +103,44 @@ function ArrowLink({
   );
 }
 
+function CustomCursor() {
+  const cursor = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const pointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const hide = () => {
+      document.documentElement.classList.remove("custom-cursor-active");
+      cursor.current?.classList.remove("visible");
+    };
+    const move = (event: PointerEvent) => {
+      if (!pointer.matches || event.pointerType === "touch" || !cursor.current) {
+        hide();
+        return;
+      }
+      const target = (event.target as Element)?.closest("a[href], button, [role='button']");
+      const interactive = !!target && !target.matches(":disabled, [aria-disabled='true']");
+      cursor.current.style.transform = `translate3d(${event.clientX - (interactive ? 14 : 7)}px, ${event.clientY - 5}px, 0)`;
+      cursor.current.classList.add("visible");
+      cursor.current.classList.toggle("over-link", interactive);
+      document.documentElement.classList.add("custom-cursor-active");
+    };
+
+    window.addEventListener("pointermove", move, { passive: true });
+    document.documentElement.addEventListener("pointerleave", hide);
+    window.addEventListener("blur", hide);
+    pointer.addEventListener("change", hide);
+    return () => {
+      hide();
+      window.removeEventListener("pointermove", move);
+      document.documentElement.removeEventListener("pointerleave", hide);
+      window.removeEventListener("blur", hide);
+      pointer.removeEventListener("change", hide);
+    };
+  }, []);
+
+  return <div class="custom-cursor" ref={cursor} aria-hidden="true"><svg width="35" height="38" viewBox="0 0 35 38"><path class="cursor-arrow" d="M7 5.5 27.4 13.5c2.4.9 2.2 3.7-.3 4.4l-8.2 2.2-3.1 9c-.8 2.2-3.5 2.3-4.3 0L3.6 9.2C2.7 6.7 4.5 4.5 7 5.5Z" fill="#242424" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/><path class="cursor-hand" d="M11.5 19.5V7.2a2.5 2.5 0 0 1 5 0v7.1c1.6-1.3 4-.2 4 1.8v.8c1.7-1.1 4 .1 4 2v.6c1.8-.9 4 .3 4 2.3v3.4c0 2.7-.9 5.1-2.6 7.2a2.2 2.2 0 0 1-1.7.8h-8.4a2.6 2.6 0 0 1-2.2-1.2L5.8 21.4a2.4 2.4 0 0 1 3.6-3.1l2.1 1.2Z" fill="#242424" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>;
+}
+
 const moments = [
   {
     request: "Send ₹500 to Alex.",
@@ -137,10 +174,10 @@ export function LandingPage({session, onSignOut, notice = ""}: {session: AuthSes
     try { await onSignOut(); } finally { setSigningOut(false); }
   }
   const sessionLinks = session ? <>
-    <a href={admin ? "#/admin/loans" : "#/accounts"}>{admin ? "Loan requests" : "My accounts"}</a>
-    {!admin && <a href="#/settings">Profile &amp; settings</a>}
-    <Action onAction={signOut} disabled={signingOut}>{signingOut ? "Signing out…" : "Sign out"}</Action>
-  </> : <><a href="#/login">Log in</a><a href="#/register">Create an account</a></>;
+    <a class="landing-session-link" href={admin ? "#/admin/loans" : "#/accounts"}>{admin ? "Loan requests" : "My accounts"}</a>
+    {!admin && <a class="landing-session-link" href="#/settings">Profile &amp; settings</a>}
+    <Action className="landing-session-link" onAction={signOut} disabled={signingOut}>{signingOut ? "Signing out…" : "Sign out"}</Action>
+  </> : <><a class="landing-session-link" href="#/login">Log in</a><a class="landing-register-link" href="#/register">Create an account</a></>;
   const [menuOpen, setMenuOpen] = useState(false);
   const [paused, setPaused] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [moment, setMoment] = useState(0);
@@ -158,9 +195,24 @@ export function LandingPage({session, onSignOut, notice = ""}: {session: AuthSes
     document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
   }, []);
+  useEffect(() => {
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("revealed");
+        observer.unobserve(entry.target);
+      }
+    }), { threshold: 0.12 });
+    document.querySelectorAll("[data-reveal]").forEach(element => {
+      element.classList.add("will-reveal");
+      observer.observe(element);
+    });
+    return () => observer.disconnect();
+  }, []);
   const nav = <><a href="#the-nexa-way" onClick={() => setMenuOpen(false)}>The Nexa way <Icon name="down" size={14}/></a><a href="#possibilities" onClick={() => setMenuOpen(false)}>Possibilities <Icon name="down" size={14}/></a><a href="#whats-next" onClick={() => setMenuOpen(false)}>What’s next <Icon name="down" size={14}/></a></>;
   const scene = moments[moment];
-  return (        <div
+  return (<>
+          <CustomCursor />
+          <div
           class="site-shell"
           
           data-motion={paused ? "paused" : "playing"}
@@ -179,16 +231,15 @@ export function LandingPage({session, onSignOut, notice = ""}: {session: AuthSes
             <div class="nav-actions">
               <div class="landing-session-actions">{sessionLinks}</div>
               <ArrowLink href={workspaceHref}>{session ? (admin ? "Administration" : "Open banking") : "Explore Nexa"}</ArrowLink>
-              <oj-button chroming="borderless"
-                
+              <button
                 class="menu-toggle"
                 aria-label={menuOpen ? "Close navigation" : "Open navigation"}
                 aria-expanded={menuOpen}
                 aria-controls="mobile-navigation"
-                onojAction={() => setMenuOpen(!menuOpen)}
+                onClick={() => setMenuOpen(!menuOpen)}
               >
                 <Icon name={menuOpen ? "close" : "menu"} />
-              </oj-button>
+              </button>
             </div>
             {menuOpen && (
               <nav
@@ -303,11 +354,11 @@ export function LandingPage({session, onSignOut, notice = ""}: {session: AuthSes
                   </span>
                   <div class="scene-dots" aria-label="Banking preview scenes">
                     {moments.map((item, i) => (
-                      <oj-button chroming="borderless"
+                      <button
                         key={item.label}
                         aria-label={`Show preview: ${item.label}`}
                         aria-pressed={moment === i}
-                        onojAction={() => {
+                        onClick={() => {
                           setMoment(i);
                           setPaused(true);
                         }}
@@ -318,14 +369,14 @@ export function LandingPage({session, onSignOut, notice = ""}: {session: AuthSes
               </div>
             </section>
             <div class="hero-bottom">
-              <oj-button chroming="borderless"
+              <button
                 class="motion-control"
                 aria-pressed={paused}
-                onojAction={() => setPaused(!paused)}
+                onClick={() => setPaused(!paused)}
               >
                 <Icon name={paused ? "play" : "pause"} size={12} />
                 {paused ? "Play animations" : "Pause animations"}
-              </oj-button>
+              </button>
             </div>
 
             <section class="intro-section section-pad" id="the-nexa-way">
@@ -553,6 +604,6 @@ export function LandingPage({session, onSignOut, notice = ""}: {session: AuthSes
               </span>
             </div>
           </footer>
-        </div>
-);
+          </div>
+        </>);
 }

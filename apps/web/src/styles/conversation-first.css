@@ -92,11 +92,11 @@
 .messenger-history-list { flex:1 0 auto; min-height:48px; overflow:visible; font-size:.8rem; }
 .messenger-history-list > p { color:var(--nexa-text-muted); padding:0 10px; }
 .messenger-history-item { border-radius:var(--radius-sm); margin-bottom:4px; }
-.messenger-history-item.is-current { background:var(--nexa-soft); border-inline-start:3px solid var(--nexa-action); }
+.messenger-history-item.is-current { background:var(--nexa-soft); }
 .messenger-history-item.is-current .messenger-history-open { font-weight:600; }
 .messenger-history-row { display:flex; align-items:center; }
-.nexa-messenger .messenger-history-open { min-width:0; flex:1; display:flex; flex-direction:column; gap:4px; padding:10px; text-align:left; }
-.messenger-history-open span { overflow-wrap:anywhere; }
+.nexa-messenger .messenger-history-open { min-width:0; flex:1; display:block; padding:10px; text-align:left; }
+.messenger-history-open span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .messenger-history-open time { color:var(--nexa-text-muted); font-size:.75rem; }
 .nexa-messenger .messenger-history-delete-icon { display:grid; place-items:center; width:44px; flex:0 0 44px; padding:10px; }
 .messenger-history-delete-icon svg { width:16px; }

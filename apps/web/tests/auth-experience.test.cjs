@@ -9,7 +9,7 @@ function harness(mode, api) {
   const exports={},jsx=(type,props)=>({type,props});
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/components/auth/AuthPage.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2021,jsx:ts.JsxEmit.ReactJSX,jsxImportSource:'preact'}}).outputText,{exports,require:name=>name==='preact/hooks'?hooks:name==='preact/jsx-runtime'?{jsx,jsxs:jsx}:name.endsWith('/auth')?{...api,ApiRequestError}:name.endsWith('/locale')?{t:x=>x}:name.endsWith('/Action')?{Action:'Action'}:{}});
   const render=()=>{cursor=0;tree=exports.AuthPage({mode,onBack(){},onSwitch(){},onAuthenticated:s=>authenticated.push(s)});};render();
-  return {render,authenticated,nodes:()=>nodes(tree),set(label,value){nodes(tree).find(n=>n.props.labelHint===label).props.onrawValueChanged({detail:{value}});render();},submit:()=>nodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}})};
+  return {render,authenticated,nodes:()=>nodes(tree),set(label,value){nodes(tree).find(n=>(n.type==='oj-input-text'||n.type==='oj-input-password')&&(n.props.labelHint===label||n.props['aria-label']===label)).props.onrawValueChanged({detail:{value}});render();},submit:()=>nodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}})};
 }
 test('JET raw-value events retain login values and suppress duplicate authentication',async()=>{
  let release,calls=0;const a=harness('login',{login:async(email,password)=>{calls++;assert.equal(email,'demo@example.com');assert.equal(password,'Password1!');await new Promise(r=>release=r);return {user:{id:'demo'}};}});
@@ -22,4 +22,14 @@ test('registration retains full name, optional phone and password complexity val
 });
 test('failed sign-in preserves entries and allows a deliberate retry',async()=>{
  let calls=0;const a=harness('login',{login:async()=>{calls++;throw Error('offline');}});a.set('Email address','demo@example.com');a.set('Password','Password1!');await a.submit();a.render();assert.equal(a.authenticated.length,0);assert.ok(a.nodes().some(n=>n.props.role==='alert'));assert.equal(a.nodes().find(n=>n.props.labelHint==='Email address').props.value,'demo@example.com');await a.submit();assert.equal(calls,2);
+});
+
+test('password visibility keeps the accessible label and entered password',()=>{
+ const a=harness('login',{});
+ a.set('Password','Password1!');
+ a.nodes().find(n=>n.type==='button'&&n.props['aria-label']==='Show password').props.onClick();a.render();
+ const visible=a.nodes().find(n=>n.type==='oj-input-text'&&n.props['aria-label']==='Password');
+ assert.equal(visible.props.value,'Password1!');
+ a.nodes().find(n=>n.type==='button'&&n.props['aria-label']==='Hide password').props.onClick();a.render();
+ assert.equal(a.nodes().find(n=>n.type==='oj-input-password').props.value,'Password1!');
 });

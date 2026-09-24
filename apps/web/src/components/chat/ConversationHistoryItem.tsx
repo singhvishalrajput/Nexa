@@ -1,4 +1,4 @@
-import { getLocale, t } from "../../services/locale";
+import { t } from "../../services/locale";
 import { useRef, useState } from "preact/hooks";
 import { Conversation } from "../../services/conversations";
 import { ChatIcon } from "./MessageBubble";
@@ -21,7 +21,7 @@ export function ConversationHistoryItem({ conversation, current, disabled, hasDr
   return <div class={`messenger-history-item${current ? " is-current" : ""}`}>
     <div class="messenger-history-row">
       <button type="button" class="messenger-history-open" disabled={disabled || deleting} aria-current={current ? "true" : undefined} onClick={onSelect}>
-        <span>{title}</span><time>{new Date(conversation.createdAt).toLocaleDateString(getLocale(), { day: "numeric", month: "long", year: "numeric" })}</time>
+        <span title={title}>{title}</span>
       </button>
       <button type="button" class="messenger-history-delete messenger-history-delete-icon" title={t("Delete conversation")} disabled={disabled || deleting} aria-label={`Delete conversation: ${title}`} aria-expanded={confirming} onClick={() => { setConfirming(true); setError(""); }}><ChatIcon name="trash" /></button>
     </div>

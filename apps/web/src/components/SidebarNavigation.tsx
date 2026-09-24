@@ -21,16 +21,16 @@ export const secondaryNavigation: NavigationItem[] = [
   { page: "loans", label: "Loans", icon: "accounts" }
 ];
 
-export function SidebarBrand({ action }: { action?: ComponentChildren }) {
+export function SidebarBrand({ action, textOnly = false }: { action?: ComponentChildren; textOnly?: boolean }) {
   return <header class="sidebar-brand-row">
     <a class="sidebar-brand" href="#home" aria-label={t("Nexa home")}>
-      <img src="styles/images/nexa.svg" width="28" height="28" alt=""/><span>Nexa</span>
+      {!textOnly && <img src="styles/images/nexa.svg" width="28" height="28" alt=""/>}<span>Nexa</span>
     </a>{action}
   </header>;
 }
 
-export function SidebarNavigation({ page, admin = false, children }: {
-  page: string; admin?: boolean; children?: ComponentChildren;
+export function SidebarNavigation({ page, admin = false, children, expanded = false }: {
+  page: string; admin?: boolean; children?: ComponentChildren; expanded?: boolean;
 }) {
   const secondary = admin ? [...secondaryNavigation, { page: "operations", label: "Banking operations", icon: "shield" } as NavigationItem] : secondaryNavigation;
   const link = (item: NavigationItem) => <a key={item.page} class="sidebar-link" href={"#/" + item.page} aria-current={page === item.page ? "page" : undefined}>
@@ -38,10 +38,10 @@ export function SidebarNavigation({ page, admin = false, children }: {
   </a>;
   return <nav class="sidebar-navigation" aria-label={t("Main navigation")}>
     <div class="sidebar-primary">{primaryNavigation.map(link)}{children}</div>
-    <details class="sidebar-more" key={page} open={secondary.some(item => item.page === page)}>
+    {expanded ? <div class="sidebar-secondary">{secondary.map(link)}</div> : <details class="sidebar-more" key={page} open={secondary.some(item => item.page === page)}>
       <summary><BankingIcon name="more"/><span>{t("More banking")}</span><BankingIcon name="chevron"/></summary>
       <div class="sidebar-secondary">{secondary.map(link)}</div>
-    </details>
+    </details>}
   </nav>;
 }
 

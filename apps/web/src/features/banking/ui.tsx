@@ -37,23 +37,24 @@ export function State({ loading, error, empty, retry, children }: {
 export function Status({ value }: {
     value: string;
 }) { const {tone, label} = statusPresentation(value); return <span class={"bank-status " + tone}><i aria-hidden="true"/>{label}</span>; }
-export function PageHeading({ eyebrow = "Your banking", title, description, action }: {
+export function PageHeading({ eyebrow, title, description, action }: {
     eyebrow?: string;
     title: string;
     description?: string;
     action?: ComponentChildren;
-}) { return <header class="bank-page-heading"><div><p class="bank-eyebrow">{t(eyebrow)}</p><h1 tabIndex={-1}>{t(title)}</h1>{description && <p>{t(description)}</p>}</div>{action}</header>; }
+}) { return <header class="bank-page-heading"><div>{eyebrow && <p class="bank-eyebrow">{t(eyebrow)}</p>}<h1 tabIndex={-1}>{t(title)}</h1>{description && <p>{t(description)}</p>}</div>{action}</header>; }
 export function Panel({ title, action, children, className = "" }: {
     title?: string;
     action?: ComponentChildren;
     children: ComponentChildren;
     className?: string;
 }) { return <section class={"bank-panel " + className}>{title && <header class="bank-panel-heading"><h2>{t(title)}</h2>{action}</header>}{children}</section>; }
-export function Modal({ title, onClose, children, locked = false }: {
+export function Modal({ title, onClose, children, locked = false, className = "" }: {
     title: string;
     onClose: () => void;
     children: ComponentChildren;
     locked?: boolean;
+    className?: string;
 }) {
     const ref = useRef<ojDialog>(null);
     const active = useRef(true);
@@ -65,7 +66,7 @@ export function Modal({ title, onClose, children, locked = false }: {
         if (dialog) void Context.getContext(dialog).getBusyContext().whenReady().then(() => { if (mounted) dialog.open(); });
         return () => { mounted = false; active.current = false; dialog?.close(); previous?.focus(); };
     }, []);
-    return <oj-dialog ref={ref} class="bank-app bank-dialog" dialogTitle={t(title)} modality="modal" cancelBehavior={locked ? "none" : "icon"} dragAffordance="none" resizeBehavior="none" onojBeforeClose={event => { if (locked && active.current) event.preventDefault(); }} onojClose={() => { if (active.current) onClose(); }}>
+    return <oj-dialog ref={ref} class={`bank-app bank-dialog ${className}`} dialogTitle={t(title)} modality="modal" cancelBehavior={locked ? "none" : "icon"} dragAffordance="none" resizeBehavior="none" onojBeforeClose={event => { if (locked && active.current) event.preventDefault(); }} onojClose={() => { if (active.current) onClose(); }}>
       <div slot="body">{children}</div>
     </oj-dialog>;
 }

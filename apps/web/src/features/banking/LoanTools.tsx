@@ -65,7 +65,7 @@ export function LoanCalculatorPage({ token }: { token: string }) {
             if (generation.current === epoch) setError(e instanceof Error ? e.message : "Unable to calculate your quote.");
         } finally { inFlight.current = false; setBusy(false); }
     }
-    return <>
+    return <section class="bank-service-page">
         <PageHeading eyebrow="PLAN YOUR BORROWING" title="EMI calculator" description="Explore a monthly payment before requesting a loan."/>
         <LoanNavigation current="calculator"/>
         <div class="loan-calculator-grid">
@@ -92,7 +92,7 @@ export function LoanCalculatorPage({ token }: { token: string }) {
                 </div>
             </Panel>
         </div>
-    </>;
+    </section>;
 }
 
 type Application = Product & { terms?: { amount: number; tenureMonths: number | null; emiAmount: number | null } };
@@ -100,7 +100,7 @@ type Application = Product & { terms?: { amount: number; tenureMonths: number | 
 export function LoanApplicationsPage({ token }: { token: string }) {
     const [page, setPage] = useState(0);
     const data = useLoad(() => bankApi.products(token, "loans", page) as Promise<Application[]>, [token, page]);
-    return <>
+    return <section class="bank-service-page">
         <PageHeading title="Track your loan application" description="Follow review, approval and disbursement. Approval does not move money until you accept." action={<button class="bank-button secondary" onClick={data.reload}>Refresh status</button>}/>
         <LoanNavigation current="applications"/>
         <State loading={data.loading} error={data.error} retry={data.reload} empty={!data.loading && !data.error && !data.data?.length ? "No applications on this page" : undefined}>
@@ -114,7 +114,7 @@ export function LoanApplicationsPage({ token }: { token: string }) {
             </article>)}</div>
         </State>
         <div class="bank-pagination"><span>Page {page + 1}</span><button disabled={page === 0 || data.loading} onClick={() => setPage(p => p - 1)}>← Previous</button><button disabled={data.loading || !!data.error || (data.data?.length || 0) < 12} onClick={() => setPage(p => p + 1)}>Next →</button></div>
-    </>;
+    </section>;
 }
 
 type ApplicationAccount = { CREATED_AT?: string; REVIEWED_AT?: string; REVIEW_REASON?: string; PRINCIPAL_AMOUNT?: number; PRODUCT_STATUS: string };

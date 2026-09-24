@@ -3,6 +3,18 @@
 .site-shell :is(h1,h2,h3,p){margin:0;color:inherit;}
 .site-shell :is(h1,h2,h3){font-family:var(--nexa-heading-font);font-weight:450;}
 .site-shell a{color:inherit;text-decoration:none;}
+.site-shell button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.site-shell :is(a, button):focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 6px;
+}
 .site-shell {
   max-width: 1600px;
   margin: 28px auto 0;
@@ -72,6 +84,43 @@
   display: flex;
   gap: 22px;
   align-items: center;
+}
+.landing-session-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.landing-session-link,
+.landing-register-link {
+  color: var(--nexa-reference-666) !important;
+  font-size: var(--text-min);
+  white-space: nowrap;
+}
+.landing-session-actions .landing-register-link,
+.landing-session-actions .landing-session-link:not(:first-child) {
+  display: none;
+}
+.landing-mobile-session {
+  display: none;
+}
+.landing-welcome {
+  margin-top: 12px !important;
+  color: var(--nexa-reference-383838) !important;
+}
+.landing-session-notice {
+  position: absolute;
+  z-index: 30;
+  top: 18px;
+  left: 50%;
+  max-width: min(90%, 520px);
+  margin: 0;
+  padding: 9px 14px;
+  transform: translateX(-50%);
+  border: 1px solid var(--nexa-reference-ffae9f);
+  border-radius: 999px;
+  background: var(--nexa-soft);
+  color: var(--nexa-reference-815944);
+  font-size: var(--text-min);
 }
 .nav-story {
   font-size: var(--text-min);
@@ -1420,6 +1469,9 @@ h1 {
   .nav-actions {
     gap: 8px;
   }
+  .landing-session-actions {
+    display: none;
+  }
   .nav-actions .pill-link {
     font-size: var(--text-min);
   }
@@ -1449,6 +1501,17 @@ h1 {
     align-items: center;
     justify-content: space-between;
     font-size: var(--text-min);
+    padding: 5px 0;
+  }
+  .landing-mobile-session {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .landing-mobile-session .nexa-action {
+    justify-content: flex-start;
     padding: 5px 0;
   }
   .hero {

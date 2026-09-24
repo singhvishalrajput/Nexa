@@ -17,6 +17,50 @@ function harness(overrides={}, saved=null){
   render();render();return {render,input,button,calls,storage,ApiRequestError,api,nodes:()=>nodes(tree)};
 }
 async function reviewed(app){app.input(0,'123456789012');app.input(1,'25');await app.nodes().find(n=>n.type==='form').props.onSubmit({preventDefault(){}});app.render();}
+
+test('transfer controls use associated external labels instead of stacked inside labels',()=>{
+ const app=harness();
+ const fields=app.nodes().filter(n=>['oj-input-text','oj-select-one'].includes(n.type));
+ const labels=app.nodes().filter(n=>n.type==='oj-label');
+ assert.equal(fields.length,4);
+ for(const field of fields){
+  assert.equal(field.props.labelEdge,'provided');
+  assert.equal(field.props.userAssistanceDensity,'compact');
+  assert.ok(labels.some(label=>label.props.for===field.props.id),field.props.labelHint);
+ }
+ const recipientType=fields.find(n=>n.props.id==='transfer-recipient-type');
+ recipientType.props.onvalueChanged({detail:{value:'own',updatedFrom:'internal'}});app.render();
+ assert.ok(app.nodes().some(n=>n.type==='oj-label'&&n.props.for==='transfer-destination'));
+ assert.ok(app.nodes().some(n=>n.type==='oj-select-one'&&n.props.id==='transfer-destination'&&n.props.labelEdge==='provided'));
+});
+
+test('transfer entry groups four fields separately from its full-width notice and review action',()=>{
+ const app=harness();
+ const fields=app.nodes().find(n=>n.type==='fieldset'&&n.props.class==='bank-transfer-fields');
+ const children=nodes(fields.props.children);
+ assert.equal(children.filter(n=>n.props?.class==='bank-field').length,4);
+ assert.equal(children.some(n=>n.type==='oj-button'),false);
+ const footer=app.nodes().find(n=>n.props?.class==='transfer-form-footer');
+ assert.ok(nodes(footer).some(n=>n.props?.class==='bank-form-note'));
+ assert.ok(nodes(footer).some(n=>n.type==='oj-button'&&n.props.children==='Review transfer'));
+ assert.ok(app.nodes().some(n=>n.props?.class?.includes('transfer-entry')));
+});
+test('transfer omits routine helper text but preserves the linked balance warning',()=>{
+ const app=harness();
+ assert.equal(app.nodes().some(n=>n.props?.id==='recipient-help'),false);
+ assert.equal(app.nodes().some(n=>n.props?.id==='transfer-amount-help'),false);
+ assert.doesNotMatch(JSON.stringify(app.nodes()),/Ask the recipient for their full account number|Enter an amount above/);
+ assert.equal(app.nodes().find(n=>n.props?.id==='transfer-number').props.describedBy,undefined);
+ assert.equal(app.nodes().find(n=>n.props?.id==='transfer-amount').props.describedBy,undefined);
+ app.input(1,'1001');
+ const warning=app.nodes().find(n=>n.props?.id==='transfer-amount-help');
+ assert.equal(warning.props.role,'alert');
+ assert.equal(warning.props.children,'This is more than your available balance.');
+ assert.equal(app.nodes().find(n=>n.props?.id==='transfer-amount').props.describedBy,warning.props.id);
+ app.input(1,'25');
+ assert.equal(app.nodes().some(n=>n.props?.id==='transfer-amount-help'),false);
+});
+
 test('review never sends money; double confirmations reuse a single locked request',async()=>{
   let release;const wait=new Promise(r=>release=r);let sends=0;
   const app=harness({confirm:async(t,id)=>{sends++;assert.equal(id,'review-1');await wait;return {...ready,status:'COMPLETED',reference:'TX-1'};}});

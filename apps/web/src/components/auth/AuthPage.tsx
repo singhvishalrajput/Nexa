@@ -15,6 +15,14 @@ type AuthPageProps = {
   onAuthenticated: (session: AuthSession) => void;
 };
 
+function PasswordVisibilityIcon({ visible }: { visible: boolean }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+    <circle cx="12" cy="12" r="2.5" />
+    {!visible && <path d="m4 4 16 16" />}
+  </svg>;
+}
+
 export function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: AuthPageProps) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,6 +39,7 @@ export function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: AuthPagePr
   useEffect(() => {
     setError("");
     document.title = t(mode === "login" ? "Welcome back" : "Create your account") + " · Nexa";
+    document.querySelector<HTMLElement>(".na-shell")?.scrollTo({ top: 0, behavior: "auto" });
     document.getElementById("na-title")?.focus();
   }, [mode]);
 
@@ -57,10 +66,10 @@ export function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: AuthPagePr
     }
   };
 
-  return <main class="na-shell">
+  return <main class={`na-shell na-${mode}`}>
     <header class="na-header">
       <a class="na-brand" href="#home" aria-label="Nexa home"><img src="styles/images/nexa.svg" width="28" height="28" alt=""/><span>Nexa</span></a>
-      <div class="experience-auth-header"><LanguageSelect/><Action label={t("Back to home")} disabled={submitting} onAction={onBack}/></div>
+      <div class="experience-auth-header"><LanguageSelect compact/><Action label={t("Back to home")} disabled={submitting} onAction={onBack}/></div>
     </header>
     <div class="na-layout">
       <section class="na-story" aria-label={t("Banking through conversation")}>
@@ -69,15 +78,18 @@ export function AuthPage({ mode, onBack, onSwitch, onAuthenticated }: AuthPagePr
       </section>
       <section class="na-form-panel" aria-labelledby="na-title"><div class="na-form-wrap">
         <h1 id="na-title" tabIndex={-1}>{t(mode === "login" ? "Welcome back" : "Create your account")}</h1>
-        <p class="na-form-intro">{t(mode === "login" ? "Log in to continue your conversation with Nexa." : "Start with the basics. Your next chapter starts here.")}</p>
+        {mode === "login" && <p class="na-form-intro">{t("Log in to continue your conversation with Nexa.")}</p>}
         <form class="na-form" aria-busy={submitting} onSubmit={submit} noValidate onKeyDown={event => { if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT") { event.preventDefault(); void submit(); } }}>
           <oj-form-layout labelEdge="top" maxColumns={1}>
           {mode === "register" && <oj-input-text labelHint={t("Full name")} labelEdge="provided" userAssistanceDensity="compact" autocomplete="name" required disabled={submitting} value={fullName} length={{max:160}} onrawValueChanged={event => setFullName(event.detail.value || "")} placeholder={t("Your full name")}/>}
           <oj-input-text labelHint={t("Email address")} labelEdge="provided" userAssistanceDensity="compact" autocomplete="email" virtualKeyboard="email" required disabled={submitting} value={email} length={{max:254}} onrawValueChanged={event => setEmail(event.detail.value || "")} placeholder="you@example.com"/>
           {mode === "register" && <oj-input-text labelHint={t("Phone number (optional)")} labelEdge="provided" userAssistanceDensity="compact" autocomplete="tel" virtualKeyboard="tel" disabled={submitting} value={phoneNumber} length={{max:32}} onrawValueChanged={event => setPhoneNumber(event.detail.value || "")} placeholder="+91 98765 43210"/>}
-          {showPassword ? <oj-input-text labelHint={t("Password")} labelEdge="provided" userAssistanceDensity="compact" autocomplete={mode === "login" ? "current-password" : "new-password"} required disabled={submitting} value={password} length={{max:72}} onrawValueChanged={event => setPassword(event.detail.value || "")}/> : <oj-input-password labelHint={t("Password")} labelEdge="provided" userAssistanceDensity="compact" autocomplete={mode === "login" ? "current-password" : "new-password"} required disabled={submitting} value={password} onrawValueChanged={event => setPassword(event.detail.value || "")}/>}
+          <div class="na-password-control">
+            <label class="na-password-label" for="na-password">{t("Password")}</label>
+            {showPassword ? <oj-input-text id="na-password" aria-label={t("Password")} labelEdge="none" userAssistanceDensity="compact" autocomplete={mode === "login" ? "current-password" : "new-password"} required disabled={submitting} value={password} length={{max:72}} onrawValueChanged={event => setPassword(event.detail.value || "")}/> : <oj-input-password id="na-password" aria-label={t("Password")} labelEdge="none" userAssistanceDensity="compact" autocomplete={mode === "login" ? "current-password" : "new-password"} required disabled={submitting} value={password} onrawValueChanged={event => setPassword(event.detail.value || "")}/>}
+            <button type="button" class="na-password-eye" aria-label={t(showPassword ? "Hide password" : "Show password")} disabled={submitting} onClick={() => setShowPassword(value => !value)}><PasswordVisibilityIcon visible={showPassword}/></button>
+          </div>
           </oj-form-layout>
-          <Action className="experience-password-toggle" label={t(showPassword ? "Hide password" : "Show password")} disabled={submitting} onAction={() => setShowPassword(value => !value)}/>
           {mode === "register" && <p class="na-password-hint">{t("Use 8–72 characters. Include a capital letter (A), a small letter (a), a number (1) and a symbol (!).")}</p>}
           {error && <p class="na-notice" role="alert">{t(error)}</p>}
           <Action primary className="experience-auth-submit" disabled={submitting} onAction={() => void submit()} label={t(submitting ? (mode === "login" ? "Signing you in…" : "Creating your account…") : mode === "login" ? "Log in" : "Create account")}/>

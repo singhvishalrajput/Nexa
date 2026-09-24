@@ -65,17 +65,19 @@ export function ProductCreate({ token, kind, reload }: {
             setBusy(false);
         }
     }
-    return <Panel title={kind === "loans" ? "New loan" : "New direct debit"}><button disabled={busy} onClick={() => setOpen(!open)}>{open ? "Close" : kind === "loans" ? "Request a loan" : "Create mandate"}</button>{open && <form class="bank-form" onSubmit={submit}>
- <fieldset disabled={busy} class="loan-application-fields">
+    return <Panel className="bank-create-panel" title={kind === "loans" ? "Apply for a loan" : "Set up a direct debit"} action={<button class="bank-button secondary" type="button" disabled={busy} aria-expanded={open} aria-controls={"create-" + kind} onClick={() => setOpen(!open)}>{open ? "Close" : kind === "loans" ? "Request a loan" : "Create mandate"}</button>}>
+ <p class="bank-create-description">{kind === "loans" ? "Choose an amount and repayment period, then submit your documents for review." : "Choose a recipient, payment limit and dates for a recurring authorization."}</p>
+ {open && <form id={"create-" + kind} class="bank-form bank-editor-form" onSubmit={submit}>
+ <fieldset disabled={busy} class="loan-application-fields bank-fields-grid">
  <label>{kind === "loans" ? "Loan name" : "Payee name"}<input name="name" required maxLength={120}/></label>
  <label>{kind === "loans" ? "Disbursement and repayment account" : "Pay from"}<select name="account" required><option value="">Choose an account</option>{accounts.data?.filter(a => ["SAVINGS", "CURRENT"].includes(a.accountType) && a.status === "ACTIVE").map(a => <option value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}</select></label>
  {kind === "mandates" && <label>Beneficiary Nexa account number<input name="beneficiary" required inputMode="numeric"/></label>}
  <label>{kind === "loans" ? "Principal (INR)" : "Maximum per payment (INR)"}<input name="amount" type="number" min={kind === "loans" ? "1000" : "0.01"} max={kind === "loans" ? "1000000" : undefined} step="0.01" required/></label>
  {kind === "loans" ? <label>Loan tenure (months)<input name="tenure" type="number" min="1" max="60" step="1" required/><small>The bank sets the annual rate. Review your approved terms before accepting the loan.</small></label> : <><label>Effective date<input name="start" type="date" required/></label><label>End date (optional)<input name="end" type="date"/></label></>}
- {kind === "loans" && <>{salaryMonths.loading && <p role="status">Loading required salary-slip months…</p>}{salaryMonths.error && <p role="alert">{salaryMonths.error}<button type="button" onClick={salaryMonths.reload}>Retry</button></p>}{salaryMonths.data?.length === 3 && <SalarySlipFields months={salaryMonths.data}/>}</>}
- <p>{kind === "loans" ? "Your request and salary slips go to the administrator for verification. No money moves until approval and your acceptance." : "Creation records a pending authorization. Activate it from its details page before making payments."}</p>
+ {kind === "loans" && <div class="bank-field-wide">{salaryMonths.loading && <p role="status">Loading required salary-slip months…</p>}{salaryMonths.error && <p role="alert">{salaryMonths.error}<button class="bank-button secondary" type="button" onClick={salaryMonths.reload}>Retry</button></p>}{salaryMonths.data?.length === 3 && <SalarySlipFields months={salaryMonths.data}/>}</div>}
+ <p class="bank-form-note bank-field-wide">{kind === "loans" ? "Your request and salary slips go to the administrator for verification. No money moves until approval and your acceptance." : "Creation records a pending authorization. Activate it from its details page before making payments."}</p>
  </fieldset>
- {error && <p role="alert">{error}</p>}<button type="submit" disabled={busy || kind === "loans" && (salaryMonths.loading || !!salaryMonths.error || salaryMonths.data?.length !== 3)}>{busy ? "Saving…" : kind === "loans" ? "Submit loan application" : "Create"}</button></form>}</Panel>;
+ {error && <p role="alert">{error}</p>}<div class="bank-editor-actions"><button class="bank-button" type="submit" disabled={busy || kind === "loans" && (salaryMonths.loading || !!salaryMonths.error || salaryMonths.data?.length !== 3)}>{busy ? "Saving…" : kind === "loans" ? "Submit loan application" : "Create"}</button></div></form>}</Panel>;
 }
 export function BillCreate({ token, reload }: { token: string; reload: () => void; }) {
     const inFlight = useRef(false);
@@ -102,14 +104,18 @@ export function BillCreate({ token, reload }: { token: string; reload: () => voi
             setBusy(false);
         }
     }
-    return <Panel title="Add bill"><button onClick={() => setOpen(!open)}>{open ? "Close" : "Add bill"}</button>{open && <form class="bank-form" onSubmit={submit}>
+    return <Panel className="bank-create-panel" title="Keep your bills together" action={<button class="bank-button secondary" type="button" disabled={busy} aria-expanded={open} aria-controls="create-bill" onClick={() => setOpen(!open)}>{open ? "Close" : "Add bill"}</button>}>
+ <p class="bank-create-description">Add a bill to track its amount, due date and payment status.</p>
+ {open && <form id="create-bill" class="bank-form bank-editor-form" onSubmit={submit}>
+ <fieldset disabled={busy} class="bank-fields-grid">
  <label>Biller<input name="billerName" required maxLength={160}/></label>
  <label>Customer number<input name="customerNumber" required maxLength={80}/></label>
  <label>Category<input name="category" required maxLength={80}/></label>
  <label>Amount (INR)<input name="amount" type="number" min="0.01" step="0.01" required/></label>
  <label>Minimum amount (INR)<input name="minimumAmount" type="number" min="0" step="0.01"/></label>
  <label>Due date<input name="dueAt" type="date" required/></label>
- {error && <p role="alert">{error}</p>}<button type="submit" disabled={busy}>{busy ? "Saving…" : "Add bill"}</button>
+ </fieldset>
+ {error && <p role="alert">{error}</p>}<div class="bank-editor-actions"><button class="bank-button" type="submit" disabled={busy}>{busy ? "Saving…" : "Add bill"}</button></div>
  </form>}</Panel>;
 }
 export function ProductStatusControl({ token, kind, product, reload, onPosted }: {
@@ -220,14 +226,14 @@ export function ProductOperations({ token, kind, product, reload, onPosted }: {
         setBusy(false);
     } }
     return <><Panel title={kind === "loans" ? "Loan payments" : "Mandate controls"} className={kind === "loans" ? "loan-payment-panel" : undefined}>
- <div class={kind === "loans" ? "loan-payment-body" : undefined}>
+ <div class={kind === "loans" ? "loan-payment-body" : "bank-operation-body"}>
  {terms.error && <p role="alert">{terms.error}<button onClick={terms.reload}>Retry account details</button></p>}
  {terms.data && !activeLoan && <p>{kind === "loans" ? "Original loan: " + (terms.data.PRINCIPAL_AMOUNT != null ? money(terms.data.PRINCIPAL_AMOUNT) : "not recorded") + " · Annual rate: " + terms.data.INTEREST_RATE + "%" : "Effective: " + terms.data.EFFECTIVE_DATE + (terms.data.END_DATE ? " to " + terms.data.END_DATE : "")}</p>}
  {kind === "mandates" && terms.data && !terms.data.DESTINATION_ACCOUNT_ID && <p>This imported mandate has no verified beneficiary account. Create a new mandate before executing payments.</p>}
- {kind === "loans" && product.status === "APPROVED" && <button disabled={busy} onClick={() => act("disburse")}>Accept approved loan and receive funds</button>}
+ {kind === "loans" && product.status === "APPROVED" && <button class="bank-button" disabled={busy} onClick={() => act("disburse")}>Accept approved loan and receive funds</button>}
  {kind === "loans" && product.status === "PENDING_APPROVAL" && <p role="status">Your loan request is awaiting administrator approval.</p>}
  {kind === "loans" && product.status === "REJECTED" && <p role="status">This loan request was not approved.</p>}
- {kind === "mandates" && ["PENDING", "PAUSED", "ACTION_REQUIRED"].includes(product.status) && <button disabled={busy} onClick={() => act("activate")}>Activate mandate</button>}
+ {kind === "mandates" && ["PENDING", "PAUSED", "ACTION_REQUIRED"].includes(product.status) && <button class="bank-button" disabled={busy} onClick={() => act("activate")}>Activate mandate</button>}
  {activeLoan && repayment.error && <p role="alert">{repayment.error}<button onClick={repayment.reload}>Retry repayment details</button></p>}
  {activeLoan && repayment.loading && <p role="status">Loading repayment limits…</p>}
  {activeLoan && options && <>
@@ -256,15 +262,15 @@ export function ProductOperations({ token, kind, product, reload, onPosted }: {
  {options.regularEmi != null && <div><dt>EMIs left</dt><dd>{options.remainingInstallments}</dd></div>}
  </dl>
  </>}
- {(product.status === "ACTIVE" || (kind === "loans" && product.status === "OVERDUE")) && <div class={kind === "loans" ? "loan-repayment-form" : undefined}>
+ {(product.status === "ACTIVE" || (kind === "loans" && product.status === "OVERDUE")) && <div class={kind === "loans" ? "loan-repayment-form" : "bank-operation-form"}>
  <label>{kind === "loans" ? "Repayment amount (INR)" : "Amount (INR)"}<input type="number" min={activeLoan && options ? options.minimumAmount : "0.01"} max={activeLoan && options ? options.maximumAmount : undefined} step="0.01" placeholder={activeLoan && options ? Number(options.minimumAmount).toFixed(2) : undefined} disabled={busy || activeLoan && !options} value={amount} onInput={e => chooseAmount(e.currentTarget.value)}/></label>
  {activeLoan && options && <div class="loan-payment-shortcuts"><span>Min. {money(options.minimumAmount)}</span><div>{!options.principalOnly && <button type="button" disabled={busy} onClick={() => chooseAmount(Number(options.minimumAmount).toFixed(2))}>Use EMI amount</button>}<button type="button" disabled={busy} onClick={() => chooseAmount(Number(options.maximumAmount).toFixed(2))}>Use payoff amount</button></div></div>}
  {activeLoan && options?.regularEmi != null && <p class="loan-calculation-note">Extra principal minimum: {money(options.minimumExtraPrincipal ?? options.regularEmi)}. A smaller full payoff is allowed. When an EMI is payable, this minimum is in addition to that EMI.</p>}
- <button class={kind === "loans" ? "bank-button loan-review-button" : undefined} disabled={busy || !validAmount} onClick={reviewPayment}>{kind === "loans" ? "Review repayment" : "Review mandate payment"}</button>
+ <button class="bank-button loan-review-button" disabled={busy || !validAmount} onClick={reviewPayment}>{kind === "loans" ? "Review repayment" : "Review mandate payment"}</button>
  {review && needsChoice && preview && <PrepaymentComparison preview={preview} selected={prepaymentOption} disabled={busy} onSelect={option => { setPrepaymentOption(option); setKey(crypto.randomUUID()); }}/>}
  {review && (!needsChoice || !!preview) && <div class={kind === "loans" ? "loan-payment-review" : undefined} role="region" aria-label="Payment review"><p>Pay {money(amount)} from the linked account.</p>{activeLoan && options && <dl class="loan-interest-breakdown"><div><dt>Interest in this payment</dt><dd>{money(options.interestAmount)}</dd></div><div><dt>Principal reduction</dt><dd>{money(((amountInPaise - Math.round(options.interestAmount * 100)) / 100).toFixed(2))}</dd></div></dl>}<div class={kind === "loans" ? "loan-review-actions" : undefined}><button class={kind === "loans" ? "bank-button" : undefined} disabled={busy || !validAmount || needsChoice && (!preview || !prepaymentOption)} onClick={() => act(kind === "loans" ? "repay" : "execute", true)}>Confirm payment</button><button class={kind === "loans" ? "bank-button secondary" : undefined} disabled={busy} onClick={() => setReview(false)}>Back</button></div></div>}
  </div>}
- {kind === "mandates" && !["CANCELLED", "REVOKED"].includes(product.status) && <button disabled={busy} onClick={() => act("revoke")}>Revoke mandate</button>}
+ {kind === "mandates" && !["CANCELLED", "REVOKED"].includes(product.status) && <button class="bank-button secondary" disabled={busy} onClick={() => act("revoke")}>Revoke mandate</button>}
  {error && <p role="alert">{error}</p>}{receipt && <p role="status">{receipt}</p>}</div></Panel>
  {activeLoan && options?.regularEmi != null && <PrepaymentCalculator token={token} loanId={product.id} limits={options} revision={JSON.stringify([product.outstanding, product.nextEmi, options])}/>}</>;
 }

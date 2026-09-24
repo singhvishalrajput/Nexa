@@ -1,0 +1,175 @@
+/* Keep administration typography and controls independent of customer screens.
+ * JET moves dialogs outside the workspace, so overlay styles must live on the
+ * dialog itself, never depend on an .experience-admin ancestor.
+ */
+.bank-app.experience-admin .bank-button,
+.bank-app.admin-dialog .bank-button {
+  min-height: 38px;
+  min-width: 0;
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 13px !important;
+  line-height: 1.4;
+  font-weight: 600 !important;
+  box-shadow: none;
+}
+.bank-app.experience-admin .bank-button.secondary,
+.bank-app.admin-dialog .bank-button.secondary {
+  background: var(--nexa-surface);
+  color: var(--nexa-text) !important;
+  border-color: var(--nexa-border-control);
+}
+.bank-app.experience-admin .bank-button.secondary:hover:not(:disabled),
+.bank-app.admin-dialog .bank-button.secondary:hover:not(:disabled) {
+  background: var(--nexa-hover);
+  color: var(--nexa-text) !important;
+  border-color: var(--nexa-text-secondary);
+}
+.bank-app.experience-admin .bank-button:disabled,
+.bank-app.admin-dialog .bank-button:disabled {
+  background: var(--nexa-disabled-bg);
+  color: var(--nexa-disabled-text) !important;
+  border-color: var(--nexa-border);
+  opacity: 1;
+}
+.bank-app.experience-admin .bank-page-heading h1 { font-size: clamp(25px, 2.4vw, 32px); }
+.bank-app.experience-admin .bank-page-heading p { font-size: 14px; }
+.bank-app.experience-admin .bank-page-heading .bank-eyebrow { font-size: 11px; }
+.bank-app.experience-admin .bank-panel-heading h2 { margin: 0; font-size: 17px; font-weight: 650; }
+.bank-app.experience-admin .bank-panel > p,
+.bank-app.experience-admin .bank-record p,
+.bank-app.experience-admin .admin-mandate p { font-size: 13px; line-height: 1.6; }
+.bank-app.experience-admin .admin-result-count { font-size: 12px; }
+.bank-app.experience-admin .admin-actions { flex-wrap: wrap; gap: 10px 16px; }
+.bank-app.experience-admin .admin-actions a { font-size: 13px; }
+.bank-app.experience-admin .admin-actions a { min-height: 32px; }
+.bank-app.experience-admin .admin-breadcrumb a { min-height: 28px; }
+.bank-app.experience-admin .admin-table a:not(.admin-account-link),
+.bank-app.experience-admin .admin-mandate .bank-detail a { min-height: 24px; }
+.bank-app.experience-admin .admin-actions a:hover { color: var(--nexa-focus); text-decoration: underline; text-underline-offset: 3px; }
+.bank-app.experience-admin .admin-mandate > header { flex-wrap: wrap; }
+.bank-app.experience-admin .admin-mandate > header > div { min-width: 0; }
+.bank-app.experience-admin .admin-mandate p { overflow-wrap: anywhere; }
+.bank-app.experience-admin .admin-overview-grid .bank-panel { margin-top: 0; }
+.bank-app.experience-admin .admin-overview-grid .bank-detail dt { font-size: 12px; }
+.bank-app.experience-admin .bank-record { align-items: start; gap: 12px; }
+.bank-app.experience-admin .bank-record > div { min-width: 0; }
+.bank-app.experience-admin .bank-record strong { font-size: 13px; overflow-wrap: anywhere; }
+.bank-app.experience-admin .bank-record > span { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bank-app.experience-admin .admin-table td:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bank-app.experience-admin .admin-table-scroll { max-width: 100%; }
+.bank-app.experience-admin .admin-sections a { flex: 0 0 auto; }
+.bank-app.experience-admin .admin-filters { grid-template-columns: minmax(0, 1fr) 160px 160px auto; }
+.bank-app.experience-admin .admin-filters label { min-width: 0; }
+.bank-app.experience-admin .admin-filters :is(input, select) { width: 100%; min-width: 0; min-height: 40px; }
+.bank-app.experience-admin .bank-panel > .admin-loan-request { padding: 20px; background: var(--nexa-surface); }
+.bank-app.experience-admin .admin-loan-request header { margin-bottom: 14px; }
+.bank-app.experience-admin .admin-loan-request header p { margin: 4px 0 0; }
+.bank-app.experience-admin .admin-loan-request .admin-request-amount { font-size: 22px; font-weight: 650; letter-spacing: -.035em; }
+.admin-request-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 16px; color: var(--nexa-text-secondary); font-size: 12px; }
+.admin-loan-request .admin-actions { padding-top: 16px; border-top: 1px solid var(--nexa-border); }
+
+/* A bounded overlay with a fixed header and one independently scrolling body. */
+.bank-app.bank-dialog.admin-dialog {
+  width: min(760px, calc(100vw - 32px));
+  min-width: 0;
+  max-width: calc(100vw - 32px);
+  min-height: 0;
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  overflow: hidden;
+  background: var(--nexa-surface);
+  border: 1px solid var(--nexa-border);
+  border-radius: 18px;
+  box-shadow: var(--nexa-shadow);
+}
+.admin-dialog .oj-dialog-container { min-height: 0; overflow: hidden; }
+.admin-dialog .oj-dialog-content { min-height: 0; overflow: hidden; }
+.admin-dialog .oj-dialog-header { align-items: center; gap: 16px; padding: 18px 24px; }
+.bank-app.admin-dialog .oj-dialog-title { margin: 0; font: 650 20px/1.4 var(--nexa-heading-font); letter-spacing: -.035em; }
+.bank-app.admin-dialog .oj-dialog-header-close-wrapper { position: static; flex: 0 0 36px; margin: 0; width: 36px; height: 36px; }
+.bank-app.admin-dialog .oj-dialog-header-close-wrapper button { min-width: 36px; min-height: 36px; width: 36px; height: 36px; padding: 0; }
+.admin-dialog .oj-dialog-body {
+  max-height: calc(100dvh - 110px);
+  min-height: 0;
+  padding: 22px 24px 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.bank-app.admin-dialog .bank-form { padding: 0; gap: 24px; }
+.bank-app.admin-dialog .bank-form :is(p, dt, dd, label, input, select, textarea) { font-size: 13px; line-height: 1.5; }
+.bank-app.admin-dialog .bank-form h3,
+.bank-app.admin-dialog .bank-form legend { margin: 0 0 12px; color: var(--nexa-text); font: 650 15px/1.5 var(--nexa-font); }
+.bank-app.admin-dialog .bank-form legend { padding: 0; }
+.bank-app.admin-dialog .admin-dialog-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; padding: 18px; margin: 0; border: 1px solid var(--nexa-border); border-radius: 12px; background: var(--nexa-background); }
+.bank-app.admin-dialog .admin-dialog-summary .bank-detail { display: flex; flex-direction: column; align-items: start; justify-content: flex-start; gap: 4px; padding: 0; border: 0; }
+.bank-app.admin-dialog .admin-dialog-summary dt { color: var(--nexa-text-muted); font-size: 12px; font-weight: 400; }
+.bank-app.admin-dialog .admin-dialog-summary dd { margin: 0; text-align: left; font-weight: 600; }
+.bank-app.admin-dialog .admin-dialog-summary dd small { display: block; font-size: 12px; font-weight: 400; overflow-wrap: anywhere; }
+.bank-app.admin-dialog .admin-dialog-fields { display: grid; grid-template-columns: minmax(140px, .65fr) minmax(0, 1.35fr); align-items: start; gap: 16px; }
+.bank-app.admin-dialog .admin-editor-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bank-app.admin-dialog .admin-field-wide { grid-column: 1 / -1; }
+.bank-app.admin-dialog .bank-form label { display: grid; gap: 7px; min-width: 0; font-weight: 600; color: var(--nexa-text-secondary); }
+.bank-app.admin-dialog .bank-form :is(input:not([type="checkbox"]), select, textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 11px;
+  border: 1px solid var(--nexa-border-control);
+  border-radius: 8px;
+  background: var(--nexa-surface);
+  color: var(--nexa-text);
+  font-weight: 400;
+}
+.bank-app.admin-dialog .bank-form .admin-dialog-fields textarea { min-height: 80px; resize: vertical; }
+.bank-app.admin-dialog .bank-form :is(input, select, textarea):focus-visible { outline: 2px solid var(--nexa-focus); outline-offset: 2px; }
+.bank-app.admin-dialog .bank-form :is(input, select, textarea):disabled { background: var(--nexa-disabled-bg); color: var(--nexa-disabled-text); }
+.bank-app.admin-dialog .admin-adjustment-heading { padding-top: 20px; margin-top: 4px; border-top: 1px solid var(--nexa-border); }
+.bank-app.admin-dialog .admin-adjustment-heading h3 { margin-bottom: 6px; }
+.bank-app.admin-dialog .loan-slip-documents { gap: 10px; }
+.bank-app.admin-dialog .loan-slip-document { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 16px; padding: 14px 16px; background: var(--nexa-surface); }
+.bank-app.admin-dialog .loan-slip-document > div { gap: 3px; }
+.bank-app.admin-dialog .loan-slip-document strong { font-size: 14px; }
+.bank-app.admin-dialog .loan-slip-document :is(span, small),
+.bank-app.admin-dialog .loan-slip-documents > small { font-size: 12px; line-height: 1.5; }
+.bank-app.admin-dialog .loan-slip-document .loan-slip-check { grid-column: 1 / -1; display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; margin: 0; padding-top: 10px; border-top: 1px solid var(--nexa-border); font-weight: 400; }
+.bank-app.admin-dialog .loan-slip-check input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; max-width: 18px; min-height: 18px; padding: 0; margin: 0; }
+.bank-app.admin-dialog .bank-confirm-summary { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--nexa-border); border-radius: 12px; background: var(--nexa-background); }
+.bank-app.admin-dialog .bank-confirm-summary .bank-button { justify-self: start; }
+.bank-app.admin-dialog [role="alert"] { padding: 12px 14px; border-radius: 8px; background: var(--nexa-error-bg); color: var(--nexa-error); }
+
+@media (max-width: 1100px) {
+  .bank-app.experience-admin .admin-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bank-app.experience-admin .admin-filters .bank-search-label { grid-column: 1 / -1; }
+  .bank-app.experience-admin .admin-filters > .bank-button { justify-self: start; }
+}
+@media (max-width: 700px) {
+  .bank-app.experience-admin .bank-page-heading { flex-direction: column; align-items: start; gap: 14px; }
+  .bank-app.experience-admin .admin-filters { padding: 14px; }
+  .bank-app.experience-admin .admin-filters :is(input, select) { font-size: 16px; }
+  .bank-app.experience-admin .admin-request-meta { gap: 6px 12px; }
+  .bank-app.experience-admin .bank-panel > .admin-loan-request { margin: 12px; padding: 16px; }
+  .bank-app.experience-admin .bank-record { flex-wrap: wrap; }
+  .bank-app.experience-admin .admin-overview-grid .bank-panel > .bank-button { margin: 0 16px 16px; width: calc(100% - 32px); white-space: normal; }
+  .bank-app.admin-dialog .admin-dialog-summary,
+  .bank-app.admin-dialog .admin-dialog-fields { grid-template-columns: minmax(0, 1fr); }
+  .bank-app.admin-dialog .bank-form :is(input:not([type="checkbox"]), select, textarea) { font-size: 16px; }
+  .admin-dialog .oj-dialog-header { padding: 14px 16px; }
+  .admin-dialog .oj-dialog-body { padding: 16px; }
+  .bank-app.admin-dialog .loan-slip-document { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+  .bank-app.admin-dialog .loan-slip-document .bank-button { justify-self: start; }
+}
+@media (max-width: 420px) {
+  .bank-app.experience-admin .admin-filters { grid-template-columns: minmax(0, 1fr); }
+  .bank-app.experience-admin .admin-brand { flex-wrap: wrap; gap: 5px; }
+  .bank-app.experience-admin .admin-brand span { border: 0; padding: 0; font-size: 10px; }
+}
+/* Keep navigation and sign-out reachable on phones; the customer shell hides
+ * its rail here, but administration has no replacement mobile navigation. */
+@media (max-width: 600px) {
+  .bank-app.experience-admin { grid-template-columns: 56px minmax(0, 1fr); height: 100dvh; min-height: 0; }
+  .bank-app.experience-admin > .experience-rail { display: flex; position: relative; top: auto; height: 100%; padding: 18px 0; }
+  .bank-app.experience-admin .admin-topbar { padding-inline: 14px; }
+  .bank-app.experience-admin .bank-main { padding: 18px 12px 28px; scrollbar-gutter: auto; }
+}

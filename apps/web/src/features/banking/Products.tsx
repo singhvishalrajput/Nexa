@@ -3,6 +3,7 @@ import { LoanNavigation, LoanApplicationTimeline } from "./LoanTools";
 import { LoanSalarySlipPanel } from "./LoanSalarySlips";
 import { BillCreate, ProductCreate, ProductOperations, ProductStatusControl } from "./ProductOperations";
 import { t } from "../../services/locale";
+import { BankingIcon, BankingIconName } from "../../components/BankingIcon";
 import { DemoAction, DemoHistory } from "./Showcase";
 import { useState } from "preact/hooks";
 import { bankApi, Product, ProductKind } from "./api";
@@ -11,6 +12,7 @@ import { formatMoney, formatDate, humanize, safeMask } from "../../services/bank
 export const productNames: Record<ProductKind, string> = { cards: "Cards", bills: "Bills", beneficiaries: "Payees", mandates: "Direct debits", loans: "Loans", "scheduled-payments": "Scheduled payments" };
 const descriptions: Record<ProductKind, string> = { cards: "Your cards, balances and recorded activity.", bills: "Stay on top of amounts due and payment history.", beneficiaries: "Your verified payees and saved bank details.", mandates: "Track your recurring payment agreements.", loans: "Outstanding balances and upcoming instalments.", "scheduled-payments": "A clear view of payments scheduled for your accounts." };
 export const productTitle = (p: Product) => p.displayName || p.billerName || p.payee || "Banking record";
+const productIcons: Record<ProductKind, BankingIconName> = { cards: "cards", bills: "transactions", beneficiaries: "people", mandates: "repeat", loans: "accounts", "scheduled-payments": "clock" };
 function amount(p: Product) { if (p.cardType === "DEBIT")
     return undefined; return p.outstanding ?? p.amount ?? p.limit; }
 export function ProductsPage({ token, kind, id }: {
@@ -26,16 +28,26 @@ export function ProductsPage({ token, kind, id }: {
     const rows = Array.isArray(data.data) ? data.data : [];
     const detail = data.data && !Array.isArray(data.data) ? data.data : null;
     const visible = rows.filter(p => productTitle(p).toLowerCase().includes(search.toLowerCase()));
-    return <><PageHeading title={id ? productNames[kind].replace(/s$/, "") + " details" : productNames[kind]} description={descriptions[kind]}/>
+    return <section class={"bank-service-page bank-service-" + kind}><PageHeading title={id ? productNames[kind].replace(/s$/, "") + " details" : productNames[kind]} description={descriptions[kind]}/>
  {receipt && <p role="status" class="bank-notice">{receipt}</p>}
  {kind === "loans" && <LoanNavigation current="loans"/>}
  {kind === "beneficiaries" && <PayeeForm token={token} id={id} name={detail ? productTitle(detail) : ""} reload={data.reload}/>}
  {!id && kind === "bills" && <BillCreate token={token} reload={data.reload}/>}
  {!id && (kind === "mandates" || kind === "loans") && <ProductCreate token={token} kind={kind} reload={data.reload}/>}
- {!id && <div class="bank-filters"><label class="bank-search-label">{t("Find on this page")}<input type="search" placeholder={"Search " + productNames[kind].toLowerCase()} value={search} onInput={e => setSearch(e.currentTarget.value)}/></label>{kind !== "beneficiaries" && <label>{t("Status")}<select value={filter} onChange={e => { setFilter(e.currentTarget.value); setPage(0); }}><option value="">{t("All statuses")}</option>{(kind === "cards" ? ["ACTIVE", "BLOCKED", "CLOSED"] : kind === "bills" ? ["UPCOMING", "DUE", "OVERDUE", "PAID", "FAILED"] : kind === "mandates" ? ["PENDING", "ACTIVE", "PAUSED", "CANCELLED", "EXPIRED", "ACTION_REQUIRED"] : kind === "loans" ? ["PENDING_APPROVAL", "APPROVED", "REJECTED", "ACTIVE", "OVERDUE", "PAID", "CLOSED"] : ["SCHEDULED", "PENDING", "COMPLETED", "FAILED", "CANCELLED"]).map(s => <option value={s}>{humanize(s)}</option>)}</select></label>}</div>}
- <State loading={data.loading} error={data.error} retry={data.reload} empty={!data.loading && !data.error && !id && !visible.length ? "No " + productNames[kind].toLowerCase() + " to show" : undefined}>{detail ? <ProductDetail key={detail.id} token={token} product={detail} kind={kind} reload={data.reload} onPosted={setReceipt}/> : <div class={kind === "cards" ? "bank-card-grid" : "bank-product-grid"}>{visible.map(p => <a href={"#/" + kind + "/" + encodeURIComponent(p.id)} key={p.id} class={"bank-product " + (kind === "cards" ? "bank-payment-card" : "")}><header><span class="bank-tile-symbol" aria-hidden="true">{kind === "cards" ? "▰" : kind === "beneficiaries" ? productTitle(p).slice(0, 1).toUpperCase() : "↗"}</span><Status value={p.status}/></header><h2>{productTitle(p)}</h2><p>{p.numberMasked ? safeMask(p.numberMasked) : p.accountNumberMasked ? safeMask(p.accountNumberMasked) : p.reference || p.bankName || p.category || humanize(kind)}</p>{amount(p) !== undefined && <div class="bank-product-amount"><span>{kind === "cards" || kind === "loans" ? t("Outstanding") : kind === "mandates" ? "Payment limit" : "Amount due"}</span><strong>{formatMoney(amount(p)!, p.currencyCode || "INR")}</strong></div>}<footer><span>{p.dueAt ? "Due " + formatDate(p.dueAt) : p.frequency ? humanize(p.frequency) : p.cardType ? humanize(p.cardType) + " card" : t("View details")}</span><span aria-hidden="true">↗</span></footer></a>)}</div>}</State>
+ {!id && <div class="bank-filters bank-product-filters"><label class="bank-search-label">{t("Search")}<input type="search" placeholder={"Search " + productNames[kind].toLowerCase()} value={search} onInput={e => setSearch(e.currentTarget.value)}/></label>{kind !== "beneficiaries" && <label>{t("Status")}<select value={filter} onChange={e => { setFilter(e.currentTarget.value); setPage(0); }}><option value="">{t("All statuses")}</option>{(kind === "cards" ? ["ACTIVE", "BLOCKED", "CLOSED"] : kind === "bills" ? ["UPCOMING", "DUE", "OVERDUE", "PAID", "FAILED"] : kind === "mandates" ? ["PENDING", "ACTIVE", "PAUSED", "CANCELLED", "EXPIRED", "ACTION_REQUIRED"] : kind === "loans" ? ["PENDING_APPROVAL", "APPROVED", "REJECTED", "ACTIVE", "OVERDUE", "PAID", "CLOSED"] : ["SCHEDULED", "PENDING", "COMPLETED", "FAILED", "CANCELLED"]).map(s => <option value={s}>{humanize(s)}</option>)}</select></label>}</div>}
+ <State loading={data.loading} error={data.error} retry={data.reload} empty={!data.loading && !data.error && !id && !visible.length ? "No " + productNames[kind].toLowerCase() + " to show" : undefined}>
+  {detail ? <ProductDetail key={detail.id} token={token} product={detail} kind={kind} reload={data.reload} onPosted={setReceipt}/> : <div class={(kind === "cards" ? "bank-card-grid" : "bank-product-grid") + " bank-product-grid--" + kind}>
+    {visible.map(p => <a href={"#/" + kind + "/" + encodeURIComponent(p.id)} key={p.id} class={"bank-product " + (kind === "cards" ? "bank-payment-card" : "")}>
+      <header><span class="bank-tile-symbol" aria-hidden="true">{kind === "beneficiaries" ? productTitle(p).slice(0, 1).toUpperCase() : <BankingIcon name={productIcons[kind]}/>}</span><Status value={p.status}/></header>
+      <h2>{productTitle(p)}</h2>
+      <p>{p.numberMasked ? safeMask(p.numberMasked) : p.accountNumberMasked ? safeMask(p.accountNumberMasked) : p.reference || p.bankName || p.category || humanize(kind)}</p>
+      {amount(p) !== undefined && <div class="bank-product-amount"><span>{kind === "cards" || kind === "loans" ? t("Outstanding") : kind === "mandates" ? "Payment limit" : kind === "scheduled-payments" ? "Scheduled amount" : "Amount due"}</span><strong>{formatMoney(amount(p)!, p.currencyCode || "INR")}</strong></div>}
+      <footer><span>{p.dueAt ? "Due " + formatDate(p.dueAt) : p.frequency ? humanize(p.frequency) : p.cardType ? humanize(p.cardType) + " card" : t("View details")}</span><BankingIcon name="arrow"/></footer>
+    </a>)}
+  </div>}
+ </State>
  {!id && kind !== "beneficiaries" && !data.loading && !data.error && <div class="bank-pagination"><span>{t("Page")} {page + 1}</span><button disabled={!page} onClick={() => setPage(p => p - 1)}>{t("← Previous")}</button><button disabled={rows.length < 12} onClick={() => setPage(p => p + 1)}>{t("Next →")}</button></div>}
-</>;
+</section>;
 }
 function ProductDetail({ product: p, kind, token, reload, onPosted }: {
     token: string;

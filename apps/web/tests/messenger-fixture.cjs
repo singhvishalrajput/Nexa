@@ -8,14 +8,30 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const root = process.env.NEXA_UI_FIXTURE_ROOT ? path.resolve(process.env.NEXA_UI_FIXTURE_ROOT) : path.resolve(__dirname, '../web');
 const now = () => new Date().toISOString();
-const user = { id: 'fixture-user', email: 'fixture@example.com', role: 'CUSTOMER' };
+const adminFixture = process.env.NEXA_UI_FIXTURE_ROLE === 'ADMIN';
+const user = { id: 'fixture-user', email: 'fixture@example.com', role: adminFixture ? 'ADMIN' : 'CUSTOMER' };
 const profile = { ...user, userId: user.id, fullName: 'UI Test Customer', phoneNumber: null, status: 'ACTIVE' };
 const conversations = [];
 const history = new Map();
 const failed = new Set();
 const transferReviews = new Map();
 const demoReviews = new Map();
-const products = {cards:[{id:"card-demo",displayName:"Showcase credit card",cardType:"CREDIT",status:"ACTIVE",accountId:"account-1",numberMasked:"•••• 4242",outstanding:"500",currencyCode:"INR"}],bills:[{id:"bill-demo",billerName:"Demo Electricity",status:"DUE",accountId:"account-1",amount:"100",currencyCode:"INR"}],mandates:[{id:"mandate-demo",payee:"Demo Music",status:"ACTIVE",accountId:"account-1",limit:"299",currencyCode:"INR"}]};
+const products = {
+  cards: [
+    {id:'card-demo',displayName:'Showcase credit card',cardType:'CREDIT',status:'ACTIVE',accountId:'account-1',numberMasked:'•••• 4242',outstanding:'500',currencyCode:'INR'},
+    {id:'debit-demo',displayName:'Everyday debit card',cardType:'DEBIT',status:'ACTIVE',accountId:'account-1',numberMasked:'•••• 1234',currencyCode:'INR'}
+  ],
+  bills: [
+    {id:'bill-demo',billerName:'Demo Electricity',reference:'DEMO-BILL-01',status:'DUE',accountId:'account-1',amount:'1840',currencyCode:'INR',dueAt:'2026-09-27'},
+    {id:'bill-internet',billerName:'Demo Broadband',reference:'DEMO-BILL-02',status:'UPCOMING',accountId:'account-1',amount:'799',currencyCode:'INR',dueAt:'2026-10-02'}
+  ],
+  mandates: [
+    {id:'mandate-demo',payee:'Demo Music',status:'ACTIVE',accountId:'account-1',accountNumberMasked:'•••• 1234',limit:'299',currencyCode:'INR',frequency:'MONTHLY'},
+    {id:'mandate-gym',payee:'Demo Gym',status:'PAUSED',accountId:'account-1',accountNumberMasked:'•••• 1234',limit:'1500',currencyCode:'INR',frequency:'MONTHLY'}
+  ],
+  loans: [{id:'loan-demo',displayName:'Demo personal loan',status:'ACTIVE',accountId:'account-1',numberMasked:'•••• 8842',outstanding:'120000',currencyCode:'INR',dueAt:'2026-10-05',nextEmi:'10661.85',interestRate:'12'}],
+  'scheduled-payments': [{id:'schedule-demo',payee:'Demo rent',status:'SCHEDULED',accountId:'account-1',amount:'15000',currencyCode:'INR',dueAt:'2026-10-01',frequency:'MONTHLY'}]
+};
 let sequence = 0;
 const account = { id: 'account-1', displayName: 'Savings', accountNumberMasked: '•••• 1234', accountType: 'SAVINGS', currencyCode: 'INR', availableBalance: '42350.75', status: 'ACTIVE', updatedAt: now() };
 const transactionFixtures = Array.from({length: 24}, (_, i) => ({ id: 'transaction-' + i, accountId: account.id, reference: 'NEXA-TEST-' + String(i).padStart(8, '0'), type: 'PAYMENT', merchantName: ['Swiggy', 'ACME Ltd · Salary', 'Uber', 'Rahul Sharma', 'बिजली बिल'][i % 5], category: ['Food & dining', 'Income', 'Transport', 'Transfer', 'Utilities'][i % 5], amount: ['-485.00', '85000.00', '-320.00', '-2500.00', '-2840.00'][i % 5], currencyCode: 'INR', status: i === 3 ? 'PENDING' : i === 4 ? 'FAILED' : 'POSTED', occurredAt: new Date(Date.now() - i * 16 * 60 * 60 * 1000).toISOString() }));
@@ -40,6 +56,7 @@ const server = http.createServer(async (req, res) => {
     let body = '';
     for await (const chunk of req) body += chunk;
     const input = body ? JSON.parse(body) : {};
+    if (adminFixture && require('./admin-ui-fixtures.cjs')(req, url, reply)) return;
     if (url.pathname.endsWith('/me')) { if (req.method === 'PATCH' || req.method === 'PUT') Object.assign(profile,input); return reply(profile); }
     if (url.pathname === '/api/v1/accounts') return reply([{...account, ledgerBalance: account.availableBalance}, {...account,id:'account-2',displayName:'Reserve',accountNumberMasked:'•••• 5678',availableBalance:'5000.00',ledgerBalance:'5000.00'}]);
     if (url.pathname === '/api/v1/accounts/account-1') return reply({...account, ledgerBalance: account.availableBalance});
@@ -67,6 +84,7 @@ const server = http.createServer(async (req, res) => {
       if(review.status==='REVIEW' && demoMatch[2]) {review.status=demoMatch[2]==='confirm'?'SIMULATED':'CANCELLED';if(review.status==='SIMULATED'){review.reference='DEMO-'+review.id;review.completedAt=now();}}
       return reply(review);
     }
+    if (url.pathname === '/api/v1/loans/salary-slip-requirements') return reply(['2026-06','2026-07','2026-08']);
     const productMatch=url.pathname.match(/^\/api\/v1\/(cards|bills|mandates|loans|scheduled-payments)(?:\/([^/]+))?$/);
     if(productMatch) {const rows=products[productMatch[1]]||[];return reply(productMatch[2]?rows.find(p=>p.id===productMatch[2])||{}:rows);}
     if (url.pathname === '/api/v1/money-transfers/prepare') {

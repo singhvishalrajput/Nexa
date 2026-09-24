@@ -20,10 +20,11 @@ function AccountLabel({ account }: { account: AccountSnapshot }) {
 export function AccountSummary({ accounts, onTransactions }: { accounts: AccountSnapshot[]; onTransactions: (account: AccountSnapshot) => void }) {
   return <BankingCollection type="ACCOUNTS" count={accounts.length} attention={collectionNotice(accounts)} label={t("Account balances")}>
     {accounts.map((account) => <div class="bank-account" key={account.id}>
-      <h3><AccountLabel account={account} /></h3>
-      <span class="bank-secondary">{humanize(account.accountType)} · {t("Available balance")}</span>
+      <h3>{account.displayName} <span class="bank-secondary">{safeMask(account.accountNumberMasked)}</span></h3>
+      <span class="bank-account-kind">{humanize(account.accountType)} {t("account")}</span>
+      <span class="bank-account-balance-label">{t("Available balance")}</span>
       <MoneyAmount amount={account.availableBalance} currency={account.currencyCode} />
-      {account.currentBalance != null && <span class="bank-secondary">{t("Current balance")} {formatMoney(account.currentBalance, account.currencyCode)}</span>}
+      {account.currentBalance != null && Number(account.currentBalance) !== Number(account.availableBalance) && <span class="bank-secondary">{t("Current balance")} {formatMoney(account.currentBalance, account.currencyCode)}</span>}
       <div class="bank-account-footer"><Status value={account.status} /><button type="button" class="bank-inline-action" onClick={() => onTransactions(account)}>{t("View transactions")}<span aria-hidden="true">→</span></button></div>
     </div>)}
   </BankingCollection>;
