@@ -1,4 +1,3 @@
-import { WorkspaceRail } from "../design/WorkspaceRail";
 import { Action } from "../design/Action";
 import "ojs/ojinputtext";
 import { BankingIcon } from "../BankingIcon";
@@ -369,9 +368,8 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   const context = <AccountContext accounts={accounts} loading={accountsLoading} error={accountsError} hidden={balancesHidden} onToggle={() => setBalancesHidden(value => !value)} onRetry={onRefreshAccounts}/>;
 
   return <div class="nexa-messenger experience-chat" lang={language}>
-    <div class="experience-rail-container" inert={historyModal}><WorkspaceRail page="assistant" name={session.profile.fullName}/></div>
     <a class="conversation-skip" href="#nexa-conversation-input" onClick={event => { event.preventDefault(); textarea.current?.focus(); }}>{t("Skip to conversation")}</a>
-    {wideLayout && <aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history messenger-history-sidebar" aria-label={t("Banking navigation and history")}>{historyContents}</aside>}
+    {wideLayout && <aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history messenger-history-sidebar" aria-label={t("Nexa workspace and conversation history")}>{historyContents}</aside>}
     <main class="messenger-main" aria-label={t("Nexa banking conversation")} inert={historyModal}>
       <header class="messenger-header">
         <button type="button" class="messenger-icon" onClick={onClose} aria-label={t("Open banking overview")}><ChatIcon name="back" /><span>{t("Banking")}</span></button>
@@ -465,6 +463,6 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
       </footer>
     </main>
     {contextOpen && <Modal title={t("Your accounts")} onClose={() => setContextOpen(false)}>{context}</Modal>}
-    {!wideLayout && <div hidden={!historyModal} inert={!historyModal} class="messenger-drawer-backdrop" onClick={closeHistory}><aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history" role="dialog" aria-modal="true" aria-label={t("Banking navigation and history")} onClick={(event) => event.stopPropagation()}>{historyContents}</aside></div>}
+    {!wideLayout && <div hidden={!historyModal} inert={!historyModal} class="messenger-drawer-backdrop" onClick={closeHistory}><aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history" role="dialog" aria-modal="true" aria-label={t("Nexa workspace and conversation history")} onClick={(event) => event.stopPropagation()}>{historyContents}</aside></div>}
   </div>;
 }

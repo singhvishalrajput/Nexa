@@ -348,3 +348,21 @@ a { text-decoration:none; }
   .experience-workspace .bank-filters > button { grid-row:2; }
   .activity-filter-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* The messenger owns one compact left-side workspace/history surface, replacing
+   the former separate icon rail and history column. */
+@media (min-width:900px) {
+  .nexa-messenger.experience-chat { grid-template-columns:240px minmax(0,1fr); }
+  .experience-chat .messenger-history-sidebar { grid-column:1; grid-row:1; width:240px; border-left:0; border-right:1px solid var(--nexa-border); }
+  .experience-chat .messenger-main { grid-column:2; grid-row:1; }
+}
+
+
+/* Keep the chat sidebar focused on history. More banking expands over the
+   sidebar rather than displacing history or making the footer dominate it. */
+.experience-chat .messenger-history-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.experience-chat .experience-banking-menu { position:relative; flex:0 0 auto; margin:0; }
+.experience-chat .experience-banking-menu > summary { min-height:36px; }
+.experience-chat .experience-banking-menu[open] > .sidebar-navigation { position:absolute; z-index:4; inset:auto 0 calc(100% + 8px); max-height:min(52dvh,460px); overflow-y:auto; padding:8px; border:1px solid var(--nexa-border); border-radius:12px; background:var(--nexa-surface); box-shadow:var(--nexa-shadow); }
+.experience-chat .sidebar-footer { flex:0 0 auto; margin-top:0; padding-top:8px; }
+.experience-chat .sidebar-footer .sidebar-session { margin-top:4px; padding-top:4px; }
