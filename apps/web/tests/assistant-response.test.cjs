@@ -28,6 +28,7 @@ test('loan chat summaries render new loans without a masked number alongside imp
     if (node == null || typeof node === 'boolean') return '';
     if (Array.isArray(node)) return node.map(text).join(' ');
     if (typeof node !== 'object') return String(node);
+    if (node.type?.name === 'SensitiveNumber') return node.props.masked || 'Number unavailable';
     return text(node.props?.children);
   }
   const rendered = text(result);
@@ -156,6 +157,7 @@ test('Hindi chat displays the same translated balance introduction and built-in 
   function text(node) {
     if(node==null||typeof node==='boolean')return '';
     if(Array.isArray(node))return node.map(text).join(' ');
+    if (node.type?.name === 'SensitiveNumber') return node.props.masked || 'Number unavailable';
     return typeof node==='object'?text(node.props?.children):String(node);
   }
   setLocale('hi-IN');

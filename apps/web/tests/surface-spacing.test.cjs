@@ -22,6 +22,9 @@ function component(file, dependencies) {
 
 test('chat transaction history uses the padded response surface, not an unpadded nested card', () => {
   const {BankingResponse} = component('components/chat/BankingResponse.tsx', {
+    '../BankingIcon':{},
+    '../../features/banking/SensitiveNumber':{},
+    '../../features/banking/CardActions':{},
     '../../services/locale':loadSource('services/locale.ts'),
     '../../services/reply-localization':loadSource('services/reply-localization.ts'),
     '../../services/banking-content':loadSource('services/banking-content.ts'),

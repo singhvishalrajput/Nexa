@@ -43,6 +43,10 @@ public class Account {
   private String productType;
   private String numberMasked;
   private String dueAt;
+  public String getProductType() { return productType; }
+  public String getProductStatus() { return productStatus; }
+  public String getNumberMasked() { return numberMasked; }
+  public BigDecimal getCreditLimit() { return creditLimit; }
 
   @Column(length = 80)
   private String applicationKey;

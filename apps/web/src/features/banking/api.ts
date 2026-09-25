@@ -34,6 +34,7 @@ export type Filters = {
     page?: number;
 };
 export const bankApi = {
+    billFundingAccounts: (token: string) => authenticatedRequest<BankAccount[]>("/cards/bill-funding-accounts", token),
     accounts: getAccounts,
     account: (token: string, id: string) => authenticatedRequest<BankAccount>("/accounts/" + encodeURIComponent(id), token),
     transactions: (token: string, accountId: string, filters: Filters = {}) => {

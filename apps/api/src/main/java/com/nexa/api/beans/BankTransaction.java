@@ -16,10 +16,15 @@ public class BankTransaction {
   private String recordKind = "PAYMENT";
 
   private String parentId;
+  private String targetId;
   private String operation;
 
   public void setParentId(String value) {
     parentId = value;
+  }
+
+  public void setTargetId(String value) {
+    targetId = value;
   }
 
   public void setOperation(String value) {
@@ -34,12 +39,24 @@ public class BankTransaction {
     return merchantName;
   }
 
+  public void setMerchantName(String value) {
+    merchantName = value;
+  }
+
   public String getCategory() {
     return category;
   }
 
+  public void setCategory(String value) {
+    category = value;
+  }
+
   public String getPaymentMethod() {
     return paymentMethod;
+  }
+
+  public void setPaymentMethod(String value) {
+    paymentMethod = value;
   }
 
   private String transactionType;

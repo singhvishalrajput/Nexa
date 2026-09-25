@@ -7,7 +7,7 @@ for (const extension of ['.ts', '.tsx']) {
     compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2021, jsx: ts.JsxEmit.ReactJSX, jsxImportSource: 'preact'}
   }).outputText, filename);
 }
-const {SidebarNavigation, SidebarFooter} = require('../src/components/SidebarNavigation.tsx');
+const {SidebarNavigation, SidebarFooter, primaryNavigation} = require('../src/components/SidebarNavigation.tsx');
 const {routes} = require('../src/features/banking/utils.ts');
 const {setLocale, t} = require('../src/services/locale.ts');
 function nodes(vnode) {
@@ -35,6 +35,10 @@ test('secondary destinations stay visible and exactly one current page is announ
     assert.equal(current[0].props.href, '#/' + page);
     assert.ok(!tree.some(n => n.type === 'details' || n.type === 'summary'));
   }
+});
+
+test('overview sits directly below Chat in the primary sidebar navigation', () => {
+  assert.deepEqual(primaryNavigation.map(item => item.page), ['assistant', 'overview', 'accounts', 'payments', 'cards', 'transactions']);
 });
 
 test('Hindi navigation keeps route identifiers and localizes labels', () => {

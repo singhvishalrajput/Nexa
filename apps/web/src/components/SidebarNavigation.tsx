@@ -6,13 +6,13 @@ import { t } from "../services/locale";
 type NavigationItem = { page: Route; label: string; icon: BankingIconName };
 export const primaryNavigation: NavigationItem[] = [
   { page: "assistant", label: "Chat", icon: "chat" },
+  { page: "overview", label: "Overview", icon: "overview" },
   { page: "accounts", label: "Accounts", icon: "accounts" },
   { page: "payments", label: "Payments", icon: "payments" },
   { page: "cards", label: "Cards", icon: "cards" },
   { page: "transactions", label: "Transactions", icon: "transactions" }
 ];
 export const secondaryNavigation: NavigationItem[] = [
-  { page: "overview", label: "Overview", icon: "overview" },
   { page: "send-money", label: "Send money", icon: "arrow" },
   { page: "beneficiaries", label: "Payees", icon: "people" },
   { page: "bills", label: "Bills", icon: "transactions" },

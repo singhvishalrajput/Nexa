@@ -1,6 +1,6 @@
 # Frontend experience migration
 
-`apps/frontend` is the visual reference. `apps/web` remains the deployable application and owns authentication, APIs, permissions and workflows. The reference's local banking simulation is not used for real banking.
+`apps/web` is the sole frontend application and owns the migrated visual design, authentication, APIs, permissions and workflows. The former `apps/frontend` design prototype was removed after confirming that it contained only local banking simulations and no backend integrations.
 
 ## Capability map
 
@@ -35,7 +35,7 @@ OJET VComponent/Preact is the existing Oracle JET runtime, not React. New intera
 - Browser checks used the UI fixture server: desktop conversation/account navigation, account dialog, sign-out and authentication artwork, landing page, transfer review/edit and retained values, and phone navigation/chat.
 - A normal OJET build initially passed. Subsequent default staging builds encountered Windows `EBUSY` locks in generated JET theme images. Final verification used an isolated staging directory under ignored `.tools`, the Oracle JET build pipeline, and explicit TypeScript emission; browser checks ran against that output. No build configuration or dependency versions were changed.
 
-The source blueprint is retained in `apps/frontend`. Its illustrative landing assets are copied into `apps/web`; its simulated banking/session implementation is not imported. Existing native controls in retained business screens remain framework-free; the new shared actions, authentication fields, language selector, transfer controls, progress indicator and dialogs use Oracle JET.
+The design blueprint was incorporated into `apps/web`, including its illustrative landing assets. Asset provenance is retained in `apps/web/docs/ASSET_PROVENANCE.md`. The redundant prototype and its simulated banking/session implementation have been removed; the original source remains in Git history. Existing native controls in retained business screens remain framework-free; the new shared actions, authentication fields, language selector, transfer controls, progress indicator and dialogs use Oracle JET.
 
 ## Loading and contrast follow-up
 

@@ -19,10 +19,11 @@ export function BankingCollection({ type, count, label, attention, children }: {
   type: string; count: number; label: string; attention?: string; children: ComponentChildren;
 }) {
   const layout = collectionLayout(type, count);
-  // CSS wraps comparisons into one column on phones. The feed is the only scroll area.
-  return <section class={"bank-collection is-" + layout} aria-label={label}>
+  const cards = type === "CARDS";
+  const carousel = cards && count > 1;
+  return <section class={"bank-collection is-" + layout + (cards ? " is-card-collection" : "") + (carousel ? " is-card-carousel" : "")} aria-label={label}>
     <div class="bank-collection-caption"><span>{count} {count === 1 ? t("item") : t("items")}</span></div>
     {attention && <p class="bank-collection-attention">{attention}</p>}
-    <div class="bank-collection-items">{children}</div>
+    <div class="bank-collection-items" tabIndex={carousel ? 0 : undefined} role={carousel ? "region" : undefined} aria-label={carousel ? t("Scroll to view cards") : undefined}>{children}</div>
   </section>;
 }

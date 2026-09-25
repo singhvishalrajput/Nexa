@@ -34,7 +34,7 @@ public class PaymentItemService {
         || request.dueAt() == null || blank(request.category(), 80) || blank(request.customerNumber(), 80))
       throw new InvalidRequestException("Supply a biller, amount, due date, category and customer number");
     String id = "B-" + UUID.randomUUID();
-    db.update("INSERT INTO transactions(id,record_kind,user_id,display_name,amount,minimum_amount,currency_code,due_at,status,category,destination_masked,transaction_reference,created_at,updated_at) VALUES(?,'BILL',?,?,?,?,?,'UPCOMING',?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+    db.update("INSERT INTO transactions(id,record_kind,user_id,display_name,amount,minimum_amount,currency_code,due_at,status,category,destination_masked,transaction_reference,created_at,updated_at) VALUES(?,'BILL',?,?,?,?,?,?,'UPCOMING',?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
         id, user.userId(), request.billerName().trim(), request.amount(), request.minimumAmount(), "INR", request.dueAt().toString(), request.category().trim(), request.customerNumber().trim(), id);
     return bill(id);
   }

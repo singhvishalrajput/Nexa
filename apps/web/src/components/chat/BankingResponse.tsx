@@ -1,9 +1,12 @@
+import { SensitiveNumber } from "../../features/banking/SensitiveNumber";
+import { BankingIcon } from "../BankingIcon";
+import { CardSupport, DigitalDebitCreate, ProductPayment } from "../../features/banking/CardActions";
 import { getLocale, t } from "../../services/locale";
 import { accountDisplayName } from "../../services/reply-localization";
 import { SpendingSummary } from "./SpendingSummary";
 import { h } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { AccountSnapshot, BankingContent, Money, TransactionSnapshot, dayLabel, dueLabel, formatDate, formatMoney, humanize, safeMask, transactionDirection, statusPresentation, completedStatuses } from "../../services/banking-content";
+import { AccountSnapshot, BankingContent, Money, TransactionSnapshot, dayLabel, dueLabel, formatDate, formatMoney, humanize, transactionDirection, statusPresentation, completedStatuses } from "../../services/banking-content";
 import { BankingCollection, collectionNotice } from "./BankingCollection";
 import { Status, Detail } from "../../features/banking/ui";
 import { getTransactionPage } from "../../services/banking";
@@ -11,17 +14,17 @@ import { getTransactionPage } from "../../services/banking";
 export function MoneyAmount({ amount, currency, signed = false }: { amount: Money; currency: string; signed?: boolean }) {
   return <strong class="bank-money">{formatMoney(amount, currency, signed)}</strong>;
 }
-function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: import("preact").ComponentChildren }) {
   return <header class="bank-section-header"><h3 tabIndex={-1}>{t(title)}</h3>{subtitle && <p>{subtitle}</p>}</header>;
 }
 function AccountLabel({ account }: { account: AccountSnapshot }) {
-  return <span>{accountDisplayName(account.displayName)} <span class="bank-secondary">{safeMask(account.accountNumberMasked)}</span></span>;
+  return <span>{accountDisplayName(account.displayName)} <span class="bank-secondary"><SensitiveNumber id={account.id} masked={account.accountNumberMasked}/></span></span>;
 }
 
 export function AccountSummary({ accounts, onTransactions }: { accounts: AccountSnapshot[]; onTransactions: (account: AccountSnapshot) => void }) {
   return <BankingCollection type="ACCOUNTS" count={accounts.length} attention={collectionNotice(accounts)} label={t("Account balances")}>
     {accounts.map((account) => <div class="bank-account" key={account.id}>
-      <h3>{accountDisplayName(account.displayName)} <span class="bank-secondary">{safeMask(account.accountNumberMasked)}</span></h3>
+      <h3>{accountDisplayName(account.displayName)} <span class="bank-secondary"><SensitiveNumber id={account.id} masked={account.accountNumberMasked}/></span></h3>
       <span class="bank-account-kind">{humanize(account.accountType)} {t("account")}</span>
       <span class="bank-account-balance-label">{t("Available balance")}</span>
       <MoneyAmount amount={account.availableBalance} currency={account.currencyCode} />
@@ -121,7 +124,7 @@ function TransactionPanel({ account, items = [], total = 0, accessToken, all = f
   if (selected) return <TransactionDetails transaction={selected} account={account} onBack={() => setSelected(null)} />;
   return <div ref={panel} class={all || lastSelected.current ? "bank-transaction-panel messenger-arrival" : "bank-transaction-panel"}>
     {onBack && <button type="button" class="bank-inline-action" onClick={onBack}>{t("← Back to balances")}</button>}
-    <SectionHeader title={expanded ? t("Transactions") : t("Recent transactions")} subtitle={`${accountDisplayName(account.displayName)} ${safeMask(account.accountNumberMasked)}`} />
+    <SectionHeader title={expanded ? t("Transactions") : t("Recent transactions")} subtitle={`${accountDisplayName(account.displayName)} $<SensitiveNumber id={account.id} masked={account.accountNumberMasked}/>`} />
     {busy ? <p role="status" class="bank-secondary">{t("Loading transactions…")}</p> : error ? <div role="alert"><p>{error}</p><button class="bank-inline-action" type="button" onClick={() => setRetry(retry + 1)}>{t("Retry")}</button></div> : <>
       {loaded.length ? <BankingCollection type="TRANSACTIONS" count={loaded.length} attention={collectionNotice(loaded)} label={t("Transactions")}><TransactionList items={loaded} onSelect={setSelected} /></BankingCollection> : <p class="bank-secondary">{t("No transactions to show.")}</p>}
       {!expanded && count > loaded.length && <button type="button" class="bank-inline-action bank-view-all" onClick={() => { jumpToStart.current = true; setBusy(true); setExpanded(true); }}>{t("View all transactions")}<span class="bank-secondary">({count})</span> →</button>}
@@ -136,7 +139,7 @@ function EmptySummary({ title }: { title: string }) {
 }
 export function MandateList({ content }: { content: Extract<BankingContent, { type: "MANDATES" }> }) {
  if (!content.mandates.length) return <EmptySummary title="AutoPay mandates" />;
- return <><SectionHeader title={t("AutoPay mandates")} /><BankingCollection type="MANDATES" count={content.mandates.length} attention={collectionNotice(content.mandates)} label={t("AutoPay mandates")}>{content.mandates.map((item) => <section class="bank-summary-item" key={item.id}><div class="bank-item-heading"><h4>{item.payee}</h4><Status value={item.status} /></div><span class="bank-secondary">{t("Up to")}</span><MoneyAmount amount={item.limit} currency={item.currencyCode} /><dl><Detail label={t("Frequency")}>{humanize(item.frequency)}</Detail><Detail label={t("Next debit")}>{item.nextDebit ? formatDate(item.nextDebit) : t("Not scheduled")}</Detail><Detail label={t("From")}>{item.accountName} {safeMask(item.accountNumberMasked)}</Detail><Detail label={t("Reference")}>{item.id}</Detail></dl></section>)}</BankingCollection></>;
+ return <><SectionHeader title={t("AutoPay mandates")} /><BankingCollection type="MANDATES" count={content.mandates.length} attention={collectionNotice(content.mandates)} label={t("AutoPay mandates")}>{content.mandates.map((item) => <section class="bank-summary-item" key={item.id}><div class="bank-item-heading"><h4>{item.payee}</h4><Status value={item.status} /></div><span class="bank-secondary">{t("Up to")}</span><MoneyAmount amount={item.limit} currency={item.currencyCode} /><dl><Detail label={t("Frequency")}>{humanize(item.frequency)}</Detail><Detail label={t("Next debit")}>{item.nextDebit ? formatDate(item.nextDebit) : t("Not scheduled")}</Detail><Detail label={t("From")}>{item.accountName} <SensitiveNumber kind="mandates" id={item.id} masked={item.accountNumberMasked}/></Detail><Detail label={t("Reference")}>{item.id}</Detail></dl></section>)}</BankingCollection></>;
 }
 export function ScheduledPaymentList({ content }: { content: Extract<BankingContent, { type: "UPCOMING" }> }) {
  if (!content.payments.length) return <EmptySummary title="Upcoming payments" />;
@@ -144,25 +147,58 @@ export function ScheduledPaymentList({ content }: { content: Extract<BankingCont
 }
 export function BeneficiaryList({ content }: { content: Extract<BankingContent, { type: "BENEFICIARIES" }> }) {
  if (!content.beneficiaries.length) return <EmptySummary title="Your beneficiaries" />;
- return <><SectionHeader title={t("Your beneficiaries")} /><BankingCollection type="BENEFICIARIES" count={content.beneficiaries.length} attention={collectionNotice(content.beneficiaries)} label={t("Your beneficiaries")}>{content.beneficiaries.map((item) => <div class="bank-beneficiary" key={item.id}><div><h4>{item.displayName}</h4><p class="bank-secondary">{item.bankName} {safeMask(item.accountNumberMasked)}</p><Status value={item.status} /><p class="bank-secondary">{t("Reference")} {item.id}</p></div></div>)}</BankingCollection></>;
+ return <><SectionHeader title={t("Your beneficiaries")} /><BankingCollection type="BENEFICIARIES" count={content.beneficiaries.length} attention={collectionNotice(content.beneficiaries)} label={t("Your beneficiaries")}>{content.beneficiaries.map((item) => <div class="bank-beneficiary" key={item.id}><div><h4>{item.displayName}</h4><p class="bank-secondary">{item.bankName} <SensitiveNumber kind="beneficiaries" id={item.id} masked={item.accountNumberMasked}/></p><Status value={item.status} /><p class="bank-secondary">{t("Reference")} {item.id}</p></div></div>)}</BankingCollection></>;
 }
-export function CardSummary({ content }: { content: Extract<BankingContent, { type: "CARDS" }> }) {
- if (!content.cards.length) return <EmptySummary title="Your cards" />;
- return <><SectionHeader title={t("Your cards")} /><BankingCollection type="CARDS" count={content.cards.length} attention={collectionNotice(content.cards)} label={t("Your cards")}>{content.cards.map((item) => <section class="bank-summary-item" key={item.id}><h4>{item.displayName} <span class="bank-secondary">{safeMask(item.numberMasked)}</span></h4><Status value={item.status} />{item.cardType === "DEBIT" ? <p class="bank-secondary">{t("Debit card")}</p> : <dl><Detail label={t("Outstanding")}><MoneyAmount amount={item.outstanding} currency={item.currencyCode} /></Detail><Detail label={t("Available limit")}><MoneyAmount amount={item.availableLimit} currency={item.currencyCode} /></Detail><Detail label={t("Payment due")}>{item.dueAt ? formatDate(item.dueAt) : t("Not scheduled")}</Detail></dl>}<p class="bank-secondary">{t("Reference")} {item.id}</p></section>)}</BankingCollection></>;
+function CardDisclosure({ label, children }: { label: string; children: import("preact").ComponentChildren }) {
+ const [open, setOpen] = useState(false);
+ return <details class="bank-card-disclosure" onToggle={event => setOpen(event.currentTarget.open)}>
+   <summary>{t(label)}</summary>{open && children}
+ </details>;
+}
+export function CardSummary({ content, accessToken }: { content: Extract<BankingContent, { type: "CARDS" }>; accessToken?: string }) {
+ if (!content.cards.length) return <><EmptySummary title="Your cards" />{accessToken && <>
+   <CardDisclosure label="Create a digital debit card"><DigitalDebitCreate token={accessToken}/></CardDisclosure>
+   <CardDisclosure label="Card support"><CardSupport token={accessToken}/></CardDisclosure>
+ </>}</>;
+ return <><SectionHeader title={t("Your cards")} />
+   <BankingCollection type="CARDS" count={content.cards.length} attention={collectionNotice(content.cards)} label={t("Your cards")}>
+     {content.cards.map(item => <section class="bank-summary-item bank-chat-card" key={item.id}>
+       <div class="bank-chat-card-heading">
+         <span class="bank-chat-card-icon" aria-hidden="true"><BankingIcon name="cards"/></span>
+         <div><h4>{item.displayName}</h4><span class="bank-secondary">{humanize(item.cardType || "CARD")} · <SensitiveNumber kind="cards" id={item.id} masked={item.numberMasked}/></span></div>
+         <Status value={item.status}/>
+       </div>
+       {item.cardType !== "DEBIT" && <dl class="bank-chat-card-facts">
+         <Detail label={t("Outstanding")}><MoneyAmount amount={item.outstanding} currency={item.currencyCode}/></Detail>
+         <Detail label={t("Payment due")}>{item.dueAt ? formatDate(item.dueAt) : t("Not scheduled")}</Detail>
+       </dl>}
+       <div class="bank-chat-card-actions">
+         <CardDisclosure label="Card details">
+           <dl>{item.cardType !== "DEBIT" && <Detail label={t("Available limit")}><MoneyAmount amount={item.availableLimit} currency={item.currencyCode}/></Detail>}
+             <Detail label={t("Reference")}>{item.id}</Detail></dl>
+           <a class="bank-inline-action" href={"#/cards/" + encodeURIComponent(item.id)}>{t("View details")} →</a>
+         </CardDisclosure>
+         {accessToken && item.cardType === "CREDIT" && item.status === "ACTIVE" && Number(item.outstanding) > 0 && <CardDisclosure label="Pay credit-card bill"><ProductPayment token={accessToken} product={item} operation="PAY_CARD"/></CardDisclosure>}
+       </div>
+     </section>)}
+   </BankingCollection>
+   {accessToken && <CardDisclosure label="Card support"><CardSupport token={accessToken}/></CardDisclosure>}
+ </>;
 }
 export function LoanSummary({ content }: { content: Extract<BankingContent, { type: "LOANS" }> }) {
  if (!content.loans.length) return <EmptySummary title="Your loans" />;
- return <><SectionHeader title={t("Your loans")} /><BankingCollection type="LOANS" count={content.loans.length} attention={collectionNotice(content.loans)} label={t("Your loans")}>{content.loans.map((item) => <section class="bank-summary-item" key={item.id}><h4>{item.displayName} <span class="bank-secondary">{safeMask(item.numberMasked)}</span></h4><span class="bank-secondary">{t("Next EMI")}</span><MoneyAmount amount={item.nextEmi} currency={item.currencyCode} /><dl><Detail label={t("Due")}>{item.dueAt ? formatDate(item.dueAt) : t("Not scheduled")}</Detail><Detail label={t("Outstanding")}><MoneyAmount amount={item.outstanding} currency={item.currencyCode} /></Detail></dl><Status value={item.status} /></section>)}</BankingCollection></>;
+ return <><SectionHeader title={t("Your loans")} /><BankingCollection type="LOANS" count={content.loans.length} attention={collectionNotice(content.loans)} label={t("Your loans")}>{content.loans.map((item) => <section class="bank-summary-item" key={item.id}><h4>{item.displayName} <span class="bank-secondary"><SensitiveNumber kind="loans" id={item.id} masked={item.numberMasked}/></span></h4><span class="bank-secondary">{t("Next EMI")}</span><MoneyAmount amount={item.nextEmi} currency={item.currencyCode} /><dl><Detail label={t("Due")}>{item.dueAt ? formatDate(item.dueAt) : t("Not scheduled")}</Detail><Detail label={t("Outstanding")}><MoneyAmount amount={item.outstanding} currency={item.currencyCode} /></Detail></dl><Status value={item.status} /></section>)}</BankingCollection></>;
 }
 
-export function BillList({ content }: { content: Extract<BankingContent, { type: "BILLS" }> }) {
+export function BillList({ content, accessToken }: { content: Extract<BankingContent, { type: "BILLS" }>; accessToken?: string }) {
  if (!content.bills.length) return <EmptySummary title="Your bills" />;
  return <><SectionHeader title={t("Your bills")} /><BankingCollection type="BILLS" count={content.bills.length} attention={collectionNotice(content.bills)} label={t("Your bills")}>{content.bills.map(bill => <section class="bank-summary-item" key={bill.id}>
  <div class="bank-item-heading"><h4 dir="auto">{bill.billerName}</h4><MoneyAmount amount={bill.amount} currency={bill.currencyCode} /></div>
  <div class="bank-item-heading"><span class="bank-secondary">{bill.dueAt ? dueLabel(bill.dueAt) : t("No due date")}</span><Status value={bill.status} /></div>
  <p class="bank-secondary">{t("Reference")} {bill.id}</p>
+ {accessToken && ["UPCOMING", "DUE", "OVERDUE", "FAILED"].includes(bill.status) && <ProductPayment token={accessToken} product={bill} operation="PAY_BILL"/>}
  {bill.category && <p class="bank-secondary">{humanize(bill.category)}</p>}
- {bill.customerNumberMasked && <p class="bank-secondary">{t("Customer")} {safeMask(bill.customerNumberMasked)}</p>}
+ {bill.customerNumberMasked && <p class="bank-secondary">{t("Customer")} <SensitiveNumber kind="bills" id={bill.id} masked={bill.customerNumberMasked}/></p>}
  </section>)}</BankingCollection></>;
 }
 function BalancesResponse({ content, accessToken }: RendererProps<"ACCOUNTS">) {

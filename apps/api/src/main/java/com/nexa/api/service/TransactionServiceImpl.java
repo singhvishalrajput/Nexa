@@ -127,6 +127,20 @@ public class TransactionServiceImpl implements TransactionService {
 
   @Override
   @Transactional
+  public BankTransaction payBill(
+      TransactionRequest request, String billId, String billerName, String category) {
+    BankTransaction transaction = withdraw(request);
+    transaction.setParentId(billId);
+    transaction.setTargetId(billId);
+    transaction.setOperation("BILL_PAYMENT");
+    transaction.setMerchantName(billerName);
+    transaction.setCategory(category);
+    transaction.setPaymentMethod("BILL_PAYMENT");
+    return transactionDao.save(transaction);
+  }
+
+  @Override
+  @Transactional
   public BankTransaction transfer(TransactionRequest request) {
     validateAmount(request.getAmount());
 

@@ -14,6 +14,16 @@ Flyway owns schema creation and migration; Hibernate validates it. Read [the cut
 
 ## APIs
 
+Interactive OpenAPI documentation is available after the API starts:
+
+- Swagger UI: `http://localhost:8088/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8088/v3/api-docs` (YAML: `/v3/api-docs.yaml`)
+
+Use Swagger UI's **Authorize** control to provide an access token as `Bearer <JWT>`. The API accepts
+an optional `X-Correlation-ID` request header (and returns it on every response) to correlate calls
+with logs. The generated specification includes every controller route, its inferred request/response
+schemas and validation constraints, reusable common error responses, and the route's JWT role requirement.
+
 - Public: `/api/v1/health`, `/actuator/health`, and `/api/v1/auth/{register,login,refresh,logout}`.
 - Customer: `/api/v1/me`, `/api/v1/accounts`, balances and histories, `/api/v1/transactions`, conversations, beneficiaries and banking products. Ownership comes from the signed JWT subject.
 - Administrator: the source APIs at `/api/customers`, `/api/accounts`, `/api/transactions`, `/api/journal-entries`, `/api/ledger-entries`. All original CRUD/search/filter routes are retained. Deposit, withdraw and transfer use `POST /api/transactions/{deposit,withdraw,transfer}` with `sourceAccountId`, `destinationAccountId` and positive `amount` as appropriate.

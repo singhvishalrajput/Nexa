@@ -25,9 +25,11 @@ public class WorkflowService {
   private final CustomerTransferService transfers;
   private final ShowcaseService showcase;
   private final CardQueryService cards;
+  @org.springframework.beans.factory.annotation.Autowired private CardService cardService;
   private final MandateQueryService mandates;
   private final LoanQueryService loans;
   private final CreditMandateService credit;
+  private final BillPaymentService billPayments;
   private final com.nexa.api.service.CurrentUserProvider user;
 
   public WorkflowService(
@@ -45,6 +47,7 @@ public class WorkflowService {
       MandateQueryService mandates,
       LoanQueryService loans,
       CreditMandateService credit,
+      BillPaymentService billPayments,
       com.nexa.api.service.CurrentUserProvider user) {
     this.db = db;
     this.json = json;
@@ -60,6 +63,7 @@ public class WorkflowService {
     this.mandates = mandates;
     this.loans = loans;
     this.credit = credit;
+    this.billPayments = billPayments;
     this.user = user;
   }
 
@@ -153,6 +157,14 @@ public class WorkflowService {
                           + " to "
                           + name(old.targetLabel())
                           + "."
+                      : Set.of("PAY_BILL", "PAY_CARD").contains(old.operation())
+                          ? (old.operation().equals("PAY_CARD") ? "Credit-card payment posted: " : "Bill payment posted: ")
+                              + old.currency()
+                              + " "
+                              + old.amount()
+                              + " to "
+                              + name(old.targetLabel())
+                              + "."
                       : old.operation().equals("CANCEL_MANDATE")
                           ? "Simulation recorded; no external provider was contacted. Your cancellation for "
                               + name(old.targetLabel())
@@ -382,7 +394,7 @@ public class WorkflowService {
   }
 
   private List<Workflow.Choice> sources(Workflow w) {
-    return accounts.currentAccounts().stream()
+    return (w.operation().equals("PAY_BILL") ? cardService.billFundingAccounts() : accounts.currentAccounts()).stream()
         .filter(
             a ->
                 "ACTIVE".equals(a.status())
@@ -523,7 +535,7 @@ public class WorkflowService {
     String sourceText = null, targetText = text;
     boolean sourceBeforeSe = false;
     var from =
-        java.util.regex.Pattern.compile("(?:\\bfrom|\\buse) (.+?)(?: to | for |$)").matcher(text);
+        java.util.regex.Pattern.compile("(?:\\bfrom|\\buse|\\busing|\\bwith) (.+?)(?: to | for |$)").matcher(text);
     var se = java.util.regex.Pattern.compile("(.+?) se(?: |$)").matcher(text);
     if (from.find()) {
       sourceText = from.group(1);

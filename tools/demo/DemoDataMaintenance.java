@@ -161,9 +161,15 @@ public class DemoDataMaintenance {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length < 1 || !Set.of("inventory", "cleanup", "fund", "verify-backup").contains(args[0])
-        || args.length != (args[0].equals("verify-backup")?2:1))
-      throw new IllegalArgumentException("Use inventory, cleanup, fund or verify-backup <directory>");
+    if (args.length < 1
+        || !Set.of("inventory", "cleanup", "fund", "verify-backup").contains(args[0])
+        || (args[0].equals("verify-backup") && args.length != 2)
+        || (!args[0].equals("verify-backup")
+            && !args[0].equals("fund")
+            && args.length != 1)
+        || (args[0].equals("fund") && (args.length < 1 || args.length > 2)))
+      throw new IllegalArgumentException(
+          "Use inventory, cleanup, fund [target-INR], or verify-backup <directory>");
     var props = new Properties();
     try (var r = Files.newBufferedReader(Path.of("apps/api/application-local.properties"))) {
       props.load(r);
@@ -194,7 +200,9 @@ public class DemoDataMaintenance {
           verifyRestore(directory);db.rollback();return;
         }
         if (args[0].equals("fund")) {
-          fundBank();
+          BigDecimal target =
+              args.length == 2 ? new BigDecimal(args[1]) : new BigDecimal("10000000.00");
+          fundBank(target);
           db.commit();
           return;
         }
@@ -348,7 +356,15 @@ public class DemoDataMaintenance {
     System.out.println("Backup restore rehearsal passed");
   }
 
-  static void fundBank() throws Exception {
+  static void fundBank(BigDecimal target) throws Exception {
+    if (target.signum() <= 0
+        || target.scale() > 2
+        || target.compareTo(new BigDecimal("99999999999999999.99")) > 0)
+      throw new IllegalArgumentException(
+          "Funding target must be a positive INR amount with up to 2 decimals.");
+    target = target.setScale(2);
+    String capitalId = "TX-DC-" + target.toPlainString().replace('.', 'p');
+    String journalReference = "J-DC-" + target.toPlainString().replace('.', 'p');
     var accounts =
         rows(
             "SELECT id,account_number,balance FROM accounts WHERE"
@@ -356,8 +372,8 @@ public class DemoDataMaintenance {
                 + " account_type='CASH') ORDER BY id FOR UPDATE");
     if (accounts.size() != 2)
       throw new IllegalStateException("Expected bank funding and system cash accounts");
-    if (!rows("SELECT id FROM transactions WHERE id='TX-DEMO-BANK-CAPITAL'").isEmpty()) {
-      System.out.println("Bank demo capital already posted");
+    if (!rows("SELECT id FROM transactions WHERE id=" + text(capitalId)).isEmpty()) {
+      System.out.println("Bank capital for this target was already posted");
       return;
     }
     var bank =
@@ -370,35 +386,42 @@ public class DemoDataMaintenance {
             .filter(a -> !a.get("ID").equals(bank.get("ID")))
             .findFirst()
             .orElseThrow();
-    BigDecimal amount = new BigDecimal("10000000").subtract((BigDecimal) bank.get("BALANCE"));
+    BigDecimal amount = target.subtract((BigDecimal) bank.get("BALANCE"));
     if (amount.signum() <= 0) return;
     execute(
         "INSERT INTO"
             + " transactions(id,record_kind,transaction_type,destination_account_id,amount,currency_code,status,operation,transaction_reference,created_at,completed_at)"
-            + " VALUES('TX-DEMO-BANK-CAPITAL','PAYMENT','DEPOSIT',?,?,'INR','SUCCESS','DEMO_BANK_CAPITAL','TX-DEMO-BANK-CAPITAL',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+            + " VALUES(?,'PAYMENT','DEPOSIT',?,?,'INR','SUCCESS','DEMO_BANK_CAPITAL',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+        capitalId,
         bank.get("ID"),
-        amount);
+        amount,
+        capitalId);
     execute(
         "INSERT INTO journal_entries(transaction_id,entry_reference,entry_type,status,created_at)"
-            + " VALUES('TX-DEMO-BANK-CAPITAL','J-DEMO-BANK-CAPITAL','TRANSACTION','POSTED',CURRENT_TIMESTAMP)");
+            + " VALUES(?,?,'TRANSACTION','POSTED',CURRENT_TIMESTAMP)",
+        capitalId,
+        journalReference);
     execute(
         "INSERT INTO ledger_entries(journal_entry_id,account_id,entry_type,amount,created_at)"
             + " SELECT id,?,'DEBIT',?,CURRENT_TIMESTAMP FROM journal_entries WHERE"
-            + " transaction_id='TX-DEMO-BANK-CAPITAL'",
+            + " transaction_id=?",
         cash.get("ID"),
-        amount);
+        amount,
+        capitalId);
     execute(
         "INSERT INTO ledger_entries(journal_entry_id,account_id,entry_type,amount,created_at)"
             + " SELECT id,?,'CREDIT',?,CURRENT_TIMESTAMP FROM journal_entries WHERE"
-            + " transaction_id='TX-DEMO-BANK-CAPITAL'",
+            + " transaction_id=?",
         bank.get("ID"),
-        amount);
+        amount,
+        capitalId);
     for (var a : accounts)
       execute(
           "UPDATE accounts SET balance=balance+?,version=version+1,updated_at=CURRENT_TIMESTAMP"
               + " WHERE id=?",
           amount,
           a.get("ID"));
-    System.out.println("Bank reserve funded to INR 10000000 with a balanced capital journal");
+    System.out.println(
+        "Bank reserve funded to INR " + target.toPlainString() + " with a balanced capital journal");
   }
 }

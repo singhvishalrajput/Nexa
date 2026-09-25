@@ -180,6 +180,8 @@
   --nexa-reference-e4dfda: #e4dfda;
   --nexa-reference-29292905: #29292905;
   --nexa-reference-f5f3f0: #f5f3f0;
+  --nexa-reference-e3e7ee: #e3e7ee;
+  --nexa-reference-39465c: #39465c;
 }
 
 :root {
@@ -190,4 +192,12 @@
   --nexa-chat-halo: rgba(199,108,80,.18);
   --nexa-chat-halo-hover: rgba(199,108,80,.26);
   --nexa-chat-ring-hover: rgba(199,108,80,.24);
+  --nexa-chat-blue: #2563EB;
+  --nexa-chat-blue-deep: #1E40AF;
+  --nexa-chat-blue-soft: #DBEAFE;
+  --nexa-chat-blue-hover: #EFF6FF;
+  --nexa-chat-blue-faint: rgb(37 99 235 / 8%);
+  --nexa-chat-blue-edge: rgb(37 99 235 / 25%);
+  --nexa-chat-blue-shadow: rgb(37 99 235 / 12%);
+  --nexa-chat-teal-edge: rgb(20 184 166 / 38%);
 }

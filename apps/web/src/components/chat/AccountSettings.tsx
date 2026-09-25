@@ -1,3 +1,4 @@
+import { SensitiveNumber } from "../../features/banking/SensitiveNumber";
 import { t } from "../../services/locale";
 import { useNavigationGuard } from "../../hooks/useNavigationGuard";
 import { formatMoney } from "../../services/banking-content";
@@ -70,7 +71,7 @@ export function AccountSettings({ session, account, onBack, onLogout, onProfileU
         <div><strong>{t("Nexa bank account")}</strong><span>{t("Live account information from your Nexa banking record.")}</span></div>
         {account ? <div class="nexa-account-record">
           <header><div><span>{account.accountType} {t("ACCOUNT")}</span><strong>{account.displayName}</strong></div><Status value={account.status} /></header>
-          <dl><div><dt>{t("Account number")}</dt><dd>{account.accountNumberMasked}</dd></div><div><dt>{t("Available balance")}</dt><dd>{formatMoney(account.availableBalance, account.currencyCode)}</dd></div><div><dt>{t("Ledger balance")}</dt><dd>{formatMoney(account.ledgerBalance, account.currencyCode)}</dd></div><div><dt>{t("Currency")}</dt><dd>{account.currencyCode}</dd></div></dl>
+          <dl><div><dt>{t("Account number")}</dt><dd><SensitiveNumber id={account.id} masked={account.accountNumberMasked}/></dd></div><div><dt>{t("Available balance")}</dt><dd>{formatMoney(account.availableBalance, account.currencyCode)}</dd></div><div><dt>{t("Ledger balance")}</dt><dd>{formatMoney(account.ledgerBalance, account.currencyCode)}</dd></div><div><dt>{t("Currency")}</dt><dd>{account.currencyCode}</dd></div></dl>
         </div> : <div class="nexa-account-record is-empty"><strong>{t("No Nexa account yet")}</strong><span>{t("Open an account from Accounts to see its balance and details here.")}</span><button type="button" onClick={onBack}>{t("View accounts")}</button></div>}
       </div>
       <div class="nexa-settings-group nexa-session-settings">

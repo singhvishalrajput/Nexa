@@ -51,6 +51,9 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   const [historySearch, setHistorySearch] = useState("");
   const [historySearchFocused, setHistorySearchFocused] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectionError, setSelectionError] = useState("");
   const [wideLayout, setWideLayout] = useState(() => window.matchMedia("(min-width: 900px)").matches);
   const historyModal = historyOpen && !wideLayout;
   const [older, setOlder] = useState(false);
@@ -162,7 +165,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
         (historyModal ? historyToggle : menuToggle).current?.focus();
       }
       if (event.key === "Tab" && panel) {
-        const controls = Array.from(panel.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], select:not(:disabled), summary")).filter(control => control.getClientRects().length > 0);
+        const controls = Array.from(panel.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), a[href], select:not(:disabled), summary")).filter(control => control.getClientRects().length > 0);
         const first = controls[0], last = controls[controls.length - 1];
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
@@ -222,32 +225,71 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
     finally { endBusy(); }
   };
 
-  const removeConversation = async (conversation: Conversation) => {
+  const removeConversations = async (ids: string[]) => {
     if (locked.current || listening || pending.current) return;
     startBusy();
     try {
-      try { await deleteConversation(token, conversation.id); }
-      catch (e) { if (!(e instanceof ApiRequestError && e.status === 404)) throw e; }
+      const removed: string[] = [];
+      for (const id of ids) {
+        try { await deleteConversation(token, id); removed.push(id); }
+        catch (e) { if (e instanceof ApiRequestError && e.status === 404) removed.push(id); }
+      }
       if (!alive.current) return;
-      setConversations(items => items.filter(item => item.id !== conversation.id));
-      if (current?.id === conversation.id) {
+      setConversations(items => items.filter(item => !removed.includes(item.id)));
+      setSelectedIds(items => items.filter(id => !removed.includes(id)));
+      if (current && removed.includes(current.id)) {
         reading.cancel();
         setCurrent(null); setTurns([]); setOlder(false); setInput(""); setOutgoing(null);
         setGuidance(null); setHasNew(false); animatedTurn.current = null; followLatest.current = true;
         tell("This conversation has been deleted.");
       }
       pendingDelete.current = null;
-      // Refill the last loaded page so offset pagination cannot skip an item after deletion.
+      // Rebuild loaded pages because multiple deletions can shift entire pages.
       try {
-        const lastPage = await listConversations(token, page.current);
+        const refreshed: Conversation[] = [];
+        let lastPage: Conversation[] = [];
+        let lastIndex = 0;
+        for (let index = 0; index <= Math.max(0, page.current); index++) {
+          lastPage = await listConversations(token, index);
+          refreshed.push(...lastPage); lastIndex = index;
+          if (lastPage.length < 30) break;
+        }
         if (alive.current) {
-          setConversations(items => [...items, ...lastPage.filter(item => !items.some(old => old.id === item.id))]);
+          setConversations(refreshed); page.current = lastIndex;
           setMoreHistory(lastPage.length === 30);
         }
       } catch (_) {
-        page.current = Math.max(-1, page.current - 1); setMoreHistory(true);
+        page.current = -1; setMoreHistory(true);
       }
+      if (removed.length !== ids.length) throw new Error("Deletion incomplete");
     } finally { endBusy(); }
+  };
+  const removeConversation = (conversation: Conversation) => removeConversations([conversation.id]);
+  const selectAll = async () => {
+    if (locked.current || listening || pending.current) return;
+    startBusy(); setSelectionError("");
+    try {
+      const items: Conversation[] = [];
+      let index = 0;
+      while (true) {
+        const next = await listConversations(token, index);
+        if (!alive.current) return;
+        items.push(...next);
+        if (next.length < 30) break;
+        index++;
+      }
+      setConversations(items); page.current = index; setMoreHistory(false);
+      setHistorySearch(""); setSelecting(true); setSelectedIds([...new Set(items.map(item => item.id))]);
+    } catch (_) { setSelectionError("All conversations couldn’t be selected. Please try again."); }
+    finally { endBusy(); }
+  };
+  const deleteSelected = async () => {
+    if (locked.current || listening || pending.current || !selectedIds.length) return;
+    const draftWarning = current && selectedIds.includes(current.id) && input.trim() ? ` ${t("Your unsent draft will also be removed.")}` : "";
+    if (!window.confirm(`${t("Permanently delete selected conversations?")} (${selectedIds.length}) ${t("This cannot be undone.")}${draftWarning}`)) return;
+    setSelectionError("");
+    try { await removeConversations([...selectedIds]); setSelecting(false); }
+    catch (_) { setSelectionError("Some conversations couldn’t be deleted. They remain selected. Please try again."); }
   };
 
   const submit = async (value = input, source: "TEXT" | "VOICE" = "TEXT", action?: ActionCommand) => {
@@ -340,8 +382,22 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
       <SidebarBrand action={!wideLayout && <button type="button" class="messenger-icon" aria-label={t("Close history")} onClick={closeHistory}><ChatIcon name="close"/></button>}/>
       <Action className="experience-new-chat" primary disabled={busy || listening || !!pending.current} onAction={() => void submit("new conversation")} label={t("New conversation")}><BankingIcon name="plus"/><span>{t("New conversation")}</span></Action>
       <oj-input-text class="experience-history-search" aria-label={t("Search conversations")} labelEdge="none" placeholder={historySearchFocused ? "" : t("Search conversations")} value={historySearch} onfocusin={() => setHistorySearchFocused(true)} onfocusout={() => setHistorySearchFocused(false)} onrawValueChanged={event => setHistorySearch(event.detail.value || "")}/>
-      <header class="sidebar-history-heading"><h2 id="messenger-history-title">{t("Recent conversations")}</h2></header>
-      <div class="messenger-history-list" role="region" aria-labelledby="messenger-history-title">{conversations.length ? conversations.filter(item => item.title.toLocaleLowerCase().includes(historySearch.toLocaleLowerCase())).map(item => <ConversationHistoryItem key={item.id} conversation={item} current={item.id === current?.id} hasDraft={!!input.trim()} disabled={busy || listening || !!pending.current} onSelect={() => void select(item)} onDelete={() => removeConversation(item)}/>) : <p>{t("Your conversations will appear here.")}</p>}
+      <header class="sidebar-history-heading messenger-recents-heading">
+        <h2 id="messenger-history-title">{t("Recents")}</h2>
+        <div class={`messenger-selection-icons${selecting ? " is-selecting" : ""}`}>
+        <button type="button" class="messenger-selection-toggle" title={t("Select conversations")} aria-label={t("Select conversations")} aria-pressed={selecting} disabled={busy || listening || !!pending.current || !conversations.length} onClick={() => { setSelecting(!selecting); setSelectedIds([]); setSelectionError(""); }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="7" y="7" width="14" height="14" rx="3"/><path d="M17 4H6a2 2 0 0 0-2 2v11m6-3 3 3 5-6"/></svg></button>
+          {selecting && <button type="button" class="messenger-select-all-icon" title={t("Select all conversations")} aria-label={t("Select all conversations")} disabled={busy || listening || !!pending.current} onClick={selectAll}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="m6 12 3 3 6-7m-2 8 5-6"/></svg></button>}
+        </div>
+      </header>
+      <div class="messenger-selection" role="group" aria-label={t("Select conversations")}>
+        {selecting && <div class="messenger-selection-actions">
+          <span role="status">{selectedIds.length} {t("selected")}</span>
+          <button class="messenger-selection-action-icon" type="button" title={t("Delete selected")} aria-label={t("Delete selected")} disabled={busy || listening || !!pending.current || !selectedIds.length} onClick={deleteSelected}><ChatIcon name="trash"/></button>
+          <button class="messenger-selection-action-icon" type="button" title={t("Cancel")} aria-label={t("Cancel")} disabled={busy} onClick={() => { setSelecting(false); setSelectedIds([]); setSelectionError(""); }}><ChatIcon name="close"/></button>
+        </div>}
+        {selectionError && <p role="alert">{t(selectionError)}</p>}
+      </div>
+      <div class="messenger-history-list" role="region" aria-labelledby="messenger-history-title">{conversations.length ? conversations.filter(item => item.title.toLocaleLowerCase().includes(historySearch.toLocaleLowerCase())).map(item => <ConversationHistoryItem key={item.id} conversation={item} current={item.id === current?.id} hasDraft={!!input.trim()} disabled={busy || listening || !!pending.current} onSelect={() => void select(item)} onDelete={() => removeConversation(item)} selecting={selecting} selected={selectedIds.includes(item.id)} onToggleSelection={() => setSelectedIds(ids => ids.includes(item.id) ? ids.filter(id => id !== item.id) : [...ids, item.id])}/>) : <p>{t("Your conversations will appear here.")}</p>}
         {moreHistory && <button type="button" disabled={busy || listening} onClick={more}>{t("Load more conversations")}</button>}
       </div>
       {historySearch && !conversations.some(item => item.title.toLocaleLowerCase().includes(historySearch.toLocaleLowerCase())) && <p role="status">{t("No matching conversations.")}</p>}
@@ -358,6 +414,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
       <header class="messenger-header">
         <button type="button" class="messenger-icon" onClick={onClose} aria-label={t("Open banking overview")}><ChatIcon name="back" /><span>{t("Banking")}</span></button>
         <div class="messenger-identity"><h1 class="messenger-conversation-title" title={conversationTitle}>{conversationTitle}</h1></div>
+        <div class="messenger-composer-meta"><label>{t("Language")} <select aria-label={t("Voice language / बोलने की भाषा")} value={language} disabled={listening} onChange={(event) => { const next = event.currentTarget.value as "en-IN" | "hi-IN"; setLocale(next); setLanguage(next); }}><option value="en-IN">English</option><option value="hi-IN" lang="hi">हिन्दी (Hindi)</option></select></label><button type="button" disabled={busy || listening || !!pending.current} onClick={() => { setVoiceError(""); voice.startDemo(language); }}>{t("Use suggested message")}</button><details><summary>{t("About voice")}</summary><p>{t("Speech recognition may use your browser’s speech service.")}</p></details></div>
         <button type="button" class="messenger-icon conversation-context-toggle" aria-label={t("Account context")} aria-expanded={contextOpen} onClick={() => setContextOpen(true)}><BankingIcon name="accounts"/></button>
         <button ref={historyToggle} type="button" class="messenger-icon" onClick={() => { setMenuOpen(false); setHistoryOpen(true); }} aria-label={t("Conversation history")} aria-expanded={wideLayout || historyOpen} aria-controls="messenger-history"><ChatIcon name="history" /><span>{t("History")}</span></button>
         <div class="messenger-menu-wrap">
@@ -443,7 +500,6 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
             <button type="submit" class={`messenger-icon messenger-send ${input.trim() ? "messenger-primary" : ""}`} disabled={busy || !!pending.current || !input.trim()} aria-label={t("Send message")}><ChatIcon name="send" /><span>{hindi ? "भेजें" : t("Send")}</span></button>
           </div>}
         </form>
-        <div class="messenger-composer-meta"><label>{t("Language")} <select aria-label={t("Voice language / बोलने की भाषा")} value={language} disabled={listening} onChange={(event) => { const next = event.currentTarget.value as "en-IN" | "hi-IN"; setLocale(next); setLanguage(next); }}><option value="en-IN">English</option><option value="hi-IN" lang="hi">हिन्दी (Hindi)</option></select></label><button type="button" disabled={busy || listening || !!pending.current} onClick={() => { setVoiceError(""); voice.startDemo(language); }}>{t("Use suggested message")}</button><details><summary>{t("About voice")}</summary><p>{t("Speech recognition may use your browser’s speech service.")}</p></details></div>
       </footer>
     </main>
     {contextOpen && <Modal title={t("Your accounts")} onClose={() => setContextOpen(false)}>{context}</Modal>}

@@ -11,6 +11,13 @@ export function setLocale(value: Locale) {
 }
 
 const hindi: Record<string, string> = {
+  "Card details": "कार्ड का विवरण", "Card support": "कार्ड सहायता", "Pay credit-card bill": "क्रेडिट कार्ड बिल भरें", "Create a digital debit card": "डिजिटल डेबिट कार्ड बनाएँ",
+  "Recents": "हाल की बातचीत",
+  "Select all": "सभी चुनें",
+  "Select conversation": "बातचीत चुनें", "Select conversations": "बातचीत चुनें", "Select all conversations": "सभी बातचीत चुनें", "selected": "चयनित", "Delete selected": "चयनित बातचीत मिटाएँ",
+  "Permanently delete selected conversations?": "चयनित बातचीत हमेशा के लिए मिटाएँ?", "This cannot be undone.": "इसे वापस नहीं लाया जा सकता।",
+  "All conversations couldn’t be selected. Please try again.": "सभी बातचीत चुनी नहीं जा सकीं। कृपया फिर से कोशिश करें।",
+  "Some conversations couldn’t be deleted. They remain selected. Please try again.": "कुछ बातचीत मिटाई नहीं जा सकीं। वे अभी भी चयनित हैं। कृपया फिर से कोशिश करें।",
   "Home": "होम", "Accounts": "खाते", "Payments": "भुगतान", "Cards": "कार्ड", "Transactions": "लेन-देन", "Insights": "खर्च का विश्लेषण", "Support": "सहायता",
   "Personal banking": "व्यक्तिगत बैंकिंग", "Your banking": "आपकी बैंकिंग", "Your money, in conversation.": "आपके पैसे की बात, आपकी भाषा में।",
   "A little clarity. A lot more possibility.": "पैसों की जानकारी, अब और आसान।", "Ask a question, make a plan, or get something done.": "सवाल पूछें, योजना बनाएँ या अपना बैंकिंग काम पूरा करें।",

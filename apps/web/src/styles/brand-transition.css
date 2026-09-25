@@ -11,6 +11,10 @@
   background: var(--nexa-background);
 
 }
+.nexa-route-transition {
+  pointer-events: none;
+  animation: nexa-transition-reveal 1450ms ease both;
+}
 .nexa-transition-lockup {
   position: relative;
   display: flex;

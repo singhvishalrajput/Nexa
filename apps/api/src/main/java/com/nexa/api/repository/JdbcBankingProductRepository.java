@@ -53,9 +53,8 @@ public class JdbcBankingProductRepository implements BankingProductRepository {
                 + state
                 + "=?) ORDER BY p.product_id"
                 + " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY"
-            : "SELECT p.*,a.account_name,a.account_number FROM transactions p JOIN accounts a ON"
-                + " a.id=p.source_account_id JOIN customers c ON c.id=a.customer_id WHERE"
-                + " p.user_id=? AND c.user_id=p.user_id AND p.record_kind=? AND (? IS NULL OR"
+            : "SELECT p.*,a.account_name,a.account_number FROM transactions p LEFT JOIN accounts a ON"
+                + " a.id=p.source_account_id WHERE p.user_id=? AND p.record_kind=? AND (? IS NULL OR"
                 + " p.id=?) AND (? IS NULL OR p.status=?) ORDER BY p.id OFFSET ? ROWS FETCH NEXT"
                 + " ? ROWS ONLY";
     return db.query(
@@ -175,15 +174,15 @@ public class JdbcBankingProductRepository implements BankingProductRepository {
 
   private List<Payment> payments(String id) {
     return db.query(
-        "SELECT * FROM transactions WHERE target_id=? AND (record_kind='PRODUCT_HISTORY' OR"
-            + " (record_kind='PAYMENT' AND operation='LOAN_REPAYMENT')) ORDER BY created_at DESC",
+        "SELECT * FROM transactions WHERE (target_id=? OR parent_id=?) AND (record_kind='PRODUCT_HISTORY' OR"
+            + " (record_kind='PAYMENT' AND operation IN ('LOAN_REPAYMENT','BILL_PAYMENT'))) ORDER BY created_at DESC",
         (r, n) -> payment(r),
-        id);
+        id, id);
   }
 
   private List<BankingContent.Transaction> cardTransactions(String id) {
     return db.query(
-        "SELECT * FROM transactions WHERE target_id=? AND record_kind='PRODUCT_HISTORY' ORDER BY"
+        "SELECT * FROM transactions WHERE target_id=? AND record_kind IN ('PRODUCT_HISTORY','PAYMENT') ORDER BY"
             + " created_at DESC",
         (r, n) ->
             new BankingContent.Transaction(

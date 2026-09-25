@@ -9,6 +9,14 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CardQueryService extends ProductQueryService<BankingModels.Card> {
+  public java.util.List<BankingModels.Card> all() {
+    var result = new java.util.ArrayList<BankingModels.Card>();
+    for (int page = 0; ; page++) {
+      var rows = list(null, page, 100);
+      result.addAll(rows);
+      if (rows.size() < 100) return result;
+    }
+  }
   public CardQueryService(BankingProductRepository repository, CurrentUserProvider user) {
     super(repository, user, BankingProductRepository.Kind.CARD, BankingModels.Card.class);
   }

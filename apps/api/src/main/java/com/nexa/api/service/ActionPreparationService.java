@@ -40,6 +40,11 @@ public class ActionPreparationService {
     var account = accounts.requireOwnedAccount(accountId);
     if (!"ACTIVE".equals(account.status()))
       throw new InvalidRequestException("The source account is not active.");
+    var entity = accounts.requireOwnedEntity(accountId);
+    boolean creditFunding = operation.equals("PAY_BILL") && "CARD".equals(account.accountType())
+        && "CREDIT".equals(entity.getProductType()) && "ACTIVE".equals(entity.getProductStatus());
+    if (!creditFunding && !java.util.Set.of("SAVINGS", "CURRENT").contains(account.accountType()))
+      throw new InvalidRequestException("Choose a savings or current account for this payment.");
     String currency = account.currencyCode();
     switch (operation) {
       case "START_TRANSFER" -> {
@@ -85,7 +90,8 @@ public class ActionPreparationService {
         || amount.precision() - amount.scale() > 13)
       throw new InvalidRequestException(
           "Provide a positive amount with at most two decimal places.");
-    if (amount.compareTo(account.availableBalance()) > 0)
+    BigDecimal available = creditFunding ? entity.getCreditLimit().subtract(entity.getBalance()) : account.availableBalance();
+    if (amount.compareTo(available) > 0)
       throw new InvalidRequestException("The available balance is insufficient.");
     return new PreparedAction(
         operation, "PREPARED", accountId, targetId, amount.toPlainString(), currency, true, false);

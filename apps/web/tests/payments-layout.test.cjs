@@ -22,6 +22,7 @@ function harness(prepare = async (_token, request) => ({...request, status:'PREP
     useRef(initial) { const i = cursor++; return slots[i] || (slots[i] = {current:initial}); }
   };
   const dependencies = {
+    './SensitiveNumber':{SensitiveNumber:'sensitive-number', SensitiveSelect:'select'},
     'preact/hooks':hooks,
     'preact/jsx-runtime':{jsx:(type, props) => ({type, props}), jsxs:(type, props) => ({type, props})},
     '../../services/locale':loadSource('services/locale.ts'),

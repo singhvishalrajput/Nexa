@@ -1,3 +1,4 @@
+import { SensitiveNumber } from "./SensitiveNumber";
 import { t } from "../../services/locale";
 import { DemoAction, DemoHistory } from "./Showcase";
 import { useNavigationGuard } from "../../hooks/useNavigationGuard";
@@ -24,6 +25,8 @@ export function PaymentsPage({ token, accounts }: {
     useNavigationGuard(!!(target || amount) && !result, busy);
     const kind = operation === "START_TRANSFER" ? "beneficiaries" : operation === "PAY_BILL" ? "bills" : operation === "PAY_CARD" ? "cards" : "mandates";
     const targets = useLoad(() => bankApi.products(token, kind, targetPage), [token, kind, targetPage]);
+    const billSources = useLoad(() => operation === "PAY_BILL" ? bankApi.billFundingAccounts(token) : Promise.resolve(accounts), [token, operation]);
+    const paymentSources = operation === "PAY_BILL" ? billSources.data || accounts : accounts;
     async function prepare(e: Event) { e.preventDefault(); if (lock.current || !account || !target || (operation !== "CANCEL_MANDATE" && !validAmount(amount)))
         return; lock.current = true; setBusy(true); setError(""); try {
         setResult(await bankApi.prepare(token, { operation, accountId: account, targetId: target, ...(operation !== "CANCEL_MANDATE" ? { amount } : {}) }));
@@ -43,7 +46,7 @@ export function PaymentsPage({ token, accounts }: {
           <form class="bank-form" onSubmit={prepare}>
             <div class="bank-fields-grid bank-payment-fields">
               <label>{t("What would you like to review?")}
-                <select value={operation} disabled={busy} onChange={e => { setOperation(e.currentTarget.value); setTargetPage(0); setTarget(""); setResult(undefined); }}>
+                <select value={operation} disabled={busy} onChange={e => { setOperation(e.currentTarget.value); setAccount(accounts.find(a => a.status === "ACTIVE")?.id || ""); setTargetPage(0); setTarget(""); setResult(undefined); }}>
                   <option value="START_TRANSFER">{t("Transfer to a payee")}</option>
                   <option value="PAY_BILL">{t("Bill payment")}</option>
                   <option value="PAY_CARD">{t("Credit card payment")}</option>
@@ -53,7 +56,7 @@ export function PaymentsPage({ token, accounts }: {
               <label>{t("From account")}
                 <select required disabled={busy} value={account} onChange={e => setAccount(e.currentTarget.value)}>
                   <option value="">{t("Select an account")}</option>
-                  {accounts.filter(a => a.status === "ACTIVE").map(a => <option key={a.id} value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}
+                  {paymentSources.filter(a => a.status === "ACTIVE").map(a => <option key={a.id} value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}
                 </select>
               </label>
               <div class="bank-payment-target">
@@ -61,7 +64,7 @@ export function PaymentsPage({ token, accounts }: {
                   <label>{t(targetLabel)}
                     <select required disabled={busy} value={target} onChange={e => setTarget(e.currentTarget.value)}>
                       <option value="">{t("Select a record")}</option>
-                      {targets.data?.map(p => <option key={p.id} value={p.id}>{productTitle(p)} · {p.status.toLowerCase()}</option>)}
+                      {targets.data?.filter(p => operation !== "PAY_CARD" || p.cardType === "CREDIT" && p.status === "ACTIVE" && Number(p.outstanding) > 0).map(p => <option key={p.id} value={p.id}>{productTitle(p)} · {p.status.toLowerCase()}</option>)}
                     </select>
                   </label>
                   {!targets.data?.length && <p>{t("There is nothing to choose here yet. Contact your bank if you expected to see an item.")}</p>}
@@ -80,7 +83,7 @@ export function PaymentsPage({ token, accounts }: {
             {account && target && (operation === "CANCEL_MANDATE" || validAmount(amount)) && <section class="bank-confirm-summary" aria-label={t("Check these details")}>
               <h3>{t("Check these details")}</h3>
               <dl>
-                <Detail label={t("From account")}>{accounts.find(a => a.id === account)?.accountNumberMasked}</Detail>
+                <Detail label={t("From account")}><SensitiveNumber id={account} masked={paymentSources.find(a => a.id === account)?.accountNumberMasked}/></Detail>
                 <Detail label={t("Recipient")}>{targets.data?.find(p => p.id === target) && productTitle(targets.data.find(p => p.id === target)!)}</Detail>
                 {operation !== "CANCEL_MANDATE" && <Detail label={t("Amount")}>{formatMoney(amount)}</Detail>}
               </dl>
@@ -106,7 +109,7 @@ export function PaymentsPage({ token, accounts }: {
           </nav>
         </Panel>
       </div>
-      {result && <Modal title={t("Payment details")} onClose={() => setResult(undefined)}><div class="bank-form"><Status value={result.status}/><dl><Detail label={t("From account")}>{accounts.find(a => a.id === result.accountId)?.accountNumberMasked}</Detail><Detail label={t("Recipient")}>{targets.data?.find(p => p.id === result.targetId) && productTitle(targets.data.find(p => p.id === result.targetId)!)}</Detail>{result.amount && <Detail label={t("Amount")}>{formatMoney(result.amount, result.currencyCode)}</Detail>}</dl><DemoAction token={token} request={{operation: result.operation, accountId: result.accountId, targetId: result.targetId, ...(result.amount ? {amount: result.amount} : {})}} label={t("Continue")}/><button class="bank-button" onClick={() => { setAmount(""); setTarget(""); setResult(undefined); }}>{t("Back to payments")}</button></div></Modal>}
+      {result && <Modal title={t("Payment details")} onClose={() => setResult(undefined)}><div class="bank-form"><Status value={result.status}/><dl><Detail label={t("From account")}><SensitiveNumber id={result.accountId} masked={paymentSources.find(a => a.id === result.accountId)?.accountNumberMasked}/></Detail><Detail label={t("Recipient")}>{targets.data?.find(p => p.id === result.targetId) && productTitle(targets.data.find(p => p.id === result.targetId)!)}</Detail>{result.amount && <Detail label={t("Amount")}>{formatMoney(result.amount, result.currencyCode)}</Detail>}</dl><DemoAction token={token} request={{operation: result.operation, accountId: result.accountId, targetId: result.targetId, ...(result.amount ? {amount: result.amount} : {})}} label={t("Continue")}/><button class="bank-button" onClick={() => { setAmount(""); setTarget(""); setResult(undefined); }}>{t("Back to payments")}</button></div></Modal>}
       <DemoHistory token={token}/>
     </div>;
 }
@@ -131,6 +134,7 @@ export function OperationsPage({ token }: {
     useNavigationGuard(!!amount && !receipt, busy);
     const accounts = data.data?.filter(a => a.status === "ACTIVE" && a.accountCategory === "CUSTOMER") || [];
     const label = (id: string) => { const a = accounts.find(a => String(a.id) === id); return a ? a.accountName + " · " + safeMask(a.accountNumber) : "—"; };
+    const reveal = (id: string) => { const a = accounts.find(a => String(a.id) === id); return a && <SensitiveNumber masked={a.accountNumber} fullValue={a.accountNumber}/>; };
     async function execute() { if (lock.current || uncertain || !validAmount(amount) || (operation !== "deposit" && !source) || (operation !== "withdraw" && !destination) || (operation === "transfer" && source === destination))
         return; lock.current = true; setBusy(true); setError(""); try {
         setReceipt(await bankApi.postTransaction(token, operation, { amount, ...(operation !== "deposit" ? { sourceAccountId: Number(source) } : {}), ...(operation !== "withdraw" ? { destinationAccountId: Number(destination) } : {}) }));
@@ -149,5 +153,5 @@ export function OperationsPage({ token }: {
         lock.current = false;
         setBusy(false);
     } }
-    return <><PageHeading eyebrow="ADMINISTRATOR WORKSPACE" title={t("Banking operations")} description={t("Post a deposit, withdrawal or internal account transfer.")}/><div class="bank-notice"><p>{t("These actions move account balances immediately. Verify the account details and amount before confirming.")}</p></div><State loading={data.loading} error={data.error} retry={data.reload}><Panel title={t("New transaction")}><form class="bank-form bank-narrow" onSubmit={e => { e.preventDefault(); setReview(true); setError(""); setReceipt(undefined); }}><label>{t("Operation")}<select value={operation} onChange={e => setOperation(e.currentTarget.value as typeof operation)}><option value="transfer">{t("Internal transfer")}</option><option value="deposit">{t("Deposit")}</option><option value="withdraw">{t("Withdrawal")}</option></select></label>{operation !== "deposit" && <label>{t("Source account")}<select required value={source} onChange={e => setSource(e.currentTarget.value)}><option value="">{t("Select account")}</option>{accounts.map(a => <option value={a.id}>{label(String(a.id))}</option>)}</select></label>}{operation !== "withdraw" && <label>{t("Destination account")}<select required value={destination} onChange={e => setDestination(e.currentTarget.value)}><option value="">{t("Select account")}</option>{accounts.filter(a => operation !== "transfer" || String(a.id) !== source).map(a => <option value={a.id}>{label(String(a.id))}</option>)}</select></label>}<label>{t("Amount (INR)")}<input required inputMode="decimal" value={amount} onInput={e => { setReceipt(undefined); setAmount(e.currentTarget.value); }} placeholder="0.00"/></label><button class="bank-button" disabled={uncertain || !validAmount(amount) || (operation !== "deposit" && !source) || (operation !== "withdraw" && !destination) || (operation === "transfer" && source === destination)}>{t("Review transaction")}</button>{uncertain && <p role="alert">{t("The last result is not confirmed. Check the transaction history before starting another transaction.")}</p>}</form></Panel></State>{review && <Modal title={receipt ? "Transaction posted" : "Confirm " + operation} locked={busy} onClose={() => setReview(false)}><div class="bank-form">{receipt ? <><span class="bank-success-mark">✓</span><Status value={receipt.status}/><strong>{formatMoney(receipt.amount)}</strong><p>{t("Reference:")} {receipt.id}</p><p>{t("Your bank has confirmed this transaction.")}</p><button class="bank-button" onClick={() => { setReview(false); setAmount(""); }}>{t("Back to payments")}</button></> : <><dl>{operation !== "deposit" && <Detail label={t("From")}>{label(source)}</Detail>}{operation !== "withdraw" && <Detail label={t("To")}>{label(destination)}</Detail>}<Detail label={t("Amount")}>{formatMoney(amount)}</Detail></dl><p>{t("This action posts immediately. Only confirm if these details are correct.")}</p>{error && <p role="alert" class="bank-error">{error}</p>}{uncertain ? <p>{t("Do not resubmit. Check the account’s transaction history with your bank before attempting another transaction.")}</p> : null}<div class="bank-form-actions"><button class="bank-button secondary" disabled={busy} onClick={() => setReview(false)}>{t("Cancel")}</button><button class="bank-button" disabled={busy || uncertain} onClick={execute}>{busy ? "Posting…" : "Confirm " + operation}</button></div></>}</div></Modal>}</>;
+    return <><PageHeading eyebrow="ADMINISTRATOR WORKSPACE" title={t("Banking operations")} description={t("Post a deposit, withdrawal or internal account transfer.")}/><div class="bank-notice"><p>{t("These actions move account balances immediately. Verify the account details and amount before confirming.")}</p></div><State loading={data.loading} error={data.error} retry={data.reload}><Panel title={t("New transaction")}><form class="bank-form bank-narrow" onSubmit={e => { e.preventDefault(); setReview(true); setError(""); setReceipt(undefined); }}><label>{t("Operation")}<select value={operation} onChange={e => setOperation(e.currentTarget.value as typeof operation)}><option value="transfer">{t("Internal transfer")}</option><option value="deposit">{t("Deposit")}</option><option value="withdraw">{t("Withdrawal")}</option></select></label>{operation !== "deposit" && <label>{t("Source account")}<select required value={source} onChange={e => setSource(e.currentTarget.value)}><option value="">{t("Select account")}</option>{accounts.map(a => <option value={a.id}>{label(String(a.id))}</option>)}</select></label>}{operation !== "withdraw" && <label>{t("Destination account")}<select required value={destination} onChange={e => setDestination(e.currentTarget.value)}><option value="">{t("Select account")}</option>{accounts.filter(a => operation !== "transfer" || String(a.id) !== source).map(a => <option value={a.id}>{label(String(a.id))}</option>)}</select></label>}<label>{t("Amount (INR)")}<input required inputMode="decimal" value={amount} onInput={e => { setReceipt(undefined); setAmount(e.currentTarget.value); }} placeholder="0.00"/></label><button class="bank-button" disabled={uncertain || !validAmount(amount) || (operation !== "deposit" && !source) || (operation !== "withdraw" && !destination) || (operation === "transfer" && source === destination)}>{t("Review transaction")}</button>{uncertain && <p role="alert">{t("The last result is not confirmed. Check the transaction history before starting another transaction.")}</p>}</form></Panel></State>{review && <Modal title={receipt ? "Transaction posted" : "Confirm " + operation} locked={busy} onClose={() => setReview(false)}><div class="bank-form">{receipt ? <><span class="bank-success-mark">✓</span><Status value={receipt.status}/><strong>{formatMoney(receipt.amount)}</strong><p>{t("Reference:")} {receipt.id}</p><p>{t("Your bank has confirmed this transaction.")}</p><button class="bank-button" onClick={() => { setReview(false); setAmount(""); }}>{t("Back to payments")}</button></> : <><dl>{operation !== "deposit" && <Detail label={t("From")}>{label(source).split(" · ")[0]} {reveal(source)}</Detail>}{operation !== "withdraw" && <Detail label={t("To")}>{label(destination).split(" · ")[0]} {reveal(destination)}</Detail>}<Detail label={t("Amount")}>{formatMoney(amount)}</Detail></dl><p>{t("This action posts immediately. Only confirm if these details are correct.")}</p>{error && <p role="alert" class="bank-error">{error}</p>}{uncertain ? <p>{t("Do not resubmit. Check the account’s transaction history with your bank before attempting another transaction.")}</p> : null}<div class="bank-form-actions"><button class="bank-button secondary" disabled={busy} onClick={() => setReview(false)}>{t("Cancel")}</button><button class="bank-button" disabled={busy || uncertain} onClick={execute}>{busy ? "Posting…" : "Confirm " + operation}</button></div></>}</div></Modal>}</>;
 }

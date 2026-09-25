@@ -1,3 +1,4 @@
+import { SensitiveNumber } from "./SensitiveNumber";
 import "ojs/ojbutton";
 import "ojs/ojinputtext";
 import "ojs/ojselectcombobox";
@@ -88,7 +89,7 @@ export function MoneyTransfer({token, userId}: {token: string; userId: string}) 
     {restoring ? <Panel title={t("Checking your previous transfer")}><div class="bank-form" aria-busy={busy}><p>{t("We’ll check the saved request before you send money again.")}</p>{error && <p role="alert" class="bank-error">{error}</p>}<oj-button chroming="callToAction" class="nexa-action transfer-action" disabled={busy} onojAction={restore}>{busy ? "Checking transfer…" : "Check previous transfer"}</oj-button></div></Panel>
     : receipt ? <div ref={title} class="bank-narrow transfer-workflow"><Panel><div class="bank-form" aria-busy={busy}>
       <h2 tabIndex={-1}>{receipt.status === "COMPLETED" ? t("✓ Money sent") : receipt.status === "EXPIRED" ? t("This review has expired") : t("Check before you send")}</h2>
-      <dl><Detail label={t("From")}>{receipt.sourceName} · {receipt.sourceMasked}</Detail><Detail label={t("Recipient")}>{receipt.recipientName}</Detail><Detail label={t("To Nexa account")}>{receipt.destinationMasked}</Detail><Detail label={t("Amount")}>{formatMoney(receipt.amount, receipt.currencyCode)}</Detail>{receipt.reference && <Detail label={t("Reference")}>{receipt.reference}</Detail>}</dl>
+      <dl><Detail label={t("From")}>{receipt.sourceName} · <SensitiveNumber id={receipt.sourceAccountId} masked={receipt.sourceMasked}/></Detail><Detail label={t("Recipient")}>{receipt.recipientName}</Detail><Detail label={t("To Nexa account")}><SensitiveNumber kind="transfer-destination" id={receipt.id} masked={receipt.destinationMasked}/></Detail><Detail label={t("Amount")}>{formatMoney(receipt.amount, receipt.currencyCode)}</Detail>{receipt.reference && <Detail label={t("Reference")}>{receipt.reference}</Detail>}</dl>
       {receipt.status === "COMPLETED" ? <><p role="status">{t("Your transfer is complete. The money has been added to the recipient’s Nexa account.")}</p><a class="bank-button" href={"#/transactions/" + encodeURIComponent(receipt.reference!)}>{t("View transaction")}</a><oj-button chroming="outlined" class="nexa-action transfer-action transfer-action-secondary" onojAction={reset}>{t("Make another transfer")}</oj-button></>
       : receipt.status === "EXPIRED" ? <><p>{t("No money was sent by this request. Review the details again to create a new transfer.")}</p><oj-button chroming="callToAction" class="nexa-action transfer-action" onojAction={reset}>{t("Start a new review")}</oj-button></>
       : <><p>{t("Check the recipient and amount carefully. Sending moves money immediately. This review is valid for 5 minutes.")}</p>{error && <p role="alert" class="bank-error">{error}</p>}

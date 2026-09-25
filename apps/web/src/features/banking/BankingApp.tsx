@@ -19,6 +19,7 @@ import { LoanCalculatorDraft, LoanCalculatorPage, LoanApplicationsPage } from ".
 import { PaymentsPage, OperationsPage } from "./Payments";
 import { PageHeading, Panel, State, Modal, Detail, useLoad } from "./ui";
 import { go, parseRoute } from "./utils";
+import { NexaPageTransition } from "../../components/NexaPageTransition";
 const landingHashes = ["", "#home", "#the-nexa-way", "#possibilities", "#whats-next", "#main"];
 
 export function BankingApp({onReady}: {onReady?: () => void} = {}) {
@@ -73,17 +74,28 @@ function Workspace({ session, setSession, signOut, route }: {
 }) {
     const [menu, setMenu] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
+    const [showPageTransition, setShowPageTransition] = useState(false);
     const [loanCalculatorDraft, setLoanCalculatorDraft] = useState<LoanCalculatorDraft>({ amount: "100000", months: "12" });
     const heading = useRef<HTMLElement>(null);
+    const previousPage = useRef<string | null>(null);
     const data = useLoad(() => bankApi.accounts(session.accessToken), [session.user.id, route.page]);
     const accounts = data.data || [];
     const page = route.page === "login" || route.page === "register" ? "assistant" : route.page;
     const pageTitle = [...primaryNavigation, ...secondaryNavigation].find(n => n.page === page)?.label || ({settings: "Profile & settings", security: "Security & session", assistant: "Chat", operations: "Banking operations"} as Record<string, string>)[page] || "Page not found";
     useEffect(() => { setMenu(false); window.scrollTo(0, 0); document.title = pageTitle + " · Nexa"; heading.current?.querySelector<HTMLElement>("h1")?.focus(); }, [page, route.id]);
+    useEffect(() => {
+        const previous = previousPage.current;
+        previousPage.current = page;
+        if (!previous || previous === page || (previous !== "assistant" && page !== "assistant")) return;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        setShowPageTransition(true);
+        const timer = window.setTimeout(() => setShowPageTransition(false), 1450);
+        return () => window.clearTimeout(timer);
+    }, [page]);
     const endSession = async () => { if (signingOut)
         return; setSigningOut(true); try { await signOut(); } finally { setSigningOut(false); } };
     if (page === "assistant")
-        return <ConversationWorkspace session={session} onClose={() => go("overview")} onLogout={endSession} accounts={accounts} accountsLoading={data.loading} accountsError={data.error} onRefreshAccounts={data.reload}/>;
+        return <><ConversationWorkspace session={session} onClose={() => go("overview")} onLogout={endSession} accounts={accounts} accountsLoading={data.loading} accountsError={data.error} onRefreshAccounts={data.reload}/>{showPageTransition && <NexaPageTransition/>}</>;
     const accountPage = ["overview", "accounts", "transactions", "payments"].includes(page);
     function content() {
         if (accountPage && (data.loading || data.error))
@@ -113,5 +125,5 @@ function Workspace({ session, setSession, signOut, route }: {
         return <><PageHeading title={page === "operations" ? "Administrator access required" : "Page not found"} description={t("This page is not available for your session.")}/><a class="bank-button" href="#/overview">{t("Back to overview")}</a></>;
     }
     const nav = <><SidebarBrand/><SidebarNavigation page={page} admin={session.user.role === "ADMIN"}/><SidebarFooter page={page} onLogout={endSession} disabled={signingOut}/></>;
-    return <div class="bank-app experience-workspace"><a class="bank-skip" href="#bank-main" onClick={e => { e.preventDefault(); heading.current?.focus(); }}>{t("Skip to main content")}</a><aside class="nexa-sidebar bank-sidebar" aria-label={t("Banking navigation")}>{nav}</aside>{menu && <Modal title={t("Navigation")} onClose={() => setMenu(false)}><div class="nexa-sidebar bank-mobile-nav">{nav}</div></Modal>}<div class="bank-workspace"><header class="bank-topbar"><div><button class="bank-icon-button bank-menu-toggle" aria-label={t("Open navigation")} aria-expanded={menu} onClick={() => setMenu(true)}>{t("☰ Menu")}</button><span class="experience-section-title">{t(pageTitle)}</span></div><div><LanguageSelect compact/></div></header><main id="bank-main" ref={heading} tabIndex={-1} class="bank-main"><ConnectionNotice/>{content()}<footer class="bank-footer"><span>nexa <span>·</span>{t("Your everyday banking, connected.")}</span><a href="#/security">{t("Security & session ↗")}</a></footer></main><nav class="bank-mobile-tabs" aria-label={t("Quick navigation")}>{primaryNavigation.filter(n => n.page !== "cards").map(n => <a href={"#/" + n.page} aria-current={page === n.page ? "page" : undefined} class={page === n.page ? "active" : ""}><BankingIcon name={n.icon}/>{t(n.label)}</a>)}<button onClick={() => setMenu(true)}><span>☰</span>{t("More")}</button></nav></div></div>;
+    return <div class="bank-app experience-workspace"><a class="bank-skip" href="#bank-main" onClick={e => { e.preventDefault(); heading.current?.focus(); }}>{t("Skip to main content")}</a><aside class="nexa-sidebar bank-sidebar" aria-label={t("Banking navigation")}>{nav}</aside>{menu && <Modal title={t("Navigation")} onClose={() => setMenu(false)}><div class="nexa-sidebar bank-mobile-nav">{nav}</div></Modal>}<div class="bank-workspace"><header class="bank-topbar"><div><button class="bank-icon-button bank-menu-toggle" aria-label={t("Open navigation")} aria-expanded={menu} onClick={() => setMenu(true)}>{t("☰ Menu")}</button><span class="experience-section-title">{t(pageTitle)}</span></div><div><LanguageSelect compact/></div></header><main id="bank-main" ref={heading} tabIndex={-1} class="bank-main"><ConnectionNotice/>{content()}<footer class="bank-footer"><span>nexa <span>·</span>{t("Your everyday banking, connected.")}</span><a href="#/security">{t("Security & session ↗")}</a></footer></main><nav class="bank-mobile-tabs" aria-label={t("Quick navigation")}>{primaryNavigation.filter(n => n.page !== "cards").map(n => <a href={"#/" + n.page} aria-current={page === n.page ? "page" : undefined} class={page === n.page ? "active" : ""}><BankingIcon name={n.icon}/>{t(n.label)}</a>)}<button onClick={() => setMenu(true)}><span>☰</span>{t("More")}</button></nav></div>{showPageTransition && <NexaPageTransition/>}</div>;
 }

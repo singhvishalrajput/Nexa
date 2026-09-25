@@ -21,15 +21,12 @@ public class ConversationsController {
       @NotBlank @Pattern(regexp = "[0-9a-fA-F-]{36}") String clientId,
       @NotBlank @Pattern(regexp = "TEXT|VOICE") String source,
       @NotBlank @Size(max = 2000) String text) {
-    // Explicitly reject audio and other extra payload fields.
     @com.fasterxml.jackson.annotation.JsonAnySetter
     public void rejectExtra(String name, Object value) {
       throw new InvalidRequestException("Only clientId, source and text are accepted.");
     }
   }
-
   private final ConversationService service;
-
   public record ActionRequest(
       @NotBlank @Pattern(regexp = "[0-9a-fA-F-]{36}") String clientId,
       @NotBlank @Pattern(regexp = "SELECT|CONFIRM|CANCEL") String type,

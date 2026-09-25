@@ -9,6 +9,8 @@ public interface TransactionService {
 
   BankTransaction withdraw(TransactionRequest request);
 
+  BankTransaction payBill(TransactionRequest request, String billId, String billerName, String category);
+
   BankTransaction transfer(TransactionRequest request);
 
   List<BankTransaction> getAll();

@@ -1,0 +1,7 @@
+# Digital card artwork
+
+Generated using the built-in image generation tool. Credit uses `nexa-credit-digital.png`; debit uses `nexa-debit-digital.png`. Brand, card type and masked number are live UI text.
+
+Credit prompt: Use case: product-mockup. Asset: front-facing digital credit card artwork for Nexa banking web app. Edge-to-edge card face, landscape aspect ratio 1.586:1 with no outer margins or perspective. Futuristic luminous electric violet and indigo glass with fine holographic circuit traces and flowing light ribbons on the right. Clearly digital, sleek, vivid, not metallic charcoal or copper. A small silver chip at left center. Top and bottom thirds remain deep indigo and visually quiet for live white text overlays. No text, numbers, logos or watermark.
+
+Debit prompt: Use case: product-mockup. Asset: front-facing digital debit card artwork for Nexa banking web app. Edge-to-edge card face, landscape aspect ratio 1.586:1 with no outer margins or perspective. Futuristic luminous cyan and teal glass over deep midnight blue with fine holographic circuit traces and flowing light ribbons on the right. Clearly digital, sleek, vivid. Small silver chip at left center. Top and bottom thirds remain deep midnight blue and visually quiet for live white text overlays. No text, numbers, logos or watermark. Coordinate with an electric violet digital credit card but use a distinctly cyan/teal palette.

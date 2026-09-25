@@ -31,6 +31,11 @@ public final class FastBankingIntent {
       return Intent.GET_RECENT_TRANSACTIONS;
     if (text.matches("(?:my |the )?bills")) return Intent.GET_BILLS;
     if (text.matches("(?:my |the )?credit cards")) return Intent.GET_CREDIT_CARDS;
+    if (text.matches(".*\\b(?:cards?)\\b.*")
+        && !text.matches(".*\\b(pay|payment|repay|freeze|block|unfreeze|replace|transactions|history)\\b.*")
+        && (text.matches(".*\\b(linked|available|have|create|issue|apply|upgrade|adjust|adjustment)\\b.*")
+            || text.matches("(?:all |my |the )*(?:credit |debit )?cards?")))
+      return text.contains("credit") ? Intent.GET_CREDIT_CARDS : Intent.GET_CARDS;
     if (text.matches("(?:my |the )?cards")) return Intent.GET_CARDS;
     if (text.matches("(?:my |the )?beneficiaries")) return Intent.GET_BENEFICIARIES;
     if (text.matches("(?:my |the )?mandates")) return Intent.GET_MANDATES;

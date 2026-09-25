@@ -21,6 +21,7 @@ public class BankingDomainRouter implements DomainRouter {
   private final LoanQueryService loans;
   private final ActionPreparationService actions;
   private final TransferQueryService transfers;
+  @org.springframework.beans.factory.annotation.Autowired private CardSupport cardSupport;
 
   public BankingDomainRouter(
       AccountQueryService accounts,
@@ -159,14 +160,15 @@ public class BankingDomainRouter implements DomainRouter {
                   "BILLS",
                   "Here are the bill details.",
                   List.of(bills.detail(e.targetId())));
-      case GET_CREDIT_CARDS ->
-          domain(
-              "CREDIT_CARD_LIST",
-              "CARDS",
-              "Here are your credit cards.",
-              cards.creditCards(null, 0, 30));
-      case GET_CARDS ->
-          domain("CARD_LIST", "CARDS", "Here are your cards.", cards.list(null, 0, 30));
+      case GET_CREDIT_CARDS, GET_CARDS -> {
+        var owned = cards.all();
+        String support = cardSupport == null ? "Contact your bank for card support." : cardSupport.guidance();
+        String message = owned.isEmpty() ? "You have no cards. You can create a digital debit card linked to an active account. "
+            : "Here are all the cards linked to your accounts. ";
+        if (intent == Intent.GET_CREDIT_CARDS && owned.stream().noneMatch(c -> "CREDIT".equals(c.cardType())))
+          message += "Credit-card issuance is handled by card support. ";
+        yield domain("CARD_LIST", "CARDS", message + support, owned);
+      }
       case GET_CARD_TRANSACTIONS -> {
         var owned =
             e.targetId() == null ? cards.list(null, 0, 30) : List.of(cards.detail(e.targetId()));

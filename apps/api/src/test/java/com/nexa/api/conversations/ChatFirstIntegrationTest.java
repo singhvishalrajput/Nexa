@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.nexa.api.service.Workflow;
 import db.migration.V17__migrate_banking_products;
+import db.migration.V25__assign_full_card_numbers;
 import java.util.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,41 @@ public class ChatFirstIntegrationTest {
   String auth, chat, source, destination;
 
   @Test
+  void sensitiveNumbersAreOwnerScopedUncachedAndCardNumbersPersist() throws Exception {
+    String full = db.queryForObject("SELECT account_number FROM accounts WHERE id=?", String.class, source);
+    mvc.perform(get("/api/v1/sensitive-numbers/accounts/" + source).header("Authorization", auth))
+        .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+        .andExpect(jsonPath("$.number").value(full));
+    mvc.perform(get("/api/v1/sensitive-numbers/accounts/" + source)).andExpect(status().isUnauthorized());
+    String card = demoProduct("CARD");
+    db.update("UPDATE accounts SET number_masked='•••• 6012' WHERE product_id=?", card);
+    V25__assign_full_card_numbers.backfill(db);
+    String cardNumber = db.queryForObject("SELECT account_number FROM accounts WHERE product_id=?", String.class, card);
+    assertThat(cardNumber).matches("[0-9]{16}").endsWith("6012");
+    V25__assign_full_card_numbers.backfill(db);
+    assertThat(db.queryForObject("SELECT account_number FROM accounts WHERE product_id=?", String.class, card)).isEqualTo(cardNumber);
+    mvc.perform(get("/api/v1/sensitive-numbers/cards/" + card).header("Authorization", auth))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.number").value(cardNumber));
+    mvc.perform(get("/api/v1/sensitive-numbers/accounts/999999999").header("Authorization", auth))
+        .andExpect(status().isNotFound());
+    var other = postJson("/api/v1/auth/register", Map.of("fullName", "Other customer", "email", UUID.randomUUID() + "@example.com", "password", "SecureTest@123"), 201);
+    auth = "Bearer " + other.get("accessToken").asText();
+    mvc.perform(get("/api/v1/sensitive-numbers/accounts/" + source).header("Authorization", auth))
+        .andExpect(status().isNotFound());
+    mvc.perform(get("/api/v1/sensitive-numbers/cards/" + card).header("Authorization", auth))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void bankSupportDetailsAreSharedByCoreBankingAndChat() throws Exception {
+    mvc.perform(get("/api/v1/cards/support").header("Authorization", auth))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.phone").value("88000 00067"))
+        .andExpect(jsonPath("$.email").value("nexa@help.bank.in"));
+    var reply = say("create a credit card").get("assistantText").asText();
+    assertThat(reply).contains("88000 00067", "nexa@help.bank.in");
+  }
+
+  @Test
   void knowledgeQuestionCannotCreateOrConfirmAWorkflow() throws Exception {
     var first = say("What is a personal loan?");
     assertThat(first.get("intent").asText()).isEqualTo("KNOWLEDGE");
@@ -67,6 +103,10 @@ public class ChatFirstIntegrationTest {
             new ClassPathResource("db/migration/V12__conversation_workflows.sql"),
             new ClassPathResource("db/migration/V13__conversation_action_audit.sql"))
         .execute(db.getDataSource());
+    db.execute("ALTER TABLE transactions ADD CONSTRAINT ck_tx_record_kind CHECK(record_kind IN ('PAYMENT','MANDATE','MANDATE_EVENT','BILL','SCHEDULED_PAYMENT','BENEFICIARY','TRANSFER_REVIEW','SIMULATION','LEGACY_TRANSFER','PRODUCT_HISTORY','ADMIN_EVENT','LOAN_INSTALLMENT'))");
+    db.execute("ALTER TABLE transactions ADD CONSTRAINT ck_posting_accounts CHECK (record_kind <> 'PAYMENT' OR (transaction_type='DEPOSIT' AND source_account_id IS NULL AND destination_account_id IS NOT NULL) OR (transaction_type='WITHDRAWAL' AND source_account_id IS NOT NULL AND destination_account_id IS NULL) OR (transaction_type IN ('TRANSFER','LOAN_DISBURSEMENT','LOAN_REPAYMENT') AND source_account_id IS NOT NULL AND destination_account_id IS NOT NULL AND source_account_id<>destination_account_id))");
+    new ResourceDatabasePopulator(new ClassPathResource("db/migration/V24__card_payment_reviews.sql")).execute(db.getDataSource());
+    db.execute("ALTER TABLE transactions ADD CONSTRAINT fk_transaction_parent_test FOREIGN KEY(parent_id) REFERENCES transactions(id)");
   }
 
   public static String jsonValue(String payload, String path) {
@@ -197,14 +237,20 @@ public class ChatFirstIntegrationTest {
       assertThat(say(followup).get("workflow").get("status").asText()).isEqualTo("REVIEW");
     assertThat(
             db.queryForObject(
-                "SELECT COUNT(*) FROM transactions WHERE status='SIMULATED' AND target_id=?",
+                "SELECT COUNT(*) FROM transactions WHERE status='SUCCESS' AND target_id=?",
                 Integer.class,
                 electricity))
         .isZero();
     var result = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
     assertThat(result.get("assistantText").asText())
-        .contains("100", "Electricity", "no money moved")
+        .contains("100", "Electricity", "posted")
         .doesNotContain("Open Payments", "COLLECTING");
+    assertThat(
+            db.queryForObject(
+                "SELECT COUNT(*) FROM transactions WHERE status='SUCCESS' AND target_id=? AND operation='BILL_PAYMENT'",
+                Integer.class,
+                electricity))
+        .isEqualTo(1);
     assertThat(say("do it").get("workflow").get("reference"))
         .isEqualTo(result.get("workflow").get("reference"));
   }
@@ -280,8 +326,12 @@ public class ChatFirstIntegrationTest {
       assertThat(review.get("status").asText()).as(request).isEqualTo("REVIEW");
       assertThat(say("haan kar do").get("workflow").get("id")).isEqualTo(review.get("id"));
       var result = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
-      assertThat(result.get("assistantText").asText()).contains("accepted").doesNotContain("Open");
-      assertThat(result.get("assistantText").asText()).contains("Simulation recorded");
+      if (request.startsWith("pay "))
+        assertThat(result.get("assistantText").asText()).contains("Credit-card payment posted");
+      else {
+        assertThat(result.get("assistantText").asText()).contains("accepted").doesNotContain("Open");
+        assertThat(result.get("assistantText").asText()).contains("Simulation recorded");
+      }
     }
   }
 
@@ -344,6 +394,9 @@ public class ChatFirstIntegrationTest {
     source = open("Everyday");
     destination = open("Reserve");
     db.update("UPDATE accounts SET balance=10000 WHERE id=?", Long.valueOf(source));
+    if (db.queryForObject("SELECT COUNT(*) FROM accounts WHERE account_number='CHAT-CASH'", Integer.class) == 0)
+      db.update("INSERT INTO accounts(account_number,account_name,account_type,account_category,currency_code,balance,status,version,created_at,updated_at)"
+          + " VALUES('CHAT-CASH','Chat test cash','CASH','SYSTEM','INR',10000,'ACTIVE',0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
     chat = postJson("/api/v1/conversations", Map.of(), 201).get("id").asText();
   }
 
@@ -559,12 +612,128 @@ public class ChatFirstIntegrationTest {
     return id;
   }
 
+
+  @Test
+  void cardRepaymentPostsOnceFromCoreButtonsAndChat() throws Exception {
+    String card = namedProduct("CARD", "Violet Credit");
+    var review = postJson("/api/v1/demo/actions/prepare", Map.of("operation", "PAY_CARD", "accountId", source, "targetId", card, "amount", "100"), 200);
+    assertThat(review.get("simulated").asBoolean()).isFalse();
+    String path = "/api/v1/demo/actions/" + review.get("id").asText() + "/confirm";
+    var receipt = postJson(path, Map.of(), 200);
+    assertThat(receipt.get("status").asText()).isEqualTo("COMPLETED");
+    assertThat(postJson(path, Map.of(), 200)).isEqualTo(receipt);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?", Integer.class, card)).isEqualTo(400);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(9900);
+    assertThat(db.queryForObject("SELECT parent_id FROM transactions WHERE id=?", String.class, receipt.get("reference").asText())).isNull();
+    assertThat(db.queryForObject("SELECT target_id FROM transactions WHERE id=?", String.class, receipt.get("reference").asText())).isEqualTo(card);
+    var workflow = say("pay credit card").get("workflow");
+    String id = workflow.get("id").asText();
+    command(id, "SELECT", card, UUID.randomUUID().toString());
+    command(id, "SELECT", source, UUID.randomUUID().toString());
+    var paid = command(id, "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(paid.get("workflow").get("message").asText()).contains("Credit-card payment posted");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?", Integer.class, card)).isZero();
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(9500);
+    assertThat(db.queryForObject("SELECT SUM(CASE WHEN l.entry_type='DEBIT' THEN l.amount ELSE -l.amount END) FROM ledger_entries l JOIN journal_entries j ON j.id=l.journal_entry_id JOIN transactions t ON t.id=j.transaction_id WHERE t.target_id=?", java.math.BigDecimal.class, card)).isEqualByComparingTo("0");
+    mvc.perform(get("/api/v1/cards/" + card + "/transactions").header("Authorization", auth)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
+  }
+
+  @Test
+  void billCanBeChargedToCreditCardWithoutDebitingDepositAccount() throws Exception {
+    String card = namedProduct("CARD", "Violet Credit");
+    String bill = namedProduct("BILL", "Electricity");
+    String funding = db.queryForObject("SELECT id FROM accounts WHERE product_id=?", String.class, card);
+    var review = postJson("/api/v1/demo/actions/prepare", Map.of("operation", "PAY_BILL", "accountId", funding, "targetId", bill, "amount", "100"), 200);
+    String path = "/api/v1/demo/actions/" + review.get("id").asText() + "/confirm";
+    var receipt = postJson(path, Map.of(), 200);
+    assertThat(postJson(path, Map.of(), 200)).isEqualTo(receipt);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?", Integer.class, card)).isEqualTo(600);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+    assertThat(db.queryForObject("SELECT status FROM transactions WHERE id=?", String.class, bill)).isEqualTo("PAID");
+    String nextBill = namedProduct("BILL", "Internet");
+    var workflow = say("pay Internet bill using Violet Credit card").get("workflow");
+    if (workflow.get("status").asText().equals("COLLECTING")) {
+      String choice = workflow.get("field").asText().equals("target") ? nextBill : funding;
+      workflow = command(workflow.get("id").asText(), "SELECT", choice, UUID.randomUUID().toString()).get("workflow");
+    }
+    assertThat(workflow.get("operation").asText()).isEqualTo("PAY_BILL");
+    assertThat(workflow.get("accountId").asText()).isEqualTo(funding);
+    command(workflow.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?", Integer.class, card)).isEqualTo(700);
+  }
+
+  @Test
+  void cardPaymentsRejectOverpaymentDebitCardsAndInsufficientCredit() throws Exception {
+    String card = demoProduct("CARD"), bill = demoProduct("BILL");
+    postJson("/api/v1/demo/actions/prepare", Map.of("operation", "PAY_CARD", "accountId", source, "targetId", card, "amount", "501"), 400);
+    String funding = db.queryForObject("SELECT id FROM accounts WHERE product_id=?", String.class, card);
+    db.update("UPDATE accounts SET balance=990 WHERE product_id=?", card);
+    postJson("/api/v1/demo/actions/prepare", Map.of("operation", "PAY_BILL", "accountId", funding, "targetId", bill, "amount", "100"), 400);
+    db.update("UPDATE accounts SET product_type='DEBIT' WHERE product_id=?", card);
+    postJson("/api/v1/demo/actions/prepare", Map.of("operation", "PAY_CARD", "accountId", source, "targetId", card, "amount", "10"), 400);
+    postJson("/api/v1/demo/actions/prepare", Map.of("operation", "PAY_BILL", "accountId", funding, "targetId", bill, "amount", "10"), 400);
+  }
+
+  @Test
+  void cardConfirmationRechecksChangedBalanceAndOwnership() throws Exception {
+    String card = demoProduct("CARD");
+    var request = Map.of("operation", "PAY_CARD", "accountId", source, "targetId", card, "amount", "400");
+    String first = postJson("/api/v1/demo/actions/prepare", request, 200).get("id").asText();
+    String second = postJson("/api/v1/demo/actions/prepare", request, 200).get("id").asText();
+    postJson("/api/v1/demo/actions/" + first + "/confirm", Map.of(), 200);
+    postJson("/api/v1/demo/actions/" + second + "/confirm", Map.of(), 400);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?", Integer.class, card)).isEqualTo(100);
+    var other = postJson("/api/v1/auth/register", Map.of("fullName", "Other card owner", "email", UUID.randomUUID() + "@example.com", "password", "SecureTest@123"), 201);
+    auth = "Bearer " + other.get("accessToken").asText();
+    postJson("/api/v1/cards/digital-debit", Map.of("accountId", source), 404);
+    postJson("/api/v1/demo/actions/prepare", request, 404);
+    postJson("/api/v1/demo/actions/" + first + "/confirm", Map.of(), 404);
+  }
+
+  @Test
+  void partialBillPaymentsPreserveOutstandingAndHistory() throws Exception {
+    String bill = demoProduct("BILL");
+    var review = postJson("/api/v1/demo/actions/prepare", Map.of("operation", "PAY_BILL", "accountId", source, "targetId", bill, "amount", "40"), 200);
+    postJson("/api/v1/demo/actions/" + review.get("id").asText() + "/confirm", Map.of(), 200);
+    assertThat(db.queryForObject("SELECT amount FROM transactions WHERE id=?", Integer.class, bill)).isEqualTo(60);
+    assertThat(db.queryForObject("SELECT status FROM transactions WHERE id=?", String.class, bill)).isEqualTo("DUE");
+    mvc.perform(get("/api/v1/bills/" + bill).header("Authorization", auth)).andExpect(status().isOk()).andExpect(jsonPath("$.paymentHistory.length()").value(1));
+  }
+
+  @Test
+  void oldSimulatedCardReviewCannotBecomeARealPayment() throws Exception {
+    String card = demoProduct("CARD");
+    var review = postJson("/api/v1/demo/actions/prepare", Map.of("operation", "PAY_CARD", "accountId", source, "targetId", card, "amount", "100"), 200);
+    String id = review.get("id").asText();
+    db.update("UPDATE transactions SET record_kind='SIMULATION' WHERE id=?", id);
+    postJson("/api/v1/demo/actions/" + id + "/confirm", Map.of(), 400);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?", Integer.class, card)).isEqualTo(500);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+  }
+
+  @Test
+  void cardDiscoveryAndDigitalDebitIssuanceAreOwnedAndRepeatSafe() throws Exception {
+    var empty = say("show cards linked to my account");
+    assertThat(empty.get("banking").get("cards").size()).isZero();
+    assertThat(empty.get("assistantText").asText()).contains("digital debit card");
+    var credit = say("create a credit card");
+    assertThat(credit.get("assistantText").asText()).contains("issuance", "support");
+    var card = postJson("/api/v1/cards/digital-debit", Map.of("accountId", source), 200);
+    assertThat(card.get("cardType").asText()).isEqualTo("DEBIT");
+    String fullCardNumber = db.queryForObject("SELECT account_number FROM accounts WHERE product_id=?", String.class, card.get("id").asText());
+    assertThat(fullCardNumber).matches("[0-9]{16}").endsWith(card.get("numberMasked").asText().substring(5));
+    mvc.perform(get("/api/v1/sensitive-numbers/cards/" + card.get("id").asText()).header("Authorization", auth)).andExpect(status().isOk()).andExpect(jsonPath("$.number").value(fullCardNumber));
+    assertThat(postJson("/api/v1/cards/digital-debit", Map.of("accountId", source), 200).get("id")).isEqualTo(card.get("id"));
+    namedProduct("CARD", "Violet Credit");
+    assertThat(say("show cards linked to my account").get("banking").get("cards").size()).isEqualTo(2);
+    postJson("/api/v1/cards/digital-debit", Map.of("accountId", destination), 400);
+    mvc.perform(post("/api/v1/cards/digital-debit").contentType(MediaType.APPLICATION_JSON).content("{}" )).andExpect(status().isUnauthorized());
+  }
+
   @Test
   void providerSimulationsHaveDurableReceiptsWithoutProductOrLedgerWrites() throws Exception {
     for (String operation :
         List.of(
-            "PAY_BILL",
-            "PAY_CARD",
             "CANCEL_MANDATE",
             "FREEZE_CARD",
             "UNFREEZE_CARD",

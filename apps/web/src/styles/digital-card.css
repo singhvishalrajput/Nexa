@@ -1,0 +1,101 @@
+.bank-digital-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 1.584;
+  overflow: hidden;
+  border-radius: 18px;
+  margin: 0 auto 24px;
+  background: var(--nexa-inverse-surface);
+  color: var(--nexa-on-action);
+  box-shadow: var(--nexa-shadow-card);
+}
+.bank-digital-card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.bank-digital-card-top {
+  position: absolute;
+  inset: 9% 9% auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--nexa-on-action);
+  text-shadow: 0 1px 4px var(--nexa-inverse-surface);
+}
+.bank-digital-card-top > span:first-child { font-size: 24px; font-weight: 600; letter-spacing: -.8px; }
+.bank-digital-card-number {
+  position: absolute;
+  left: 9%;
+  bottom: 12%;
+  max-width: 82%;
+  font-size: clamp(14px, 2vw, 20px);
+  letter-spacing: 3px;
+  color: var(--nexa-on-action);
+  text-shadow: 0 1px 4px var(--nexa-inverse-surface);
+}
+
+/* Compact summaries retain horizontal browsing without squeezing mobile text. */
+.nexa-messenger .bank-collection.is-card-carousel .bank-collection-items {
+  display: grid;
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: min(100%, max(280px, calc((100% - 10px) / 1.5)));
+  gap: 10px;
+  align-items: start;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  padding-bottom: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--nexa-border-control) var(--nexa-background);
+}
+.nexa-messenger .is-card-carousel .bank-collection-items:focus-visible {
+  outline: 2px solid var(--nexa-action);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+.nexa-messenger .is-card-collection .bank-chat-card {
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--nexa-border);
+  border-radius: var(--radius-md);
+  scroll-snap-align: start;
+}
+.nexa-messenger .bank-chat-card-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.nexa-messenger .bank-chat-card-heading > div { flex: 1; min-width: 100px; }
+.nexa-messenger .bank-chat-card-heading h4 { margin: 0 0 2px; line-height: 1.4; overflow-wrap: anywhere; }
+.nexa-messenger .bank-chat-card-icon { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border-radius: 8px; background: var(--nexa-background); color: var(--nexa-text-muted); }
+.nexa-messenger .bank-chat-card-icon svg { width: 24px; height: 24px; }
+.nexa-messenger .bank-response .bank-chat-card-facts { margin: 10px 0 4px; }
+.nexa-messenger .bank-chat-card .bank-detail { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 3px 0; }
+.nexa-messenger .bank-chat-card .bank-detail dd { text-align: right; }
+.nexa-messenger .bank-chat-card .bank-money { font-size: 15px; }
+.nexa-messenger .bank-chat-card-actions { display: flex; flex-wrap: wrap; column-gap: 16px; }
+.nexa-messenger .bank-card-disclosure { min-width: 0; font-size: 13px; }
+.nexa-messenger .bank-card-disclosure summary { width: fit-content; padding: 10px 0; color: var(--nexa-action); cursor: pointer; }
+.nexa-messenger .bank-card-disclosure summary:focus-visible { outline: 2px solid var(--nexa-action); outline-offset: 3px; border-radius: 3px; }
+.nexa-messenger .bank-chat-card-actions > details[open] { flex-basis: 100%; }
+.nexa-messenger .bank-response .bank-card-disclosure dl { margin: 0 0 8px; }
+.bank-sensitive-number { display: inline; overflow-wrap: anywhere; }
+.bank-sensitive-number .bank-number-toggle {
+  display: inline;
+  appearance: none;
+  border: 0;
+  border-radius: 3px;
+  padding: 2px 0;
+  min-height: 0;
+  width: auto;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.bank-number-toggle:hover { text-decoration: underline dotted; text-underline-offset: 4px; }
+.bank-number-toggle:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.bank-number-message { display: block; font-size: 12px; letter-spacing: normal; font-weight: normal; }
+.conversation-choices > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; }
+.bank-account-tile h3 a, .bank-product h2 a { color: inherit; text-decoration: none; }

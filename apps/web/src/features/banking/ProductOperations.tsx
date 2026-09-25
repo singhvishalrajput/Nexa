@@ -113,7 +113,18 @@ export function BillCreate({ token, reload, initiallyOpen = false }: { token: st
  <fieldset disabled={busy} class="bank-fields-grid">
  <label>Biller<input name="billerName" required maxLength={160}/></label>
  <label>Customer number<input name="customerNumber" required maxLength={80}/></label>
- <label>Category<input name="category" required maxLength={80}/></label>
+ <label>Category<select name="category" required defaultValue="">
+ <option value="" disabled>Choose a category</option>
+ <option value="UTILITIES">Utilities</option>
+ <option value="MOBILE">Mobile</option>
+ <option value="INTERNET">Internet</option>
+ <option value="CREDIT_CARD">Credit card</option>
+ <option value="INSURANCE">Insurance</option>
+ <option value="RENT">Rent</option>
+ <option value="EDUCATION">Education</option>
+ <option value="SUBSCRIPTIONS">Subscriptions</option>
+ <option value="OTHER">Other</option>
+ </select></label>
  <label>Amount (INR)<input name="amount" type="number" min="0.01" step="0.01" required/></label>
  <label>Minimum amount (INR)<input name="minimumAmount" type="number" min="0" step="0.01"/></label>
  <label>Due date<input name="dueAt" type="date" required/></label>

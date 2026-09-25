@@ -37,6 +37,8 @@ public class ShowcaseService {
   private final CardQueryService cards;
   private final MoneyTransferService transfers;
   private final BeneficiaryQueryService beneficiaries;
+  @org.springframework.beans.factory.annotation.Autowired private CardService cardPayments;
+  @org.springframework.beans.factory.annotation.Autowired private BillPaymentService billPayments;
 
   public ShowcaseService(
       JdbcTemplate db,
@@ -90,7 +92,8 @@ public class ShowcaseService {
     db.update(
         "INSERT INTO transactions"
             + " (record_kind,id,user_id,operation,source_account_id,target_id,amount,currency_code,status,expires_at)"
-            + " VALUES ('SIMULATION',?,?,?,?,?,?,?,'REVIEW',?)",
+            + " VALUES (?,?,?,?,?,?,?,?,'REVIEW',?)",
+        Set.of("PAY_CARD", "PAY_BILL").contains(operation) ? "PAYMENT_REVIEW" : "SIMULATION",
         id,
         user.userId(),
         operation,
@@ -105,6 +108,16 @@ public class ShowcaseService {
   @Transactional
   public Receipt confirm(String id) {
     Receipt receipt = read(id, true);
+    if (Set.of("PAY_CARD", "PAY_BILL").contains(receipt.operation())) {
+      if (receipt.simulated()) throw new InvalidRequestException("This old request was only a simulation. Review a new payment before confirming.");
+      if (receipt.status().equals("COMPLETED")) return receipt;
+      if (!receipt.status().equals("REVIEW")) throw new InvalidRequestException("This payment review is closed.");
+      String reference = receipt.operation().equals("PAY_CARD")
+          ? cardPayments.repay(receipt.accountId(), receipt.targetId(), new BigDecimal(receipt.amount()))
+          : billPayments.pay(receipt.accountId(), receipt.targetId(), new BigDecimal(receipt.amount()));
+      db.update("UPDATE transactions SET status='COMPLETED',transaction_reference=?,completed_at=CURRENT_TIMESTAMP WHERE id=?", reference, id);
+      return read(id, false);
+    }
     if (!receipt.simulated()) {
       if (receipt.status().equals("COMPLETED")) return receipt;
       if (!receipt.status().equals("REVIEW"))
@@ -142,7 +155,7 @@ public class ShowcaseService {
   public List<Receipt> history() {
     return db
         .query(
-            "SELECT id FROM transactions WHERE (record_kind='SIMULATION' OR"
+            "SELECT id FROM transactions WHERE (record_kind IN ('SIMULATION','PAYMENT_REVIEW') OR"
                 + " (record_kind='TRANSFER_REVIEW' AND operation='START_TRANSFER')) AND user_id=?"
                 + " ORDER BY expires_at DESC FETCH NEXT 30 ROWS ONLY",
             (r, n) -> r.getString(1),
@@ -155,7 +168,7 @@ public class ShowcaseService {
   private Receipt read(String id, boolean lock) {
     var rows =
         db.query(
-            "SELECT * FROM transactions WHERE record_kind IN ('SIMULATION','TRANSFER_REVIEW') AND"
+            "SELECT * FROM transactions WHERE record_kind IN ('SIMULATION','TRANSFER_REVIEW','PAYMENT_REVIEW') AND"
                 + " id=? AND user_id=?"
                 + (lock ? " FOR UPDATE" : ""),
             (r, n) -> {

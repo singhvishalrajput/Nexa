@@ -37,7 +37,8 @@ a { text-decoration:none; }
 :is(.bank-app,.nexa-messenger) .sidebar-brand { padding:0; font:650 22px/1.2 var(--nexa-heading-font); letter-spacing:-.055em; gap:9px; }
 .experience-chat .sidebar-brand > img { display:none; }
 :is(.bank-app,.nexa-messenger) .nexa-sidebar :is(.sidebar-link,.sidebar-more > summary) { min-height:40px; padding:9px 10px; border:0; font-size:12px; border-radius:9px; }
-:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link[aria-current=page] { color:var(--nexa-reference-a34431); background:var(--nexa-soft); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar { --nexa-selected:var(--nexa-reference-e3e7ee); --nexa-selected-text:var(--nexa-reference-39465c); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link[aria-current=page] { color:var(--nexa-selected-text); background:var(--nexa-selected); }
 .sidebar-footer { border-top:1px solid var(--nexa-border); padding-top:12px; margin-top:auto; }
 .bank-topbar { height:76px; padding:0 30px; background:var(--nexa-surface); gap:12px; }
 .bank-topbar .experience-section-title { color:var(--nexa-text); font-size:13px; font-weight:500; }
@@ -175,6 +176,10 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .experience-rail-container > .experience-rail { height:100%; }
 .experience-chat .messenger-history-sidebar { display:flex; width:auto; border-right:1px solid var(--nexa-border); }
 .experience-chat .messenger-main { min-width:0; background:var(--nexa-surface); }
+.experience-chat .conversation-context { display:none; min-width:0; overflow:auto; border-left:1px solid var(--nexa-border); padding:20px 18px; background:var(--nexa-surface); }
+.experience-chat .conversation-context[aria-hidden="true"] { display:none; }
+.experience-chat .conversation-context-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; color:var(--nexa-text-muted); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+.experience-chat .conversation-context-bar .messenger-icon { width:32px; min-width:32px; height:32px; min-height:32px; padding:7px; border:1px solid var(--nexa-border); border-radius:8px; }
 .experience-chat .messenger-header { min-height:76px; height:76px; padding:0 28px; background:var(--nexa-surface); border-bottom:1px solid var(--nexa-border); gap:12px; }
 .experience-chat .messenger-identity { flex:1; text-align:left; }
 .experience-chat .messenger-identity h1 { font:500 13px/1.5 var(--nexa-font); letter-spacing:0; }
@@ -211,6 +216,13 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .experience-chat .messenger-quick-actions button { font-size:11px; padding:6px 10px; min-height:30px; }
 .experience-chat .messenger-composer-meta { font-size:11px; margin-top:4px; gap:4px 8px; }
 .experience-chat .messenger-composer-meta :is(button,select,summary) { font-size:11px; min-height:30px; }
+.experience-chat .messenger-header .messenger-composer-meta { margin:0; }
+.experience-chat .messenger-header .messenger-composer-meta details p { top:calc(100% + 8px); bottom:auto; margin:0; }
+@media (max-width:1100px) {
+  .nexa-messenger.experience-chat .messenger-header { height:auto; flex-wrap:wrap; padding-block:8px; }
+  .experience-chat .messenger-header .messenger-composer-meta { order:1; flex-basis:100%; }
+  .experience-chat .messenger-header .messenger-composer-meta > button { display:inline-flex; }
+}
 .experience-chat .messenger-bubble { font-size:13px; background:transparent; border:0; border-radius:14px; padding:12px 16px; }
 .experience-chat .from-user .messenger-bubble { background:var(--nexa-reference-f5f3f0); border-radius:16px; }
 .experience-chat .messenger-message-avatar { width:28px; height:28px; flex-shrink:0; margin-top:12px; }
@@ -302,6 +314,10 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .site-shell .scene-dots .oj-button-button { min-width:10px; padding:0; border-radius:50%; background:var(--nexa-coral); }
 .site-shell .menu-toggle { display:none; }
 @media(min-width:900px) { .experience-workspace .bank-menu-toggle, .experience-workspace .bank-mobile-tabs { display:none; } }
+@media(min-width:1180px) {
+  .nexa-messenger.experience-chat.context-sidebar-open { grid-template-columns:68px 248px minmax(0,1fr) 272px; }
+  .experience-chat .conversation-context[aria-hidden="false"] { display:block; }
+}
 @media(max-width:1100px) and (min-width:900px) {
   .experience-workspace { grid-template-columns:220px minmax(0,1fr); }
   .nexa-messenger.experience-chat { grid-template-columns:60px 220px minmax(0,1fr); }
@@ -663,6 +679,8 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 
 
 /* Keep conversation history flexible above the banking disclosure. */
+.experience-chat .messenger-bottom,
+.experience-chat .nexa-sidebar { padding-bottom:calc(4px + env(safe-area-inset-bottom)); }
 .experience-chat .messenger-history-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
 .experience-chat .experience-banking-menu { position:relative; flex:0 0 auto; margin:0; }
 .experience-chat .sidebar-footer { flex:0 0 auto; margin-top:0; padding-top:8px; }
@@ -673,10 +691,19 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 }
 .experience-chat .sidebar-brand > img { display:block; }
 
-/* Give the conversation entry a little more prominence in the shared sidebar. */
-:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link { min-height:46px; margin-block:2px 6px; font-size:14px; font-weight:650; color:var(--nexa-reference-a34431); background:var(--nexa-soft); box-shadow:0 0 14px var(--nexa-chat-halo), inset 0 0 0 1px var(--nexa-chat-halo); }
+/* A slow blue-and-teal edge accent distinguishes Chat without a filled inactive state. */
+@property --sidebar-chat-angle { syntax:"<angle>"; initial-value:0deg; inherits:false; }
+@keyframes sidebar-chat-orbit { to { --sidebar-chat-angle:360deg; } }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link { position:relative; isolation:isolate; min-height:46px; margin-block:2px 6px; font-size:14px; font-weight:650; color:var(--nexa-chat-blue); background:transparent; box-shadow:none; }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link::before { content:""; position:absolute; inset:0; padding:1px; border-radius:inherit; pointer-events:none; background:conic-gradient(from var(--sidebar-chat-angle), var(--nexa-chat-blue-faint) 0deg, var(--nexa-chat-blue-faint) 230deg, var(--nexa-chat-teal-edge) 295deg, var(--nexa-chat-blue-faint) 360deg); -webkit-mask:linear-gradient(var(--nexa-surface) 0 0) content-box,linear-gradient(var(--nexa-surface) 0 0); -webkit-mask-composite:xor; mask:linear-gradient(var(--nexa-surface) 0 0) content-box,linear-gradient(var(--nexa-surface) 0 0); mask-composite:exclude; animation:sidebar-chat-orbit 18s linear infinite; }
 :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link svg { width:22px; height:22px; flex-basis:22px; }
-:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link:hover { background:var(--nexa-reference-ffe3d9); box-shadow:0 0 18px var(--nexa-chat-halo-hover), inset 0 0 0 1px var(--nexa-chat-ring-hover); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link:hover:not(:disabled) { color:var(--nexa-chat-blue-deep); background:var(--nexa-chat-blue-hover); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link[aria-current="page"],
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link[aria-current="page"]:hover:not(:disabled) { color:var(--nexa-chat-blue-deep); background:var(--nexa-chat-blue-soft); box-shadow:0 0 7px var(--nexa-chat-blue-shadow); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link[aria-current="page"]::before { animation:none; background:var(--nexa-chat-blue-edge); }
+@media (prefers-reduced-motion:reduce) {
+  :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link::before { animation:none; background:var(--nexa-chat-blue-edge); }
+}
 
 .experience-banking-menu > summary { display:flex; align-items:center; gap:9px; min-height:40px; padding:0 10px; border:1px solid var(--nexa-border); border-radius:10px; background:var(--nexa-background); color:var(--nexa-text-secondary); cursor:pointer; list-style:none; }
 .experience-banking-menu > summary::-webkit-details-marker { display:none; }
@@ -684,3 +711,52 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .experience-banking-menu > summary svg:last-child { margin-left:auto; width:14px; }
 .experience-banking-menu[open] > summary svg:last-child { transform:rotate(180deg); }
 .experience-chat .experience-banking-menu[open] > .sidebar-navigation { position:absolute; z-index:4; inset:auto 0 calc(100% + 8px); max-height:min(52dvh,460px); overflow-y:auto; padding:8px; border:1px solid var(--nexa-border); border-radius:12px; background:var(--nexa-surface); box-shadow:var(--nexa-shadow); }
+
+/* Small selection controls keep the conversation list compact. */
+.experience-chat .messenger-selection { font-size:12px; }
+.experience-chat .messenger-selection:not(:empty) { padding:2px 0 6px; }
+.experience-chat .messenger-recents-heading { justify-content:space-between; gap:8px; }
+.experience-chat .messenger-selection button { min-height:32px; padding:4px 6px; font-size:12px; }
+.experience-chat .messenger-recents-heading .messenger-selection-toggle { min-height:32px; display:grid; place-items:center; width:32px; padding:6px; background:transparent; }
+.experience-chat .messenger-selection-toggle svg { width:18px; height:18px; }
+.experience-chat .messenger-selection-actions { display:flex; align-items:center; gap:4px 8px; }
+.experience-chat .messenger-selection-actions > span { margin-right:auto; }
+.experience-chat .messenger-selection-actions button { display:inline-flex; align-items:center; gap:4px; }
+.experience-chat .messenger-selection-actions .messenger-selection-action-icon { justify-content:center; width:32px; min-width:32px; padding:6px; }
+.experience-chat .messenger-selection-actions svg { width:13px; height:13px; }
+.experience-chat .messenger-history-row > input[type="checkbox"] { flex:none; width:16px; height:16px; margin:8px; accent-color:var(--nexa-action); }
+.experience-chat .messenger-history-delete-icon { width:32px; flex-basis:32px; min-height:32px; padding:8px; }
+.experience-chat .messenger-history-delete-icon svg { width:13px; height:13px; }
+
+/* The second control buds from the selection button, then separates. */
+.experience-chat .messenger-selection-icons { position:relative; flex:none; width:32px; height:32px; transition:width 380ms cubic-bezier(.22,.8,.3,1); }
+.experience-chat .messenger-selection-icons.is-selecting { width:70px; }
+.experience-chat .messenger-selection-icons > button { position:absolute; top:0; display:grid; place-items:center; width:32px; min-width:32px; height:32px; min-height:32px; padding:6px; border-radius:50%; z-index:1; }
+.experience-chat .messenger-selection-icons .messenger-selection-toggle { left:0; }
+.experience-chat .messenger-selection-icons.is-selecting > button { background:var(--nexa-soft); color:var(--nexa-text); }
+.experience-chat .messenger-selection-icons .messenger-select-all-icon { left:38px; animation:messenger-selection-bud 440ms cubic-bezier(.22,.8,.3,1) both; }
+.experience-chat .messenger-select-all-icon svg { width:18px; height:18px; }
+.experience-chat .messenger-selection-icons.is-selecting .messenger-selection-toggle { animation:messenger-selection-squish 440ms ease-out; }
+.experience-chat .messenger-selection-icons.is-selecting::before { content:""; position:absolute; left:23px; top:11px; width:24px; height:10px; border-radius:50%; background:var(--nexa-soft); pointer-events:none; animation:messenger-selection-neck 440ms ease-out both; }
+@keyframes messenger-selection-bud {
+  0% { transform:translateX(-38px) scale(.6); opacity:0; border-radius:45% 55% 60% 40%; }
+  35% { transform:translateX(-20px) scale(1.12,.8); opacity:1; border-radius:55% 45% 45% 55%; }
+  75% { transform:translateX(2px) scale(.94,1.06); }
+  100% { transform:translateX(0) scale(1); opacity:1; border-radius:50%; }
+}
+@keyframes messenger-selection-squish {
+  0%,100% { transform:scale(1); border-radius:50%; }
+  35% { transform:scale(1.14,.86); border-radius:42% 58% 58% 42%; }
+  70% { transform:scale(.94,1.06); }
+}
+@keyframes messenger-selection-neck {
+  0% { transform:scaleX(0); opacity:0; }
+  30% { transform:scale(1,.9); opacity:1; }
+  65% { transform:scale(1.1,.25); opacity:1; }
+  100% { transform:scale(0); opacity:0; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .experience-chat .messenger-selection-icons { transition:none; }
+  .experience-chat .messenger-selection-icons.is-selecting > button { animation:none; }
+  .experience-chat .messenger-selection-icons.is-selecting::before { display:none; }
+}

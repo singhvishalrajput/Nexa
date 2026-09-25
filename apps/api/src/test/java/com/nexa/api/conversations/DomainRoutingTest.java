@@ -69,7 +69,7 @@ class DomainRoutingTest {
             "show bills",
             "BILL_LIST",
             "show my credit card",
-            "CREDIT_CARD_LIST",
+            "CARD_LIST",
             "show beneficiaries",
             "BENEFICIARY_LIST",
             "show scheduled payments",
@@ -83,7 +83,7 @@ class DomainRoutingTest {
                     .isEqualTo(type));
     verify(mandates).list(null, 0, 30);
     verify(bills).list(null, 0, 30);
-    verify(cards).creditCards(null, 0, 30);
+    verify(cards).all();
     verify(beneficiaries).list();
     verify(scheduled).list(null, 0, 30);
     verify(loans).list(null, 0, 30);

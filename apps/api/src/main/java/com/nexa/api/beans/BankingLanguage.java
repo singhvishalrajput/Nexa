@@ -99,11 +99,12 @@ public final class BankingLanguage {
     if (text.matches(".*\\b(pay|make)\\b.*\\bemi\\b.*")
         || text.matches(".*\\b(repay|pay|repayment)\\b.*\\bloan\\b.*")
         || text.matches(".*\\bloan\\b.*\\b(repay|repayment|pay)\\b.*")) return "REPAY_LOAN";
+    if (text.matches(".*\\bbill\\b.*\\b(with|using|from)\\b.*\\bcard\\b.*") && text.matches(".*\\b(pay|payment)\\b.*")) return "PAY_BILL";
     if (text.matches(".*\\bcard\\b.*")) {
       if (text.matches(".*\\bunfreeze\\b.*")) return "UNFREEZE_CARD";
       if (text.matches(".*\\b(freeze|block)\\b.*")) return "FREEZE_CARD";
       if (text.matches(".*\\breplace\\b.*")) return "REPLACE_CARD";
-      if (text.matches(".*\\bpay\\b.*")) return "PAY_CARD";
+      if (text.matches(".*\\b(pay|repay|payment|repayment)\\b.*")) return "PAY_CARD";
     }
     if (text.matches(".*\\bbill\\b.*") && text.matches(".*\\b(pay|payment|bhar|bharo)\\b.*"))
       return "PAY_BILL";

@@ -1,6 +1,7 @@
+import { SensitiveNumber } from "../../features/banking/SensitiveNumber";
 import { Action } from "../design/Action";
 import { BankingIcon, BankingIconName } from "../BankingIcon";
-import { AccountSnapshot, formatMoney, safeMask } from "../../services/banking-content";
+import { AccountSnapshot, formatMoney } from "../../services/banking-content";
 import { t } from "../../services/locale";
 
 export function QuickAction({ icon, title, description, disabled, onClick }: { icon: BankingIconName; title: string; description: string; disabled: boolean; onClick: () => void }) {
@@ -16,7 +17,7 @@ export function AccountContext({ accounts, loading, error, hidden, onToggle, onR
       : error ? <div role="alert"><p>{t("We couldn’t load this information")}</p><button type="button" onClick={onRetry}>{t("Try again")}</button></div>
       : !accounts.length ? <p>{t("No accounts to show.")}</p>
       : accounts.map(account => <section class="conversation-context-account" key={account.id}>
-        <h3>{account.displayName}</h3><span>{safeMask(account.accountNumberMasked)}</span>
+        <h3>{account.displayName}</h3><span><SensitiveNumber id={account.id} masked={account.accountNumberMasked}/></span>
         <p>{t("Available balance")}</p><strong aria-label={hidden ? t("Balances hidden") : undefined}>{hidden ? "••••••" : formatMoney(account.availableBalance, account.currencyCode)}</strong>
         <a href={"#/accounts/" + encodeURIComponent(account.id)}>{t("Open accounts")} <BankingIcon name="arrow"/></a>
       </section>)}
