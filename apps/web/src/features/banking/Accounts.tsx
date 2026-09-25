@@ -1,3 +1,4 @@
+import { AskNexaButton } from "./AskNexaButton";
 import { SensitiveNumber } from "./SensitiveNumber";
 
 import "ojs/ojcollapsible";
@@ -12,7 +13,7 @@ import { openAccount } from "../../services/banking";
 import { go, sumMoney } from "./utils";
 export function AccountTile({ account }: {
     account: BankAccount;
-}) { return <section class="bank-account-tile" data-account-card={account.id}><div><span class="bank-tile-symbol" aria-hidden="true">▤</span><Status value={account.status}/></div><h3><a href={"#/accounts/" + encodeURIComponent(account.id)}>{account.displayName}</a></h3><span>{account.accountType.toLowerCase()} · <SensitiveNumber id={account.id} masked={account.accountNumberMasked}/></span><strong>{formatMoney(account.availableBalance, account.currencyCode)}</strong><footer>{t("Available balance")}<span aria-hidden="true">↗</span></footer></section>; }
+}) { return <section class="bank-account-tile bank-clickable-card" data-account-card={account.id}><div><span class="bank-tile-symbol" aria-hidden="true">▤</span><Status value={account.status}/></div><h3><a class="bank-card-primary" href={"#/accounts/" + encodeURIComponent(account.id)}>{account.displayName}</a></h3><span>{account.accountType.toLowerCase()} · <SensitiveNumber id={account.id} masked={account.accountNumberMasked}/></span><strong>{formatMoney(account.availableBalance, account.currencyCode)}</strong><footer>{t("Available balance")}<span aria-hidden="true">↗</span></footer></section>; }
 export function Overview({ token, name, accounts, reload, onAskNexa }: {
     token: string;
     name: string;
@@ -37,7 +38,7 @@ export function Overview({ token, name, accounts, reload, onAskNexa }: {
  </a>)}
  {!accounts.length && <div class="bank-collection-empty"><State empty={t("Your first account starts here")}/><button class="bank-button" onClick={() => setOpening(true)}>{t("Open a bank account")}</button></div>}
  </div>
- <Panel className="bank-next-step"><div class="bank-ai-stars" aria-hidden="true">{Array.from({ length: 7 }, (_, index) => <span key={index}>✦</span>)}</div><div class="bank-ai-badge"><span aria-hidden="true">✦</span>{t("Powered By AI")}</div><p class="bank-eyebrow">{t("BANKING, MADE SIMPLE")}</p><h2>{t("Start with a conversation.")}</h2><p>{t("Type or speak to check your balance, see recent payments, or get help. English and Hindi voice available.")}</p><button type="button" class="bank-button" onClick={onAskNexa}>{t("Ask Nexa")}<span aria-hidden="true">↗</span></button></Panel></div></section>
+ <Panel className="bank-next-step"><div class="bank-ai-stars" aria-hidden="true">{Array.from({ length: 7 }, (_, index) => <span key={index}>✦</span>)}</div><div class="bank-ai-badge"><span aria-hidden="true">✦</span>{t("Powered By AI")}</div><p class="bank-eyebrow">{t("BANKING, MADE SIMPLE")}</p><h2>{t("Start with a conversation.")}</h2><p>{t("Type or speak to check your balance, see recent payments, or get help. English and Hindi voice available.")}</p><AskNexaButton onClick={onAskNexa}/></Panel></div></section>
 
  <div class="bank-activity-grid"><Panel title={t("Recent activity")} action={<a href={"#/transactions?account=" + encodeURIComponent(account?.id || "")}>{t("View history ↗")}</a>}><div class="bank-inline-filter"><label>{t("Account")}<select value={account?.id || ""} onChange={e => setSelected(e.currentTarget.value)} disabled={!accounts.length}>{accounts.map(a => <option value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}</select></label></div><State loading={recent.loading} error={recent.error} retry={recent.reload} empty={!recent.loading && !recent.error && !recent.data?.content.length ? "No transactions yet" : undefined}>{recent.data && <TransactionList items={recent.data.content.slice(0, 5)} compact/>}</State></Panel>
  <Panel title={t("Activity at a glance")} className="activity-summary"><State loading={recent.loading} error={recent.error} retry={recent.reload}>{account && recent.data ? <ActivitySummary items={recent.data.content} currency={account.currencyCode} accountName={account.displayName}/> : <p class="activity-summary-empty">{t("Choose an account to see its activity.")}</p>}</State></Panel></div>

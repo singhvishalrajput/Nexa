@@ -147,6 +147,102 @@ public class ChatFirstIntegrationTest {
   }
 
   @Test
+  void namedSalaryDestinationUsesOwnTransferAndRequiresConfirmation() throws Exception {
+    db.update("UPDATE accounts SET account_name='Salary account' WHERE id=?", destination);
+    var start = say("send 1500 to salary account").get("workflow");
+    assertThat(start.get("operation").asText()).isEqualTo("OWN_TRANSFER");
+    assertThat(start.get("targetId").asText()).isEqualTo(destination);
+    assertThat(start.get("amount").asText()).isEqualTo("1500");
+    assertThat(start.get("field").asText()).isEqualTo("account");
+    assertThat(start.get("choices").size()).isEqualTo(1);
+    assertThat(start.get("choices").get(0).get("id").asText()).isEqualTo(source);
+    var review = say("Everyday").get("workflow");
+    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
+    say("yes");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+    var completed = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString()).get("workflow");
+    assertThat(completed.get("status").asText()).isEqualTo("COMPLETED");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(8500);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, destination)).isEqualTo(1500);
+  }
+
+  @Test
+  void namedOwnDestinationSupportsSourceBeforeDestinationAndCorrections() throws Exception {
+    var review = say("send 1500 from Everyday to Reserve").get("workflow");
+    assertThat(review.get("operation").asText()).isEqualTo("OWN_TRANSFER");
+    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
+    assertThat(review.get("accountId").asText()).isEqualTo(source);
+    assertThat(review.get("targetId").asText()).isEqualTo(destination);
+    var corrected = say("send 1200 to Reserve from Everyday").get("workflow");
+    assertThat(corrected.get("operation").asText()).isEqualTo("OWN_TRANSFER");
+    assertThat(corrected.get("status").asText()).isEqualTo("REVIEW");
+    assertThat(corrected.get("amount").asText()).isEqualTo("1200");
+  }
+
+  @Test
+  void ownAccountTargetAnswerRetainsPreviouslyEnteredAmount() throws Exception {
+    payee("Rahul Sharma");
+    var start = say("send 1500").get("workflow");
+    assertThat(start.get("field").asText()).isEqualTo("target");
+    var next = say("Reserve account").get("workflow");
+    assertThat(next.get("operation").asText()).isEqualTo("OWN_TRANSFER");
+    assertThat(next.get("targetId").asText()).isEqualTo(destination);
+    assertThat(next.get("amount").asText()).isEqualTo("1500");
+  }
+
+  @Test
+  void fundingAccountAloneDoesNotImplyOwnTransfer() throws Exception {
+    String rahul = payee("Rahul Sharma");
+    var start = say("send 1500 from Everyday").get("workflow");
+    assertThat(start.get("operation").asText()).isEqualTo("START_TRANSFER");
+    assertThat(start.get("targetId").isNull()).isTrue();
+    var review = say("Rahul").get("workflow");
+    assertThat(review.get("targetId").asText()).isEqualTo(rahul);
+    assertThat(review.get("accountId").asText()).isEqualTo(source);
+    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
+  }
+
+  @Test
+  void ambiguousOwnedDestinationRequiresAccountChoice() throws Exception {
+    db.update("UPDATE accounts SET account_name='Salary primary' WHERE id=?", destination);
+    String second = open("Salary reserve");
+    var start = say("send 1500 to salary account").get("workflow");
+    assertThat(start.get("operation").asText()).isEqualTo("OWN_TRANSFER");
+    assertThat(start.get("field").asText()).isEqualTo("target");
+    assertThat(start.get("targetId").isNull()).isTrue();
+    assertThat(start.get("choices").size()).isEqualTo(2);
+    assertThat(List.of(start.get("choices").get(0).get("id").asText(),
+        start.get("choices").get(1).get("id").asText())).containsExactlyInAnyOrder(destination, second);
+  }
+
+  @Test
+  void namedBeneficiaryStillUsesBeneficiaryTransfer() throws Exception {
+    String recipient = payee("Reserve recipient");
+    var review = say("send 1500 to Reserve recipient from Everyday").get("workflow");
+    assertThat(review.get("operation").asText()).isEqualTo("START_TRANSFER");
+    assertThat(review.get("targetId").asText()).isEqualTo(recipient);
+    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
+  }
+
+  @Test
+  void unrelatedDestinationCannotMatchOwnedAccountByOneSharedWord() throws Exception {
+    payee("Rahul Sharma");
+    db.update("UPDATE accounts SET account_name='Salary account' WHERE id=?", destination);
+    var start = say("send 1500 to unknown salary account").get("workflow");
+    assertThat(start.get("operation").asText()).isEqualTo("START_TRANSFER");
+    assertThat(start.get("targetId").isNull()).isTrue();
+  }
+
+  @Test
+  void inactiveOwnedAccountCannotBeInferredAsDestination() throws Exception {
+    payee("Rahul Sharma");
+    db.update("UPDATE accounts SET status='CLOSED' WHERE id=?", destination);
+    var start = say("send 1500 to Reserve account").get("workflow");
+    assertThat(start.get("operation").asText()).isEqualTo("START_TRANSFER");
+    assertThat(start.get("targetId").isNull()).isTrue();
+  }
+
+  @Test
   void hinglishTransferKeepsPayeeAmountAndSourceAcrossCorrections() throws Exception {
     String rahul = payee("Rahul Sharma");
     payee("Asha Rao");

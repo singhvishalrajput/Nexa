@@ -190,7 +190,7 @@ public class WorkflowService {
                 "Choose the payment details below before confirming.");
           return select(conversation, old, command.value());
         }
-        String operation = BankingLanguage.operation(text);
+        String operation = resolveTransferOperation(BankingLanguage.operation(text), text, false);
         if (operation != null
             && !operation.equals(old.operation())
             && !(old.operation().equals("OWN_TRANSFER")
@@ -273,6 +273,7 @@ public class WorkflowService {
   }
 
   private Workflow begin(String conversation, String text, String operation) {
+    operation = resolveTransferOperation(operation, text, false);
     Workflow w =
         new Workflow(
             1,
@@ -349,14 +350,7 @@ public class WorkflowService {
               .filter(l -> Set.of("ACTIVE", "OVERDUE").contains(l.status()))
               .map(l -> new Workflow.Choice(l.id(), l.displayName()))
               .toList();
-      case "OWN_TRANSFER" ->
-          accounts.currentAccounts().stream()
-              .filter(a -> "ACTIVE".equals(a.status()))
-              .map(
-                  a ->
-                      new Workflow.Choice(
-                          a.id(), a.displayName() + " · " + a.accountNumberMasked()))
-              .toList();
+      case "OWN_TRANSFER" -> ownTransferTargets();
       case "PAY_CARD", "FREEZE_CARD", "UNFREEZE_CARD", "REPLACE_CARD" ->
           cards.all().stream()
               .filter(
@@ -394,6 +388,37 @@ public class WorkflowService {
                           b.displayName() + " · " + b.bankName() + " · " + b.accountNumberMasked()))
               .toList();
     };
+  }
+
+  private List<Workflow.Choice> ownTransferTargets() {
+    return accounts.currentAccounts().stream()
+        .filter(a -> "ACTIVE".equals(a.status()))
+        .map(a -> new Workflow.Choice(a.id(), a.displayName() + " · " + a.accountNumberMasked()))
+        .toList();
+  }
+
+  private String resolveTransferOperation(String operation, String input, boolean targetAnswer) {
+    if (!"START_TRANSFER".equals(operation)) return operation;
+    String text = BankingLanguage.normalize(input);
+    // Resolve the destination only: a named funding account must not turn a payee payment
+    // into an own-account transfer. Use owned, active accounts rather than hardcoded aliases.
+    var to = java.util.regex.Pattern.compile("\\bto\\s+(.+?)(?=\\s+(?:from|using|with)\\b|$)").matcher(text);
+    String destination = to.find() ? to.group(1)
+        : targetAnswer && BankingLanguage.operation(input) == null
+            && !text.matches(".*\\b(from|use|using|with|se)\\b.*") ? text : null;
+    if (destination == null) return operation;
+    var destinationWords = new HashSet<>(Arrays.asList(destination.split("[^\\p{L}\\p{N}_-]+")));
+    destinationWords.removeAll(Set.of("", "my", "the", "account", "accounts", "please"));
+    // Operation inference requires every meaningful destination word to match. The broader
+    // slot matcher alone would also match "someone else's salary account" to "Salary".
+    if (destinationWords.isEmpty() || ownTransferTargets().stream().noneMatch(c ->
+        new HashSet<>(Arrays.asList(BankingLanguage.normalize(name(c.label()))
+            .split("[^\\p{L}\\p{N}_-]+"))).containsAll(destinationWords))) return operation;
+    var payees = beneficiaries.all().stream()
+        .filter(b -> "ACTIVE".equals(b.status()))
+        .map(b -> new Workflow.Choice(b.id(), b.displayName()))
+        .toList();
+    return matches(payees, destination).isEmpty() ? "OWN_TRANSFER" : operation;
   }
 
   private List<Workflow.Choice> sources(Workflow w) {
@@ -563,6 +588,12 @@ public class WorkflowService {
 
   private Workflow fill(String conversation, Workflow w, String input) {
     String text = BankingLanguage.normalize(input);
+    if ("START_TRANSFER".equals(w.operation()) && "target".equals(w.field())
+        && "OWN_TRANSFER".equals(resolveTransferOperation(w.operation(), input, true))) {
+      w = new Workflow(w.version(), w.id(), "OWN_TRANSFER", w.status(), w.field(),
+          w.accountId(), null, w.accountLabel(), null, w.amount(), w.currency(), w.message(),
+          List.of(), w.expiresAt(), w.confirmationRequired(), w.executionAvailable(), null);
+    }
     var requestedAmount = PaymentAmountRequest.parse(text, w.operation());
     boolean amountPreferenceChanged = requestedAmount != null;
     if (amountPreferenceChanged) {

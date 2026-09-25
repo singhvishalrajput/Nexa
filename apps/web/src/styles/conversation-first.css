@@ -98,10 +98,6 @@
 .nexa-messenger .messenger-history-open { min-width:0; flex:1; display:block; padding:10px; text-align:left; }
 .messenger-history-open span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .messenger-history-open time { color:var(--nexa-text-muted); font-size:.75rem; }
-.nexa-messenger .messenger-history-delete-icon { display:grid; place-items:center; width:44px; flex:0 0 44px; padding:10px; }
-.messenger-history-delete-icon svg { width:16px; }
-.messenger-history-confirm { padding:var(--space-sm); }
-.messenger-history-confirm > div { display:flex; flex-wrap:wrap; }
 
 .conversation-context { display:none; overflow-y:auto; border-left:1px solid var(--nexa-border); padding:var(--space-xl) var(--space-lg); background:var(--nexa-surface); }
 .conversation-context-content { color:var(--nexa-text); font:.875rem/1.6 var(--nexa-font); }

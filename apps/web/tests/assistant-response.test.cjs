@@ -22,6 +22,52 @@ function descendants(node) {
   return [node, ...descendants(node.props?.children)];
 }
 
+test('financial summary cards have one native detail target without nesting reveal controls', () => {
+  const renderers = require('../src/components/chat/BankingResponse.tsx');
+  for (const [renderer, collection, route] of [
+    ['MandateList', 'mandates', 'mandates'], ['ScheduledPaymentList', 'payments', 'scheduled-payments'],
+    ['BeneficiaryList', 'beneficiaries', 'beneficiaries'], ['CardSummary', 'cards', 'cards'],
+    ['LoanSummary', 'loans', 'loans'], ['BillList', 'bills', 'bills']
+  ]) {
+    const item = {id:'record / 1', displayName:'Everyday', payee:'Utility', billerName:'Utility', status:'ACTIVE',
+      amount:'100', limit:'100', outstanding:'100', nextEmi:'10', availableLimit:'900', currencyCode:'INR',
+      dueAt:'2026-10-01T00:00:00Z', cardType:'CREDIT', numberMasked:'•••• 1234', accountNumberMasked:'•••• 1234'};
+    const nodes = descendants(renderers[renderer]({content:{[collection]:[item]}}));
+    const targets = nodes.filter(n => n.props.class?.split(' ').includes('bank-card-primary'));
+    assert.equal(targets.length, 1, renderer);
+    assert.equal(targets[0].type, 'a');
+    assert.equal(targets[0].props.href, '#/' + route + '/record%20%2F%201');
+    assert.equal(descendants(targets[0]).some(n => n.type?.name === 'SensitiveNumber' || n.type === 'button'), false);
+    const card = nodes.find(n => n.props.class?.split(' ').includes('bank-clickable-card'));
+    assert.equal(card.props.onClick, undefined, 'Secondary controls must not bubble into card navigation');
+    assert.equal(card.props.tabIndex, undefined, 'Only the native primary target should add a focus stop');
+  }
+});
+
+test('account card primary action selects the correct account and stays separate from number reveal', () => {
+  const { AccountSummary } = require('../src/components/chat/BankingResponse.tsx');
+  const account = {id:'a-1', displayName:'Everyday', accountType:'SAVINGS', status:'ACTIVE', availableBalance:'100', currencyCode:'INR'};
+  const calls = [];
+  const tree = AccountSummary({accounts:[account], onTransactions:a => calls.push(a)});
+  const primary = descendants(tree).find(n => n.props.class?.includes('bank-card-primary'));
+  assert.equal(primary.type, 'button');
+  assert.equal(primary.props.type, 'button');
+  primary.props.onClick();
+  assert.deepEqual(calls, [account]);
+});
+
+test('receipt cards navigate as one target while financial confirmation remains explicit', () => {
+  const { WorkflowCard } = require('../src/components/chat/WorkflowCard.tsx');
+  for (const status of ['COMPLETED', 'UNAVAILABLE', 'REVIEW']) {
+    const workflow = {version:1, id:'w1', operation:'PAY_BILL', status, reference:'TX-1', message:'Payment',
+      confirmationRequired:true, executionAvailable:true, expiresAt:new Date(Date.now()+60000).toISOString()};
+    const tree = WorkflowCard({workflow, active:true, busy:false, onAction(){assert.fail('Rendering must not execute a payment');}});
+    const primary = descendants(tree).filter(n => n.props.class?.includes('bank-card-primary'));
+    assert.equal(primary.length, status === 'REVIEW' ? 0 : 1);
+    if (primary.length) assert.equal(tree.props.tabIndex, undefined);
+  }
+});
+
 test('workflow choices select the full row by pointer or keyboard across banking operations', () => {
   const { WorkflowCard } = require('../src/components/chat/WorkflowCard.tsx');
   for (const operation of ['PAY_BILL', 'PAY_CARD', 'OWN_TRANSFER', 'START_TRANSFER', 'CANCEL_MANDATE', 'REPAY_LOAN', 'FREEZE_CARD']) {

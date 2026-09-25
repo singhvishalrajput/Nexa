@@ -121,13 +121,13 @@ export function LoanApplicationsPage({ token }: { token: string }) {
         <PageHeading title="Track your loan application" description="Follow review, approval and disbursement. Approval does not move money until you accept." action={<button class="bank-button secondary" onClick={data.reload}>Refresh status</button>}/>
         <LoanNavigation current="applications"/>
         <State loading={data.loading} error={data.error} retry={data.reload} empty={!data.loading && !data.error && !data.data?.length ? "No applications on this page" : undefined}>
-            <div class="bank-product-grid">{data.data?.map(loan => <article class="bank-product loan-application-card" key={loan.id}>
+            <div class="bank-product-grid">{data.data?.map(loan => <article class="bank-product loan-application-card bank-clickable-card" key={loan.id}>
                 <span class="loan-application-state">{loanApplicationStatus(loan.status)}</span>
                 <h2>{loan.displayName || "Loan application"}</h2>
                 <small>Application {loan.id}</small>
                 {loan.terms?.amount != null && <div class="bank-product-amount"><span>Requested amount</span><strong>{formatMoney(loan.terms.amount, loan.currencyCode || "INR")}</strong></div>}
                 <p>{loan.status === "APPROVED" ? "Your loan is approved. Review the terms and accept to receive funds." : loan.status === "REJECTED" ? "Open the application to view the decision reason." : loan.status === "PENDING_APPROVAL" ? "Your application is awaiting administrator review." : ["CLOSED", "PAID"].includes(loan.status) ? "Disbursed and repaid. Your loan is closed." : ["ACTIVE", "OVERDUE"].includes(loan.status) ? "Funds have been disbursed to your linked account." : "Open the application for details."}</p>
-                <a href={"#/loans/" + encodeURIComponent(loan.id)}>View application →</a>
+                <a class="bank-card-primary" aria-label={"View application: " + (loan.displayName || loan.id)} href={"#/loans/" + encodeURIComponent(loan.id)}>View application →</a>
             </article>)}</div>
         </State>
         <div class="bank-pagination"><span>Page {page + 1}</span><button disabled={page === 0 || data.loading} onClick={() => setPage(p => p - 1)}>← Previous</button><button disabled={data.loading || !!data.error || (data.data?.length || 0) < 12} onClick={() => setPage(p => p + 1)}>Next →</button></div>

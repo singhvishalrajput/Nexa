@@ -20,7 +20,8 @@ export function WorkflowCard({ workflow: w, active, busy, onAction }: {workflow:
   const expired = Date.parse(w.expiresAt) <= Date.now() && ["COLLECTING", "REVIEW"].includes(w.status);
   const enabled = active && !busy && !expired;
   const action = (type: ActionCommand["type"], value?: string) => { if (enabled && Date.parse(w.expiresAt) > Date.now()) onAction({actionId: w.id, type, value}); };
-  return <article class="conversation-proposal" tabIndex={0} aria-label={t("Banking proposal")} aria-busy={busy && active}>
+  const navigable = (w.status === "COMPLETED" && !!w.reference) || w.status === "UNAVAILABLE";
+  return <article class={"conversation-proposal" + (navigable ? " bank-clickable-card" : "")} tabIndex={navigable ? undefined : 0} aria-label={t("Banking proposal")} aria-busy={busy && active}>
     {w.status === "REVIEW" && <div class="conversation-proposal-status">{expired ? t("Confirmation expired") : t("Please confirm")}</div>}
     <h3>{w.operation === "OWN_TRANSFER" ? t("Between your accounts") : w.operation === "PAY_BILL" ? t("Bill payment") : ["CARD_CONTROL", "FREEZE_CARD", "UNFREEZE_CARD", "REPLACE_CARD"].includes(w.operation) ? t("Card controls") : w.operation === "PAY_CARD" ? t("Card payment") : w.operation === "CANCEL_MANDATE" ? t("Cancel direct debit") : t("Transfer")}</h3>
     <p lang={/[\u0900-\u097f]/.test(message) ? "hi-IN" : "en-IN"}>{message}</p>
@@ -49,7 +50,7 @@ export function WorkflowCard({ workflow: w, active, busy, onAction }: {workflow:
     </div>}
     {w.status === "REVIEW" && <small>{t("Confirm by")} {new Date(w.expiresAt).toLocaleTimeString(getLocale(), {hour: "2-digit", minute: "2-digit"})}.</small>}
     {!active && ["COLLECTING", "REVIEW"].includes(w.status) && <small>Earlier proposal. Use the latest action in this conversation.</small>}
-    {w.status === "COMPLETED" && w.reference && <a href={simulated ? "#/payments" : "#/transactions/"+encodeURIComponent(w.reference)}>{simulated ? t("View receipt ↗") : t("View transaction ↗")}</a>}
-    {w.status === "UNAVAILABLE" && <a href={w.operation === "CARD_CONTROL" ? "#/cards" : "#/payments"}>{t("Open banking details ↗")}</a>}
+    {w.status === "COMPLETED" && w.reference && <a class="bank-card-primary" href={simulated ? "#/payments" : "#/transactions/"+encodeURIComponent(w.reference)}>{simulated ? t("View receipt ↗") : t("View transaction ↗")}</a>}
+    {w.status === "UNAVAILABLE" && <a class="bank-card-primary" href={w.operation === "CARD_CONTROL" ? "#/cards" : "#/payments"}>{t("Open banking details ↗")}</a>}
   </article>;
 }

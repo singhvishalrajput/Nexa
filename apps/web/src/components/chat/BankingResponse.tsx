@@ -23,13 +23,13 @@ function AccountLabel({ account }: { account: AccountSnapshot }) {
 
 export function AccountSummary({ accounts, onTransactions }: { accounts: AccountSnapshot[]; onTransactions: (account: AccountSnapshot) => void }) {
   return <BankingCollection type="ACCOUNTS" count={accounts.length} attention={collectionNotice(accounts)} label={t("Account balances")}>
-    {accounts.map((account) => <div class="bank-account" key={account.id}>
+    {accounts.map((account) => <div class="bank-account bank-clickable-card" key={account.id}>
       <h3>{accountDisplayName(account.displayName)} <span class="bank-secondary"><SensitiveNumber id={account.id} masked={account.accountNumberMasked}/></span></h3>
       <span class="bank-account-kind">{humanize(account.accountType)} {t("account")}</span>
       <span class="bank-account-balance-label">{t("Available balance")}</span>
       <MoneyAmount amount={account.availableBalance} currency={account.currencyCode} />
       {account.currentBalance != null && Number(account.currentBalance) !== Number(account.availableBalance) && <span class="bank-secondary">{t("Current balance")} {formatMoney(account.currentBalance, account.currencyCode)}</span>}
-      <div class="bank-account-footer"><Status value={account.status} /><button type="button" class="bank-inline-action" onClick={() => onTransactions(account)}>{t("View transactions")}<span aria-hidden="true">→</span></button></div>
+      <div class="bank-account-footer"><Status value={account.status} /><button type="button" class="bank-inline-action bank-card-primary" aria-label={t("View transactions") + ": " + accountDisplayName(account.displayName)} onClick={() => onTransactions(account)}>{t("View transactions")}<span aria-hidden="true">→</span></button></div>
     </div>)}
   </BankingCollection>;
 }
@@ -139,15 +139,15 @@ function EmptySummary({ title }: { title: string }) {
 }
 export function MandateList({ content }: { content: Extract<BankingContent, { type: "MANDATES" }> }) {
  if (!content.mandates.length) return <EmptySummary title="AutoPay mandates" />;
- return <><SectionHeader title={t("AutoPay mandates")} /><BankingCollection type="MANDATES" count={content.mandates.length} attention={collectionNotice(content.mandates)} label={t("AutoPay mandates")}>{content.mandates.map((item) => <section class="bank-summary-item" key={item.id}><div class="bank-item-heading"><h4>{item.payee}</h4><Status value={item.status} /></div><span class="bank-secondary">{t("Up to")}</span><MoneyAmount amount={item.limit} currency={item.currencyCode} /><dl><Detail label={t("Frequency")}>{item.frequency ? humanize(item.frequency) : t("Not provided by the bank")}</Detail><Detail label={t("Next debit")}>{item.nextDebit ? formatDate(item.nextDebit) : t("Not scheduled")}</Detail><Detail label={t("From")}>{item.accountName} <SensitiveNumber kind="mandates" id={item.id} masked={item.accountNumberMasked}/></Detail><Detail label={t("Reference")}>{item.id}</Detail></dl></section>)}</BankingCollection></>;
+ return <><SectionHeader title={t("AutoPay mandates")} /><BankingCollection type="MANDATES" count={content.mandates.length} attention={collectionNotice(content.mandates)} label={t("AutoPay mandates")}>{content.mandates.map((item) => <section class="bank-summary-item bank-clickable-card" key={item.id}><div class="bank-item-heading"><h4><a class="bank-card-primary" href={"#/mandates/" + encodeURIComponent(item.id)}>{item.payee}</a></h4><Status value={item.status} /></div><span class="bank-secondary">{t("Up to")}</span><MoneyAmount amount={item.limit} currency={item.currencyCode} /><dl><Detail label={t("Frequency")}>{item.frequency ? humanize(item.frequency) : t("Not provided by the bank")}</Detail><Detail label={t("Next debit")}>{item.nextDebit ? formatDate(item.nextDebit) : t("Not scheduled")}</Detail><Detail label={t("From")}>{item.accountName} <SensitiveNumber kind="mandates" id={item.id} masked={item.accountNumberMasked}/></Detail><Detail label={t("Reference")}>{item.id}</Detail></dl></section>)}</BankingCollection></>;
 }
 export function ScheduledPaymentList({ content }: { content: Extract<BankingContent, { type: "UPCOMING" }> }) {
  if (!content.payments.length) return <EmptySummary title="Upcoming payments" />;
- return <><SectionHeader title={t("Upcoming payments")} /><BankingCollection type="SCHEDULED_PAYMENTS" count={content.payments.length} attention={collectionNotice(content.payments)} label={t("Upcoming payments")}>{content.payments.map((item) => <section class="bank-summary-item" key={item.id}><div class="bank-item-heading"><h4>{item.payee}</h4><MoneyAmount amount={item.amount} currency={item.currencyCode} /></div><div class="bank-item-heading"><span class="bank-secondary">{dueLabel(item.dueAt)}</span><Status value={item.status} /></div></section>)}</BankingCollection></>;
+ return <><SectionHeader title={t("Upcoming payments")} /><BankingCollection type="SCHEDULED_PAYMENTS" count={content.payments.length} attention={collectionNotice(content.payments)} label={t("Upcoming payments")}>{content.payments.map((item) => <section class="bank-summary-item bank-clickable-card" key={item.id}><div class="bank-item-heading"><h4><a class="bank-card-primary" href={"#/scheduled-payments/" + encodeURIComponent(item.id)}>{item.payee}</a></h4><MoneyAmount amount={item.amount} currency={item.currencyCode} /></div><div class="bank-item-heading"><span class="bank-secondary">{dueLabel(item.dueAt)}</span><Status value={item.status} /></div></section>)}</BankingCollection></>;
 }
 export function BeneficiaryList({ content }: { content: Extract<BankingContent, { type: "BENEFICIARIES" }> }) {
  if (!content.beneficiaries.length) return <EmptySummary title="Your beneficiaries" />;
- return <><SectionHeader title={t("Your beneficiaries")} /><BankingCollection type="BENEFICIARIES" count={content.beneficiaries.length} attention={collectionNotice(content.beneficiaries)} label={t("Your beneficiaries")}>{content.beneficiaries.map((item) => <div class="bank-beneficiary" key={item.id}><div><h4>{item.displayName}</h4><p class="bank-secondary">{item.bankName} <SensitiveNumber kind="beneficiaries" id={item.id} masked={item.accountNumberMasked}/></p><Status value={item.status} /><p class="bank-secondary">{t("Reference")} {item.id}</p></div></div>)}</BankingCollection></>;
+ return <><SectionHeader title={t("Your beneficiaries")} /><BankingCollection type="BENEFICIARIES" count={content.beneficiaries.length} attention={collectionNotice(content.beneficiaries)} label={t("Your beneficiaries")}>{content.beneficiaries.map((item) => <div class="bank-beneficiary bank-clickable-card" key={item.id}><div><h4><a class="bank-card-primary" href={"#/beneficiaries/" + encodeURIComponent(item.id)}>{item.displayName}</a></h4><p class="bank-secondary">{item.bankName} <SensitiveNumber kind="beneficiaries" id={item.id} masked={item.accountNumberMasked}/></p><Status value={item.status} /><p class="bank-secondary">{t("Reference")} {item.id}</p></div></div>)}</BankingCollection></>;
 }
 function CardDisclosure({ label, children }: { label: string; children: import("preact").ComponentChildren }) {
  const [open, setOpen] = useState(false);
@@ -162,10 +162,10 @@ export function CardSummary({ content, accessToken }: { content: Extract<Banking
  </>}</>;
  return <><SectionHeader title={t("Your cards")} />
    <BankingCollection type="CARDS" count={content.cards.length} attention={collectionNotice(content.cards)} label={t("Your cards")}>
-     {content.cards.map(item => <section class="bank-summary-item bank-chat-card" key={item.id}>
+     {content.cards.map(item => <section class="bank-summary-item bank-chat-card bank-clickable-card" key={item.id}>
        <div class="bank-chat-card-heading">
          <span class="bank-chat-card-icon" aria-hidden="true"><BankingIcon name="cards"/></span>
-         <div><h4>{item.displayName}</h4><span class="bank-secondary">{humanize(item.cardType || "CARD")} · <SensitiveNumber kind="cards" id={item.id} masked={item.numberMasked}/></span></div>
+         <div><h4><a class="bank-card-primary" href={"#/cards/" + encodeURIComponent(item.id)}>{item.displayName}</a></h4><span class="bank-secondary">{humanize(item.cardType || "CARD")} · <SensitiveNumber kind="cards" id={item.id} masked={item.numberMasked}/></span></div>
          <Status value={item.status}/>
        </div>
        {item.cardType !== "DEBIT" && <dl class="bank-chat-card-facts">
@@ -176,7 +176,7 @@ export function CardSummary({ content, accessToken }: { content: Extract<Banking
          <CardDisclosure label="Card details">
            <dl>{item.cardType !== "DEBIT" && <Detail label={t("Available limit")}><MoneyAmount amount={item.availableLimit} currency={item.currencyCode}/></Detail>}
              <Detail label={t("Reference")}>{item.id}</Detail></dl>
-           <a class="bank-inline-action" href={"#/cards/" + encodeURIComponent(item.id)}>{t("View details")} →</a>
+
          </CardDisclosure>
          {accessToken && item.cardType === "CREDIT" && item.status === "ACTIVE" && Number(item.outstanding) > 0 && <CardDisclosure label="Pay credit-card bill"><ProductPayment token={accessToken} product={item} operation="PAY_CARD"/></CardDisclosure>}
        </div>
@@ -187,13 +187,13 @@ export function CardSummary({ content, accessToken }: { content: Extract<Banking
 }
 export function LoanSummary({ content }: { content: Extract<BankingContent, { type: "LOANS" }> }) {
  if (!content.loans.length) return <EmptySummary title="Your loans" />;
- return <><SectionHeader title={t("Your loans")} /><BankingCollection type="LOANS" count={content.loans.length} attention={collectionNotice(content.loans)} label={t("Your loans")}>{content.loans.map((item) => <section class="bank-summary-item" key={item.id}><h4>{item.displayName} <span class="bank-secondary"><SensitiveNumber kind="loans" id={item.id} masked={item.numberMasked}/></span></h4><span class="bank-secondary">{t("Next EMI")}</span><MoneyAmount amount={item.nextEmi} currency={item.currencyCode} /><dl><Detail label={t("Due")}>{item.dueAt ? formatDate(item.dueAt) : t("Not scheduled")}</Detail><Detail label={t("Outstanding")}><MoneyAmount amount={item.outstanding} currency={item.currencyCode} /></Detail></dl><Status value={item.status} /></section>)}</BankingCollection></>;
+ return <><SectionHeader title={t("Your loans")} /><BankingCollection type="LOANS" count={content.loans.length} attention={collectionNotice(content.loans)} label={t("Your loans")}>{content.loans.map((item) => <section class="bank-summary-item bank-clickable-card" key={item.id}><h4><a class="bank-card-primary" href={"#/loans/" + encodeURIComponent(item.id)}>{item.displayName}</a> <span class="bank-secondary"><SensitiveNumber kind="loans" id={item.id} masked={item.numberMasked}/></span></h4><span class="bank-secondary">{t("Next EMI")}</span><MoneyAmount amount={item.nextEmi} currency={item.currencyCode} /><dl><Detail label={t("Due")}>{item.dueAt ? formatDate(item.dueAt) : t("Not scheduled")}</Detail><Detail label={t("Outstanding")}><MoneyAmount amount={item.outstanding} currency={item.currencyCode} /></Detail></dl><Status value={item.status} /></section>)}</BankingCollection></>;
 }
 
 export function BillList({ content }: { content: Extract<BankingContent, { type: "BILLS" }> }) {
  if (!content.bills.length) return <EmptySummary title="Your bills" />;
- return <><SectionHeader title={t("Your bills")} /><BankingCollection type="BILLS" count={content.bills.length} attention={collectionNotice(content.bills)} label={t("Your bills")}>{content.bills.map(bill => <section class="bank-summary-item" key={bill.id}>
- <div class="bank-item-heading"><h4 dir="auto">{bill.billerName}</h4><MoneyAmount amount={bill.amount} currency={bill.currencyCode} /></div>
+ return <><SectionHeader title={t("Your bills")} /><BankingCollection type="BILLS" count={content.bills.length} attention={collectionNotice(content.bills)} label={t("Your bills")}>{content.bills.map(bill => <section class="bank-summary-item bank-clickable-card" key={bill.id}>
+ <div class="bank-item-heading"><h4 dir="auto"><a class="bank-card-primary" href={"#/bills/" + encodeURIComponent(bill.id)}>{bill.billerName}</a></h4><MoneyAmount amount={bill.amount} currency={bill.currencyCode} /></div>
  <div class="bank-item-heading"><span class="bank-secondary">{bill.dueAt ? dueLabel(bill.dueAt) : t("No due date")}</span><Status value={bill.status} /></div>
  <p class="bank-secondary">{t("Reference")} {bill.id}</p>
  {bill.category && <p class="bank-secondary">{humanize(bill.category)}</p>}

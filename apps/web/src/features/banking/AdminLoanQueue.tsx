@@ -29,10 +29,10 @@ export function AdminLoanQueue({ token, requests, loading, error, reload }: {
     return <><PageHeading eyebrow="" title="Loan requests" description="Review customer applications. Approval allows the customer to accept and receive the loan." action={<button class="bank-button secondary" onClick={reload}>Refresh requests</button>}/>
  {receipt && <p class="bank-notice" role="status">{receipt}</p>}
  <Panel title={`${requests.length} awaiting approval`}><State loading={loading} error={error} retry={reload} empty={!loading && !error && !requests.length ? "No loan requests awaiting approval" : undefined}>
- {requests.map(r => <article class="admin-mandate admin-loan-request" key={r.PRODUCT_ID}>
+ {requests.map(r => <article class="admin-mandate admin-loan-request bank-clickable-card" key={r.PRODUCT_ID}>
  <header><div><strong>{r.ACCOUNT_NAME}</strong><p>{r.FULL_NAME} · {r.EMAIL}</p></div><strong class="admin-request-amount">{formatMoney(r.PRINCIPAL_AMOUNT)}</strong></header>
  <div class="admin-request-meta">{r.TENURE_MONTHS ? <span>{r.TENURE_MONTHS} months</span> : null}<span>{r.INTEREST_RATE}% annual interest</span><span>Requested {formatDate(r.CREATED_AT)}</span></div>
- <div class="admin-actions"><button class="bank-button" onClick={() => setSelected(r)}>Review request</button><a href={`#/admin/accounts/${r.ID}/overview`}>Open loan account →</a><a href={`#/admin/accounts/${r.FUNDING_ACCOUNT_ID}/overview`}>Borrower account →</a></div></article>)}
+ <div class="admin-actions"><button class="bank-button bank-card-primary" onClick={() => setSelected(r)}>Review request</button><a href={`#/admin/accounts/${r.ID}/overview`}>Open loan account →</a><a href={`#/admin/accounts/${r.FUNDING_ACCOUNT_ID}/overview`}>Borrower account →</a></div></article>)}
  </State></Panel>{selected && <LoanDecision key={selected.PRODUCT_ID} token={token} request={selected} close={() => setSelected(undefined)} done={message => { setReceipt(message); setSelected(undefined); reload(); }}/>}</>;
 }
 export function LoanDecision({ token, request, close, done }: {

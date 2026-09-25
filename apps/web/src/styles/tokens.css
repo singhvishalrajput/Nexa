@@ -2,6 +2,11 @@
 :root {
   --nexa-hue-angle: 0deg;
   --nexa-ai-peach: #ffc7b8;
+  --nexa-ask-surface: #F8D8CA;
+  --nexa-ask-hover: #F2C6B4;
+  --nexa-ask-active: #EAB49E;
+  --nexa-ask-text: #713528;
+  --nexa-ask-border: #D5A08D;
   --nexa-ai-glow: #ff624830;
   --nexa-ai-white-halo: #ffffff80;
   --nexa-action: #252525;
@@ -196,12 +201,13 @@
   --nexa-chat-halo: rgba(199,108,80,.18);
   --nexa-chat-halo-hover: rgba(199,108,80,.26);
   --nexa-chat-ring-hover: rgba(199,108,80,.24);
-  --nexa-chat-blue: #2563EB;
-  --nexa-chat-blue-deep: #1E40AF;
-  --nexa-chat-blue-soft: #DBEAFE;
-  --nexa-chat-blue-hover: #EFF6FF;
-  --nexa-chat-blue-faint: rgb(37 99 235 / 8%);
-  --nexa-chat-blue-edge: rgb(37 99 235 / 25%);
-  --nexa-chat-blue-shadow: rgb(37 99 235 / 12%);
-  --nexa-chat-teal-edge: rgb(20 184 166 / 38%);
+  --nexa-chat-link-text: var(--nexa-text);
+  --nexa-chat-link-surface: #E5E5E5;
+  --nexa-chat-link-hover: #DCDCDC;
+  --nexa-chat-link-active: #D2D2D2;
+  --nexa-chat-link-edge-faint: rgb(54 54 54 / 14%);
+  --nexa-chat-link-edge-hover: rgb(54 54 54 / 32%);
+  --nexa-chat-link-edge: #484848;
+  --nexa-chat-link-shadow: rgb(0 0 0 / 8%);
+  --nexa-chat-link-edge-highlight: #363636;
 }

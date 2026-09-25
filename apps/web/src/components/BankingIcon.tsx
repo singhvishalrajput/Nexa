@@ -1,9 +1,10 @@
 import { ComponentChildren } from "preact";
 
-export type BankingIconName = "chat" | "home" | "accounts" | "payments" | "cards" | "transactions" | "insights" | "support" | "plus" | "shield" | "arrow" | "overview" | "people" | "repeat" | "clock" | "more" | "chevron" | "profile" | "logout";
+export type BankingIconName = "chat" | "messages" | "home" | "accounts" | "payments" | "cards" | "transactions" | "insights" | "support" | "plus" | "shield" | "arrow" | "overview" | "people" | "repeat" | "clock" | "more" | "chevron" | "profile" | "logout";
 export function BankingIcon({ name }: { name: BankingIconName }) {
   const paths: Record<BankingIconName, ComponentChildren> = {
     chat: <path d="M20 11a8 8 0 0 1-8 8H5l-3 3V11a9 9 0 0 1 18 0Z"/>,
+    messages: <><g class="chat-bubble-reply"><path d="M14 14h3l4 3V9a2 2 0 0 0-2-2h-2"/></g><g class="chat-bubble-message"><path d="M5 4h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H8l-5 4V6a2 2 0 0 1 2-2Z"/><path d="M6 7h7M6 10h4"/></g></>,
     home: <><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></>,
     accounts: <><rect x="3" y="5" width="18" height="15" rx="3"/><path d="M3 9h18M15 13h6v4h-6Z"/></>,
     payments: <><path d="M4 8h15m-5-5 5 5-5 5M20 16H5m5-5-5 5 5 5"/></>,

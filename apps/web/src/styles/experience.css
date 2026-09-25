@@ -691,18 +691,26 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 }
 .experience-chat .sidebar-brand > img { display:block; }
 
-/* A slow blue-and-teal edge accent distinguishes Chat without a filled inactive state. */
+/* A charcoal edge rotates around the grey Chat surface. */
 @property --sidebar-chat-angle { syntax:"<angle>"; initial-value:0deg; inherits:false; }
 @keyframes sidebar-chat-orbit { to { --sidebar-chat-angle:360deg; } }
-:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link { position:relative; isolation:isolate; min-height:46px; margin-block:2px 6px; font-size:14px; font-weight:650; color:var(--nexa-chat-blue); background:transparent; box-shadow:none; }
-:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link::before { content:""; position:absolute; inset:0; padding:1px; border-radius:inherit; pointer-events:none; background:conic-gradient(from var(--sidebar-chat-angle), var(--nexa-chat-blue-faint) 0deg, var(--nexa-chat-blue-faint) 230deg, var(--nexa-chat-teal-edge) 295deg, var(--nexa-chat-blue-faint) 360deg); -webkit-mask:linear-gradient(var(--nexa-surface) 0 0) content-box,linear-gradient(var(--nexa-surface) 0 0); -webkit-mask-composite:xor; mask:linear-gradient(var(--nexa-surface) 0 0) content-box,linear-gradient(var(--nexa-surface) 0 0); mask-composite:exclude; animation:sidebar-chat-orbit 18s linear infinite; }
+@media (hover:hover) {
+  :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link:hover::before {
+    padding:2px;
+    --nexa-chat-link-edge-faint:var(--nexa-chat-link-edge-hover);
+    --nexa-chat-link-edge-highlight:var(--nexa-action-active);
+    animation-duration:4s;
+  }
+}
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link { position:relative; isolation:isolate; min-height:46px; margin-block:2px 6px; font-size:14px; font-weight:650; color:var(--nexa-chat-link-text); background:var(--nexa-chat-link-surface); box-shadow:none; }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link::before { content:""; position:absolute; inset:0; padding:1px; border-radius:inherit; pointer-events:none; background:conic-gradient(from var(--sidebar-chat-angle), var(--nexa-chat-link-edge-faint) 0deg, var(--nexa-chat-link-edge-faint) 230deg, var(--nexa-chat-link-edge-highlight) 295deg, var(--nexa-chat-link-edge-faint) 360deg); -webkit-mask:linear-gradient(var(--nexa-surface) 0 0) content-box,linear-gradient(var(--nexa-surface) 0 0); -webkit-mask-composite:xor; mask:linear-gradient(var(--nexa-surface) 0 0) content-box,linear-gradient(var(--nexa-surface) 0 0); mask-composite:exclude; animation:sidebar-chat-orbit 18s linear infinite; }
 :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link svg { width:22px; height:22px; flex-basis:22px; }
-:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link:hover:not(:disabled) { color:var(--nexa-chat-blue-deep); background:var(--nexa-chat-blue-hover); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link:hover:not(:disabled) { color:var(--nexa-chat-link-text); background:var(--nexa-chat-link-hover); }
 :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link[aria-current="page"],
-:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link[aria-current="page"]:hover:not(:disabled) { color:var(--nexa-chat-blue-deep); background:var(--nexa-chat-blue-soft); box-shadow:0 0 7px var(--nexa-chat-blue-shadow); }
-:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link[aria-current="page"]::before { animation:none; background:var(--nexa-chat-blue-edge); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link[aria-current="page"]:hover:not(:disabled) { color:var(--nexa-chat-link-text); background:var(--nexa-chat-link-active); box-shadow:0 0 7px var(--nexa-chat-link-shadow); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link:active:not(:disabled) { color:var(--nexa-chat-link-text); background:var(--nexa-chat-link-active); }
 @media (prefers-reduced-motion:reduce) {
-  :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link::before { animation:none; background:var(--nexa-chat-blue-edge); }
+  :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link::before { animation:none; background:var(--nexa-chat-link-edge); }
 }
 
 .experience-banking-menu > summary { display:flex; align-items:center; gap:9px; min-height:40px; padding:0 10px; border:1px solid var(--nexa-border); border-radius:10px; background:var(--nexa-background); color:var(--nexa-text-secondary); cursor:pointer; list-style:none; }
@@ -725,8 +733,6 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .experience-chat .messenger-selection-actions .messenger-selection-action-icon { justify-content:center; width:32px; min-width:32px; padding:6px; }
 .experience-chat .messenger-selection-actions svg { width:13px; height:13px; }
 .experience-chat .messenger-history-row > input[type="checkbox"] { flex:none; width:16px; height:16px; margin:8px; accent-color:var(--nexa-action); }
-.experience-chat .messenger-history-delete-icon { width:32px; flex-basis:32px; min-height:32px; padding:8px; }
-.experience-chat .messenger-history-delete-icon svg { width:13px; height:13px; }
 
 /* The second control buds from the selection button, then separates. */
 .experience-chat .messenger-selection-icons { position:relative; flex:none; width:32px; height:32px; transition:width 380ms cubic-bezier(.22,.8,.3,1); }

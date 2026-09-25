@@ -1,0 +1,63 @@
+/* One native link/button owns the card surface. Secondary controls remain
+   siblings, with their own focus stops, rather than nested interactive HTML. */
+.bank-clickable-card {
+  position: relative;
+  isolation: isolate;
+  cursor: pointer;
+}
+.bank-clickable-card .bank-card-primary {
+  position: static;
+  touch-action: manipulation;
+}
+.bank-clickable-card .bank-card-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  cursor: pointer;
+}
+.bank-clickable-card :is(h2, h3, h4) .bank-card-primary {
+  color: inherit;
+  text-decoration: none;
+}
+/* Preserve independent reveal, back, disclosure and payment controls. */
+.bank-clickable-card :is(a, button, input, select, textarea, summary):not(.bank-card-primary),
+.bank-clickable-card details[open] {
+  position: relative;
+  z-index: 2;
+}
+.bank-clickable-card:has(.bank-card-primary:focus-visible) {
+  outline: 3px solid var(--nexa-text);
+  outline-offset: 3px;
+}
+.bank-clickable-card .bank-card-primary:focus-visible { outline: none; }
+@media (hover: hover) {
+  .bank-clickable-card:has(.bank-card-primary:hover) {
+    box-shadow: inset 0 0 0 2px var(--nexa-border-control);
+  }
+}
+.bank-clickable-card:has(.bank-card-primary:active) {
+  box-shadow: inset 0 0 0 2px var(--nexa-text-muted);
+}
+/* Chat summaries use a padded background highlight, so the interaction
+   surface follows the content without drawing a border through its edges. */
+.nexa-messenger .bank-clickable-card:is(.bank-account, .bank-summary-item, .bank-beneficiary) {
+  min-width: 0;
+  padding-inline: 12px;
+  border-radius: var(--radius-md);
+  overflow-wrap: anywhere;
+}
+@media (hover: hover) {
+  .nexa-messenger .bank-clickable-card:has(.bank-card-primary:hover) {
+    background: var(--nexa-hover);
+    box-shadow: none;
+  }
+}
+.nexa-messenger .bank-clickable-card:has(.bank-card-primary:active) {
+  background: var(--nexa-selected);
+  box-shadow: none;
+}
+@media (forced-colors: active) {
+  .bank-clickable-card:has(.bank-card-primary:focus-visible) { outline-color: Highlight; }
+}
