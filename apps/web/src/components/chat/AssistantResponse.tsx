@@ -18,7 +18,7 @@ export function AssistantResponse({ turn, accessToken, active = false, busy = fa
   }
   return <article class="messenger-banking-response" aria-label={t("Nexa’s banking response")}>
     {text && <p class="messenger-banking-intro" dir="auto" lang={/[\u0900-\u097f]/.test(text) ? "hi-IN" : "en-IN"}>{text}</p>}
-    <div class="messenger-banking-surface">
+    <div class="messenger-banking-surface" role="region" aria-label={t("Nexa’s banking response")} tabIndex={0}>
       <BankingResponse content={turn.banking} accessToken={accessToken} capturedAt={turn.createdAt} />
     </div>
   </article>;

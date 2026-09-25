@@ -29,15 +29,21 @@ export function SidebarBrand({ action, textOnly = false }: { action?: ComponentC
   </header>;
 }
 
-export function SidebarNavigation({ page, admin = false, children }: {
-  page: string; admin?: boolean; children?: ComponentChildren;
+export function SidebarChatLink({ page }: { page: string }) {
+  return <a class="sidebar-link sidebar-chat-link" href="#/assistant" aria-current={page === "assistant" ? "page" : undefined}>
+    <BankingIcon name="chat"/><span>{t("Chat")}</span>
+  </a>;
+}
+
+export function SidebarNavigation({ page, admin = false, children, omitChat = false }: {
+  page: string; admin?: boolean; children?: ComponentChildren; omitChat?: boolean;
 }) {
   const secondary = admin ? [...secondaryNavigation, { page: "operations", label: "Banking operations", icon: "shield" } as NavigationItem] : secondaryNavigation;
   const link = (item: NavigationItem) => <a key={item.page} class={item.page === "assistant" ? "sidebar-link sidebar-chat-link" : "sidebar-link"} href={"#/" + item.page} aria-current={page === item.page ? "page" : undefined}>
     <BankingIcon name={item.icon}/><span>{t(item.label)}</span>
   </a>;
   return <nav class="sidebar-navigation" aria-label={t("Main navigation")}>
-    <div class="sidebar-primary">{primaryNavigation.map(link)}{children}</div>
+    <div class="sidebar-primary">{primaryNavigation.filter(item => !omitChat || item.page !== "assistant").map(link)}{children}</div>
     <div class="sidebar-secondary">{secondary.map(link)}</div>
   </nav>;
 }

@@ -16,6 +16,59 @@ const { MessageBubble } = require('../src/components/chat/MessageBubble.tsx');
 const { supportsBankingContent, BillList } = require('../src/components/chat/BankingResponse.tsx');
 const turn = { assistantText: 'Here is your summary.', createdAt: '2026-09-10T09:00:00Z' };
 
+function descendants(node) {
+  if (Array.isArray(node)) return node.flatMap(descendants);
+  if (!node || typeof node !== 'object') return [];
+  return [node, ...descendants(node.props?.children)];
+}
+
+test('workflow choices select the full row by pointer or keyboard across banking operations', () => {
+  const { WorkflowCard } = require('../src/components/chat/WorkflowCard.tsx');
+  for (const operation of ['PAY_BILL', 'PAY_CARD', 'OWN_TRANSFER', 'START_TRANSFER', 'CANCEL_MANDATE', 'REPAY_LOAN', 'FREEZE_CARD']) {
+    for (const field of ['account', 'target']) {
+      const calls = [];
+      const workflow = {version:1, id:'action-1', operation, field, status:'COLLECTING', message:'Choose', choices:[{id:'choice-1', label:'Everyday •••• 1234'}], expiresAt:new Date(Date.now()+60000).toISOString()};
+      const render = (extra = {}) => WorkflowCard({workflow, active:true, busy:false, onAction:command => calls.push(command), ...extra});
+      const row = descendants(render()).find(n => n.props.role === 'button');
+      assert.equal(row.type, 'div');
+      assert.equal(row.props.tabIndex, 0);
+      assert.equal(row.props['aria-disabled'], false);
+      assert.equal(descendants(row).filter(n => n.type === 'button').length, 0);
+      assert.ok(descendants(row).some(n => n.props.class === 'conversation-choice-affordance' && n.props['aria-hidden'] === 'true'));
+      const label = descendants(row).find(n => n.type?.name === 'SensitiveLabel');
+      if (operation === 'CANCEL_MANDATE') assert.equal(label.props.kind, field === 'account' ? 'accounts' : 'mandates');
+      row.props.onClick();
+      for (const key of ['Enter', ' ']) {
+        let prevented = false;
+        row.props.onKeyDown({key, target:row, currentTarget:row, preventDefault(){prevented=true;}});
+        assert.ok(prevented);
+        row.props.onKeyDown({key, target:{type:'button'}, currentTarget:row, preventDefault(){assert.fail('Reveal keyboard event intercepted');}});
+        row.props.onKeyDown({key, repeat:true, target:row, currentTarget:row, preventDefault(){}});
+      }
+      assert.equal(calls.length, 3);
+      assert.deepEqual(calls[0], {actionId:'action-1', type:'SELECT', value:'choice-1'});
+      for (const extra of [{busy:true}, {workflow:{...workflow, expiresAt:'2000-01-01T00:00:00Z'}}]) {
+        const disabled = descendants(render(extra)).find(n => n.props.role === 'button');
+        assert.equal(disabled.props.tabIndex, -1);
+        assert.equal(disabled.props['aria-disabled'], true);
+        disabled.props.onClick();
+        disabled.props.onKeyDown({key:'Enter', target:disabled, currentTarget:disabled, preventDefault(){}});
+      }
+      assert.equal(calls.length, 3);
+      assert.equal(descendants(render({active:false})).some(n => n.props.role === 'button'), false);
+    }
+  }
+});
+
+test('mandate summaries render missing frequency without crashing', () => {
+  const { MandateList } = require('../src/components/chat/BankingResponse.tsx');
+  for (const frequency of [null, undefined, '', 'MONTHLY']) {
+    const tree = MandateList({content:{version:1, type:'MANDATES', mandates:[{id:'mandate-1', payee:'Internet', status:'ACTIVE', limit:'500', currencyCode:'INR', frequency, accountName:'Everyday', accountNumberMasked:'•••• 1234'}]}});
+    const detail = descendants(tree).find(n => n.props.label === 'Frequency');
+    assert.equal(detail.props.children, frequency ? 'Monthly' : 'Not provided by the bank');
+  }
+});
+
 test('loan chat summaries render new loans without a masked number alongside imported loans', () => {
   const { LoanSummary } = require('../src/components/chat/BankingResponse.tsx');
   const base = {displayName:'New loan', outstanding:'503', nextEmi:'509.08', currencyCode:'INR', status:'ACTIVE'};

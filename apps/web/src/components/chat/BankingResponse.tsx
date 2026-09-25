@@ -139,7 +139,7 @@ function EmptySummary({ title }: { title: string }) {
 }
 export function MandateList({ content }: { content: Extract<BankingContent, { type: "MANDATES" }> }) {
  if (!content.mandates.length) return <EmptySummary title="AutoPay mandates" />;
- return <><SectionHeader title={t("AutoPay mandates")} /><BankingCollection type="MANDATES" count={content.mandates.length} attention={collectionNotice(content.mandates)} label={t("AutoPay mandates")}>{content.mandates.map((item) => <section class="bank-summary-item" key={item.id}><div class="bank-item-heading"><h4>{item.payee}</h4><Status value={item.status} /></div><span class="bank-secondary">{t("Up to")}</span><MoneyAmount amount={item.limit} currency={item.currencyCode} /><dl><Detail label={t("Frequency")}>{humanize(item.frequency)}</Detail><Detail label={t("Next debit")}>{item.nextDebit ? formatDate(item.nextDebit) : t("Not scheduled")}</Detail><Detail label={t("From")}>{item.accountName} <SensitiveNumber kind="mandates" id={item.id} masked={item.accountNumberMasked}/></Detail><Detail label={t("Reference")}>{item.id}</Detail></dl></section>)}</BankingCollection></>;
+ return <><SectionHeader title={t("AutoPay mandates")} /><BankingCollection type="MANDATES" count={content.mandates.length} attention={collectionNotice(content.mandates)} label={t("AutoPay mandates")}>{content.mandates.map((item) => <section class="bank-summary-item" key={item.id}><div class="bank-item-heading"><h4>{item.payee}</h4><Status value={item.status} /></div><span class="bank-secondary">{t("Up to")}</span><MoneyAmount amount={item.limit} currency={item.currencyCode} /><dl><Detail label={t("Frequency")}>{item.frequency ? humanize(item.frequency) : t("Not provided by the bank")}</Detail><Detail label={t("Next debit")}>{item.nextDebit ? formatDate(item.nextDebit) : t("Not scheduled")}</Detail><Detail label={t("From")}>{item.accountName} <SensitiveNumber kind="mandates" id={item.id} masked={item.accountNumberMasked}/></Detail><Detail label={t("Reference")}>{item.id}</Detail></dl></section>)}</BankingCollection></>;
 }
 export function ScheduledPaymentList({ content }: { content: Extract<BankingContent, { type: "UPCOMING" }> }) {
  if (!content.payments.length) return <EmptySummary title="Upcoming payments" />;
@@ -190,13 +190,12 @@ export function LoanSummary({ content }: { content: Extract<BankingContent, { ty
  return <><SectionHeader title={t("Your loans")} /><BankingCollection type="LOANS" count={content.loans.length} attention={collectionNotice(content.loans)} label={t("Your loans")}>{content.loans.map((item) => <section class="bank-summary-item" key={item.id}><h4>{item.displayName} <span class="bank-secondary"><SensitiveNumber kind="loans" id={item.id} masked={item.numberMasked}/></span></h4><span class="bank-secondary">{t("Next EMI")}</span><MoneyAmount amount={item.nextEmi} currency={item.currencyCode} /><dl><Detail label={t("Due")}>{item.dueAt ? formatDate(item.dueAt) : t("Not scheduled")}</Detail><Detail label={t("Outstanding")}><MoneyAmount amount={item.outstanding} currency={item.currencyCode} /></Detail></dl><Status value={item.status} /></section>)}</BankingCollection></>;
 }
 
-export function BillList({ content, accessToken }: { content: Extract<BankingContent, { type: "BILLS" }>; accessToken?: string }) {
+export function BillList({ content }: { content: Extract<BankingContent, { type: "BILLS" }> }) {
  if (!content.bills.length) return <EmptySummary title="Your bills" />;
  return <><SectionHeader title={t("Your bills")} /><BankingCollection type="BILLS" count={content.bills.length} attention={collectionNotice(content.bills)} label={t("Your bills")}>{content.bills.map(bill => <section class="bank-summary-item" key={bill.id}>
  <div class="bank-item-heading"><h4 dir="auto">{bill.billerName}</h4><MoneyAmount amount={bill.amount} currency={bill.currencyCode} /></div>
  <div class="bank-item-heading"><span class="bank-secondary">{bill.dueAt ? dueLabel(bill.dueAt) : t("No due date")}</span><Status value={bill.status} /></div>
  <p class="bank-secondary">{t("Reference")} {bill.id}</p>
- {accessToken && ["UPCOMING", "DUE", "OVERDUE", "FAILED"].includes(bill.status) && <ProductPayment token={accessToken} product={bill} operation="PAY_BILL"/>}
  {bill.category && <p class="bank-secondary">{humanize(bill.category)}</p>}
  {bill.customerNumberMasked && <p class="bank-secondary">{t("Customer")} <SensitiveNumber kind="bills" id={bill.id} masked={bill.customerNumberMasked}/></p>}
  </section>)}</BankingCollection></>;

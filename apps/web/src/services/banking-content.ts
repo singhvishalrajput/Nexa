@@ -10,7 +10,7 @@ export type TransactionSnapshot = {
 };
 export type MandateSnapshot = {
   id: string; payee: string; status: string; limit: Money; currencyCode: string;
-  frequency: string; nextDebit?: string; accountName: string; accountNumberMasked: string;
+  frequency?: string | null; nextDebit?: string; accountName: string; accountNumberMasked: string;
 };
 export type UpcomingSnapshot = {
   id: string; payee: string; amount: Money; currencyCode: string; dueAt: string; status: string;

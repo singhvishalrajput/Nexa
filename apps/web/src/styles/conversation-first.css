@@ -135,11 +135,24 @@
 .conversation-proposal small { display:block; font-size:.75rem; color:var(--nexa-text-muted); margin-top:12px; }
 .conversation-proposal a { display:inline-flex; align-items:center; }
 .conversation-choices { display:grid; gap:var(--space-sm); }
-.nexa-messenger .conversation-choices button { border:1px solid var(--nexa-border); text-align:left; display:flex; justify-content:space-between; gap:12px; }
+.conversation-choice { border:1px solid var(--nexa-border); border-radius:var(--radius-sm); min-height:44px; text-align:left; cursor:pointer; touch-action:manipulation; }
+.conversation-choice:hover:not([aria-disabled="true"]) { background:var(--nexa-soft); }
+.conversation-choice:focus-visible { outline:2px solid var(--nexa-action); outline-offset:3px; }
+.conversation-choice[aria-disabled="true"] { color:var(--nexa-text-muted); cursor:not-allowed; }
+.conversation-choice-affordance { display:flex; flex-shrink:0; align-items:center; gap:12px; padding:var(--space-sm) 12px; border:1px solid var(--nexa-border); border-radius:var(--radius-sm); }
 .nexa-messenger .conversation-confirm { padding:12px 20px; }
 .conversation-proposal-history { border-left:2px solid var(--nexa-border); padding:var(--space-sm) var(--space-md); margin-bottom:20px; color:var(--nexa-text-muted); }
 .conversation-proposal-history summary { display:flex; align-items:center; cursor:pointer; }
 .nexa-messenger .messenger-banking-surface { padding:20px; background:var(--nexa-surface); border:1px solid var(--nexa-border); border-radius:var(--radius-lg); box-shadow:var(--nexa-shadow-card); }
+.nexa-messenger :is(.messenger-banking-surface, .conversation-proposal) {
+  box-sizing:border-box;
+  max-height:min(560px, 65dvh);
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color:var(--nexa-border-control) var(--nexa-background);
+}
 .nexa-messenger .bank-section-header { margin-bottom:var(--space-md); }
 .nexa-messenger .bank-response .bank-section-header h3 { font-size:var(--text-md); }
 .nexa-messenger .bank-status { padding:2px var(--space-sm); border-radius:6px; font-size:.75rem; background:var(--nexa-background); }

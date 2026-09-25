@@ -1,6 +1,6 @@
 import { LandingPage } from "../../components/landing/LandingPage";
 import { AdminApp } from "./AdminApp";
-import { SidebarBrand, SidebarNavigation, SidebarFooter, primaryNavigation, secondaryNavigation } from "../../components/SidebarNavigation";
+import { SidebarBrand, SidebarChatLink, SidebarNavigation, SidebarFooter, primaryNavigation, secondaryNavigation } from "../../components/SidebarNavigation";
 import { BankingIcon } from "../../components/BankingIcon";
 import { LanguageSelect } from "../../components/LanguageSelect";
 import { getLocale, t } from "../../services/locale";
@@ -124,6 +124,6 @@ function Workspace({ session, setSession, signOut, route }: {
             return <OperationsPage token={session.accessToken}/>;
         return <><PageHeading title={page === "operations" ? "Administrator access required" : "Page not found"} description={t("This page is not available for your session.")}/><a class="bank-button" href="#/overview">{t("Back to overview")}</a></>;
     }
-    const nav = <><SidebarBrand/><SidebarNavigation page={page} admin={session.user.role === "ADMIN"}/><SidebarFooter page={page} onLogout={endSession} disabled={signingOut}/></>;
+    const nav = <><div class="sidebar-persistent"><SidebarBrand/><SidebarChatLink page={page}/></div><div class="sidebar-scroll"><SidebarNavigation page={page} admin={session.user.role === "ADMIN"} omitChat/><SidebarFooter page={page} onLogout={endSession} disabled={signingOut}/></div></>;
     return <div class="bank-app experience-workspace"><a class="bank-skip" href="#bank-main" onClick={e => { e.preventDefault(); heading.current?.focus(); }}>{t("Skip to main content")}</a><aside class="nexa-sidebar bank-sidebar" aria-label={t("Banking navigation")}>{nav}</aside>{menu && <Modal title={t("Navigation")} onClose={() => setMenu(false)}><div class="nexa-sidebar bank-mobile-nav">{nav}</div></Modal>}<div class="bank-workspace"><header class="bank-topbar"><div><button class="bank-icon-button bank-menu-toggle" aria-label={t("Open navigation")} aria-expanded={menu} onClick={() => setMenu(true)}>{t("☰ Menu")}</button><span class="experience-section-title">{t(pageTitle)}</span></div><div><LanguageSelect compact/></div></header><main id="bank-main" ref={heading} tabIndex={-1} class="bank-main"><ConnectionNotice/>{content()}<footer class="bank-footer"><span>nexa <span>·</span>{t("Your everyday banking, connected.")}</span><a href="#/security">{t("Security & session ↗")}</a></footer></main><nav class="bank-mobile-tabs" aria-label={t("Quick navigation")}>{primaryNavigation.filter(n => n.page !== "cards").map(n => <a href={"#/" + n.page} aria-current={page === n.page ? "page" : undefined} class={page === n.page ? "active" : ""}><BankingIcon name={n.icon}/>{t(n.label)}</a>)}<button onClick={() => setMenu(true)}><span>☰</span>{t("More")}</button></nav></div>{showPageTransition && <NexaPageTransition/>}</div>;
 }
