@@ -56,3 +56,20 @@ test('customer workspace branding opens overview while banking routes remain ava
     assert.ok(links.some(n => n.props.href === (admin ? '#/admin' : '#/assistant')));
   }
 });
+
+test('mobile navigation leaves scrolling to the bounded dialog body', () => {
+  const sidebar = fs.readFileSync('src/styles/sidebar.css', 'utf8');
+  const experience = fs.readFileSync('src/styles/experience.css', 'utf8');
+  const menu = sidebar.match(/\.bank-mobile-nav\s*\{([^}]+)\}/)?.[1];
+  assert.ok(menu, 'The mobile menu must override the desktop sidebar scroll container');
+  assert.match(menu, /overflow:\s*visible/);
+  assert.match(menu, /overscroll-behavior:\s*auto/);
+  assert.match(menu, /scrollbar-gutter:\s*auto/);
+  assert.match(experience, /\.bank-dialog \.oj-dialog-body\s*\{[^}]*max-height:75dvh;[^}]*overflow:auto/);
+  const body = experience.match(/\.bank-dialog \.oj-dialog-body:has\(\.bank-mobile-nav\)\s*\{([^}]+)\}/)?.[1];
+  assert.match(body, /overscroll-behavior-y:\s*contain/);
+  assert.match(body, /touch-action:\s*pan-y pinch-zoom/);
+  const desktop = sidebar.match(/\.nexa-sidebar\s*\{([^}]+)\}/)?.[1];
+  assert.match(desktop, /overflow-y:\s*auto/);
+  assert.match(desktop, /overscroll-behavior:\s*contain/);
+});

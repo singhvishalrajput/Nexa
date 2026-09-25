@@ -70,7 +70,9 @@
 .nexa-sidebar .sidebar-history-heading h2 { margin: 0 12px; font: 600 var(--text-sm)/1.5 var(--nexa-font); color: var(--nexa-text-muted); }
 .bank-sidebar { position: fixed; inset: 0 auto 0 0; width: var(--nexa-sidebar-width); border-right: 1px solid var(--nexa-border); z-index: 10; }
 .nexa-messenger .messenger-history { height: 100%; width: min(var(--nexa-sidebar-width), 90vw); border-right: 1px solid var(--nexa-border); padding-top: calc(var(--space-lg) + env(safe-area-inset-top)); }
-.bank-mobile-nav { width: 100%; }
+/* The dialog body owns scrolling. A nested non-overflowing scroll container
+   with overscroll containment would swallow wheel and touch gestures here. */
+.bank-mobile-nav { width: 100%; overflow: visible; overscroll-behavior: auto; scrollbar-gutter: auto; }
 .bank-mobile-tabs svg { width: 20px; height: 20px; }
 @media (max-width: 899px) { .bank-sidebar { display: none; } }
 @media (prefers-reduced-motion: reduce) { .nexa-sidebar * { transition: none !important; animation: none !important; } }

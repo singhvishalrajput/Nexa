@@ -293,6 +293,7 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .bank-dialog.oj-dialog { width:min(620px,calc(100vw - 32px)); border-radius:20px; border:1px solid var(--nexa-border); padding:0; background:var(--nexa-surface); color:var(--nexa-text); }
 .bank-dialog .oj-dialog-header { padding:24px; border-bottom:1px solid var(--nexa-border); background:var(--nexa-surface); }
 .bank-dialog .oj-dialog-body { padding:24px; max-height:75dvh; overflow:auto; }
+.bank-dialog .oj-dialog-body:has(.bank-mobile-nav) { overscroll-behavior-y:contain; touch-action:pan-y pinch-zoom; }
 .bank-dialog .oj-dialog-title { font-family:var(--nexa-heading-font); font-size:20px; font-weight:500; }
 .site-shell { font-family:var(--nexa-font); }
 .site-shell .oj-button { --oj-button-height:40px; }
