@@ -2,7 +2,7 @@ import "ojs/ojdialog";
 import { ojDialog } from "ojs/ojdialog";
 import Context = require("ojs/ojcontext");
 import "ojs/ojprogress-circle";
-import { t } from "../../services/locale";
+import { getLocale, t } from "../../services/locale";
 import { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { statusPresentation } from "../../services/banking-content";
@@ -36,7 +36,12 @@ export function State({ loading, error, empty, retry, children }: {
 }
 export function Status({ value }: {
     value: string;
-}) { const {tone, label} = statusPresentation(value); return <span class={"bank-status " + tone}><i aria-hidden="true"/>{label}</span>; }
+}) {
+    const {tone, label} = statusPresentation(value);
+    // Replace the localized leaf rather than retaining translated text nodes.
+    // Browser translation must not add a second translation to application copy.
+    return <span key={getLocale()} class={"bank-status " + tone} lang={getLocale()} translate={false}><i aria-hidden="true"/><span class="bank-status-label">{label}</span></span>;
+}
 export function PageHeading({ eyebrow, title, description, action }: {
     eyebrow?: string;
     title: string;

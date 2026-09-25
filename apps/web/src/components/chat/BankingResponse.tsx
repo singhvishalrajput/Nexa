@@ -1,4 +1,5 @@
 import { getLocale, t } from "../../services/locale";
+import { accountDisplayName } from "../../services/reply-localization";
 import { SpendingSummary } from "./SpendingSummary";
 import { h } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -14,13 +15,13 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
   return <header class="bank-section-header"><h3 tabIndex={-1}>{t(title)}</h3>{subtitle && <p>{subtitle}</p>}</header>;
 }
 function AccountLabel({ account }: { account: AccountSnapshot }) {
-  return <span>{account.displayName} <span class="bank-secondary">{safeMask(account.accountNumberMasked)}</span></span>;
+  return <span>{accountDisplayName(account.displayName)} <span class="bank-secondary">{safeMask(account.accountNumberMasked)}</span></span>;
 }
 
 export function AccountSummary({ accounts, onTransactions }: { accounts: AccountSnapshot[]; onTransactions: (account: AccountSnapshot) => void }) {
   return <BankingCollection type="ACCOUNTS" count={accounts.length} attention={collectionNotice(accounts)} label={t("Account balances")}>
     {accounts.map((account) => <div class="bank-account" key={account.id}>
-      <h3>{account.displayName} <span class="bank-secondary">{safeMask(account.accountNumberMasked)}</span></h3>
+      <h3>{accountDisplayName(account.displayName)} <span class="bank-secondary">{safeMask(account.accountNumberMasked)}</span></h3>
       <span class="bank-account-kind">{humanize(account.accountType)} {t("account")}</span>
       <span class="bank-account-balance-label">{t("Available balance")}</span>
       <MoneyAmount amount={account.availableBalance} currency={account.currencyCode} />
@@ -70,7 +71,7 @@ export function TransactionList({ items, onSelect }: { items: TransactionSnapsho
       const merchant = item.merchantName || humanize(item.type);
       return <li key={item.id}><button type="button" class="bank-transaction-row" onClick={() => onSelect(item)} aria-label={`${merchant}, ${direction.toLowerCase()}, ${formatMoney(item.amount, item.currencyCode)}, ${formatDate(item.occurredAt, true)}, ${statusPresentation(item.status).label}. ${t("View details")}`}>
         <span class="bank-transaction-name"><strong dir="auto">{merchant}</strong><small>{item.category ? humanize(item.category) : humanize(item.type)}</small><Status value={item.status} /></span>
-        <span class="bank-transaction-amount"><MoneyAmount amount={item.amount} currency={item.currencyCode} signed /><small>{direction} · {new Date(item.occurredAt).toLocaleTimeString(getLocale(), { hour: "numeric", minute: "2-digit" })}</small></span>
+        <span class="bank-transaction-amount"><MoneyAmount amount={item.amount} currency={item.currencyCode} signed /><small key={getLocale()} lang={getLocale()} translate={false}><span>{direction}</span><span aria-hidden="true"> · </span><time dateTime={item.occurredAt}>{new Date(item.occurredAt).toLocaleTimeString(getLocale(), { hour: "numeric", minute: "2-digit" })}</time></small></span>
       </button></li>;
     })}</ul>
   </section>)}</div>;
@@ -118,9 +119,9 @@ function TransactionPanel({ account, items = [], total = 0, accessToken, all = f
     }
   }, [selected]);
   if (selected) return <TransactionDetails transaction={selected} account={account} onBack={() => setSelected(null)} />;
-  return <div ref={panel} class={all || lastSelected.current ? "bank-panel messenger-arrival" : "bank-panel"}>
+  return <div ref={panel} class={all || lastSelected.current ? "bank-transaction-panel messenger-arrival" : "bank-transaction-panel"}>
     {onBack && <button type="button" class="bank-inline-action" onClick={onBack}>{t("← Back to balances")}</button>}
-    <SectionHeader title={expanded ? t("Transactions") : t("Recent transactions")} subtitle={`${account.displayName} ${safeMask(account.accountNumberMasked)}`} />
+    <SectionHeader title={expanded ? t("Transactions") : t("Recent transactions")} subtitle={`${accountDisplayName(account.displayName)} ${safeMask(account.accountNumberMasked)}`} />
     {busy ? <p role="status" class="bank-secondary">{t("Loading transactions…")}</p> : error ? <div role="alert"><p>{error}</p><button class="bank-inline-action" type="button" onClick={() => setRetry(retry + 1)}>{t("Retry")}</button></div> : <>
       {loaded.length ? <BankingCollection type="TRANSACTIONS" count={loaded.length} attention={collectionNotice(loaded)} label={t("Transactions")}><TransactionList items={loaded} onSelect={setSelected} /></BankingCollection> : <p class="bank-secondary">{t("No transactions to show.")}</p>}
       {!expanded && count > loaded.length && <button type="button" class="bank-inline-action bank-view-all" onClick={() => { jumpToStart.current = true; setBusy(true); setExpanded(true); }}>{t("View all transactions")}<span class="bank-secondary">({count})</span> →</button>}
@@ -198,5 +199,5 @@ export function BankingResponse({ content, accessToken, capturedAt }: { content:
  if (!supportsBankingContent(content)) return <p class="bank-secondary">{t("This banking summary needs a newer version of Nexa.")}</p>;
  // The discriminant selects matching props; the union assertion stays at this boundary.
  const Renderer = bankingRenderers[content.type] as (props: { content: BankingContent; accessToken: string }) => h.JSX.Element;
- return <div class="bank-response"><Renderer content={content} accessToken={accessToken} /><p class="bank-as-of">{t("Original summary")} · {formatDate(capturedAt, true)}</p></div>;
+ return <div class="bank-response" lang={getLocale()} translate={false}><Renderer content={content} accessToken={accessToken} /><p class="bank-as-of" key={getLocale()}><span>{t("Original summary")}</span><span aria-hidden="true"> · </span><time dateTime={capturedAt}>{formatDate(capturedAt, true)}</time></p></div>;
 }

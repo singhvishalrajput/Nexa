@@ -486,7 +486,7 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
   .activity-totals strong { font-size:20px; }
 }
 .experience-workspace .bank-filters { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) auto auto; align-items:end; gap:14px; padding:18px; }
-.experience-workspace .bank-filters > label { min-width:0; }
+.experience-workspace .bank-filters > label { min-width:0; grid-row:1; }
 .experience-workspace .bank-filters > button { grid-row:1; }
 .experience-workspace .bank-filters > .bank-error { grid-column:1/-1; }
 .activity-advanced-filters { grid-column:1/-1; border:0; padding:0; }
@@ -494,6 +494,11 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .activity-filter-count { margin-left:10px; padding:2px 7px; background:var(--nexa-soft); color:var(--nexa-accent-text); border-radius:6px; font-size:11px; }
 .activity-filter-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; padding-top:14px; }
 .activity-filter-fields > label { min-width:0; }
+/* History tools live inside the same padded header as the card title. */
+.experience-workspace .bank-request-history { margin-top:24px; }
+.experience-workspace .bank-request-history .bank-button { min-height:36px; padding:8px 12px; font-size:12px!important; }
+.experience-workspace .bank-request-history .bank-record { flex-wrap:wrap; border-radius:0; padding:16px 22px; }
+.experience-workspace .bank-request-history .bank-record > div { min-width:0; flex:1 1 180px; overflow-wrap:anywhere; }
 @media(max-width:700px) {
   .experience-workspace .bank-filters { grid-template-columns:repeat(2,minmax(0,1fr)); padding:14px; gap:12px; }
   .experience-workspace .bank-filters > button { grid-row:2; }

@@ -29,7 +29,7 @@ const hindi: Record<string, string> = {
   "Delete this conversation and its messages? This cannot be undone.": "इस बातचीत और इसके संदेशों को मिटाएँ? इसे वापस नहीं लाया जा सकेगा।", "Your unsent draft will also be removed.": "आपका न भेजा गया संदेश भी मिट जाएगा।",
   "Couldn’t delete this conversation. Please try again.": "बातचीत मिटाई नहीं जा सकी। फिर कोशिश करें।", "Try again": "फिर कोशिश करें", "Try loading again": "फिर लोड करें", "Remove message": "संदेश हटाएँ",
   "Check Balance": "बैलेंस देखें", "Send Money": "पैसे भेजें", "Recent Transactions": "हाल के लेन-देन", "Get Help": "मदद लें", "Banking quick actions": "बैंकिंग के आसान विकल्प",
-  "What’s my balance?": "मेरा बैलेंस कितना है?", "Show my latest transactions": "पिछले 10 ट्रांज़ैक्शन दिखाओ।", "Move money between my accounts": "मेरे खातों के बीच पैसे भेजें", "Understand my spending": "मेरे खर्च को समझें",
+  "What’s my balance?": "मेरा बैलेंस कितना है?", "Show my latest transactions": "मेरे हाल के लेनदेन दिखाओ।", "Move money between my accounts": "मेरे खातों के बीच पैसे भेजें", "Understand my spending": "मेरे खर्च को समझें",
   "See what’s available across your accounts": "अपने खातों में उपलब्ध राशि देखें", "A closer look at money in and out": "आने और जाने वाले पैसों की जानकारी", "Review a transfer before sending": "भेजने से पहले ट्रांसफ़र जाँचें", "Explore your spending by category": "श्रेणी के अनुसार अपना खर्च देखें",
   "Write your question": "अपना सवाल लिखें", "Ask about your money, or tell me what you’d like to do…": "पैसों के बारे में पूछें या बताएँ कि आप क्या करना चाहते हैं…", "Ask Nexa…": "Nexa से पूछें…", "Speak your message": "अपना संदेश बोलें", "Speak": "बोलें", "Send": "भेजें", "Send message": "संदेश भेजें",
   "Language": "भाषा", "Voice language / बोलने की भाषा": "भाषा / Language", "Use suggested message": "सुझाया गया संदेश इस्तेमाल करें", "About voice": "आवाज़ के बारे में", "Type instead": "लिखकर पूछें",
@@ -66,7 +66,7 @@ Object.assign(hindi, {
   "The microphone couldn’t start. Please try again or type your message.": "माइक्रोफ़ोन शुरू नहीं हुआ। फिर कोशिश करें या संदेश लिखें।",
   "No speech was captured. Please try again.": "आवाज़ दर्ज नहीं हुई। फिर कोशिश करें।",
   "That voice message is too long. Please try a shorter message.": "आवाज़ का संदेश बहुत लंबा है। छोटा संदेश बोलें।",
-  "Follow-up suggestions": "आगे पूछें", "Review a bill payment": "बिल भुगतान जाँचें", "Show transactions above ₹5,000": "₹5,000 से अधिक के लेन-देन दिखाएँ",
+  "Follow-up suggestions": "आगे पूछें", "Review a bill payment": "बिल भुगतान जाँचें",
   "Savings": "बचत", "Current": "चालू", "Transaction type": "लेन-देन का प्रकार", "Transaction reference": "लेन-देन का संदर्भ", "Copy reference": "संदर्भ कॉपी करें", "Reference copied.": "संदर्भ कॉपी किया गया।", "Need help with this transaction?": "इस लेन-देन के लिए मदद चाहिए?", "← Back to transactions": "← लेन-देन पर वापस जाएँ", "Received in": "इस खाते में प्राप्त", "Paid from": "इस खाते से भुगतान", "View details": "विवरण देखें",
   "Payment details": "भुगतान का विवरण", "Source": "स्रोत", "Target": "प्राप्तकर्ता", "Action": "कार्रवाई", "Transfer status": "ट्रांसफ़र की स्थिति", "Ask another banking question to continue.": "आगे बढ़ने के लिए बैंकिंग का एक और सवाल पूछें।", "Banking information could not be retrieved.": "बैंकिंग जानकारी नहीं मिल सकी।",
   "Transaction pages": "लेन-देन के पेज", "Page": "पेज", "of": "में से", "navigation": "नेविगेशन", "failed": "विफल", "overdue": "अतिदेय", "need attention": "ध्यान दें", "pending": "लंबित", "awaiting verification": "सत्यापन की प्रतीक्षा", "blocked": "अवरुद्ध",
@@ -121,4 +121,9 @@ Object.assign(hindi, {
   "How can I help?": "मैं कैसे मदद कर सकता हूँ?", "Transfer between accounts": "खातों के बीच पैसे भेजें",
   "Speech recognition may use your browser’s speech service.": "वाक् पहचान आपके ब्राउज़र की स्पीच सेवा का उपयोग कर सकती है।"
 });
-export function t(text: string): string { return locale === "hi-IN" ? hindi[text] || text : text; }
+Object.assign(hindi, {
+  "Spoken replies are on. Say ‘stop reading’ to turn them off.": "अब जवाब हिन्दी में सुनाए जाएँगे। बंद करने के लिए ‘जवाब सुनाना बंद करें’ चुनें।",
+  "Spoken replies are off.": "जवाब सुनाना बंद है।"
+});
+Object.assign(hindi, { "account": "खाता" });
+export function t(text: string, language: Locale = locale): string { return language === "hi-IN" && Object.prototype.hasOwnProperty.call(hindi, text) ? hindi[text] : text; }

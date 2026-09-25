@@ -3,6 +3,7 @@ import "ojs/ojinputtext";
 import { BankingIcon } from "../BankingIcon";
 import { SidebarBrand, SidebarFooter, SidebarNavigation } from "../SidebarNavigation";
 import { getLocale, setLocale, t } from "../../services/locale";
+import { getFollowUpSuggestions } from "../../services/chat-suggestions";
 import { AccountContext, QuickAction } from "./ConversationTools";
 import { AccountSnapshot } from "../../services/banking-content";
 import { Modal } from "../../features/banking/ui";
@@ -13,25 +14,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { ApiRequestError, AuthSession } from "../../services/auth";
 import { ActionCommand, Conversation, Turn, TurnRequest, createConversation, deleteConversation, listConversations, loadTurns, sendTurn } from "../../services/conversations";
 import { useVoiceInput } from "../../hooks/useVoiceInput";
+import { useReadAloud } from "../../hooks/useReadAloud";
 import { ChatIcon, MessageBubble } from "./MessageBubble";
 import { AssistantResponse } from "./AssistantResponse";
 import { ConversationHistoryItem } from "./ConversationHistoryItem";
-import { formatMoney, safeMask } from "../../services/banking-content";
 
 type Props = { session: AuthSession; onClose: () => void; onLogout: () => void | Promise<void>; accounts?: AccountSnapshot[]; accountsLoading?: boolean; accountsError?: string; onRefreshAccounts?: () => void };
 const greeting = "Hi! How can I help with your banking today?";
-const spokenResponse = (turn: Turn) => {
-  const data = turn.banking;
-  if (data?.type === "ACCOUNTS") return turn.assistantText + " " + data.accounts.map(account => `${account.displayName}, account ending ${safeMask(account.accountNumberMasked).slice(-4)}. Available balance ${formatMoney(account.availableBalance, account.currencyCode)}.`).join(" ");
-  if (data?.type === "TRANSACTIONS") return turn.assistantText + " " + data.transactions.map(item => `${item.merchantName || item.type}, ${formatMoney(item.amount, item.currencyCode, true)}, ${item.status.toLowerCase()}.`).join(" ");
-  if (data?.type === "MANDATES") return turn.assistantText + " " + data.mandates.map(item => item.payee + ", up to " + formatMoney(item.limit,item.currencyCode) + ", " + item.status).join(". ");
-  if (data?.type === "BILLS") return turn.assistantText + " " + data.bills.map(item => item.billerName + ", " + formatMoney(item.amount,item.currencyCode) + ", " + item.status).join(". ");
-  if (data?.type === "CARDS") return turn.assistantText + " " + data.cards.map(item => item.displayName + ", " + item.status + (item.cardType === "DEBIT" ? "" : ", outstanding " + formatMoney(item.outstanding,item.currencyCode))).join(". ");
-  if (data?.type === "BENEFICIARIES") return turn.assistantText + " " + data.beneficiaries.map(item => item.displayName + ", " + item.status).join(". ");
-  if (data?.type === "SCHEDULED_PAYMENTS" || data?.type === "UPCOMING") return turn.assistantText + " " + data.payments.map(item => item.payee + ", " + formatMoney(item.amount,item.currencyCode) + ", " + item.dueAt + ", " + item.status).join(". ");
-  if (data?.type === "LOANS") return turn.assistantText + " " + data.loans.map(item => item.displayName + ", next EMI " + formatMoney(item.nextEmi,item.currencyCode) + ", " + item.status).join(". ");
-  return turn.assistantText;
-};
 
 export function ConversationWorkspace({ session, onClose, onLogout, accounts = [], accountsLoading = false, accountsError = "", onRefreshAccounts = () => {} }: Props) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -85,6 +74,8 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   const voice = useVoiceInput(setVoiceError);
   const hindi = language === "hi-IN";
   const listening = voice.phase !== "idle";
+  const reading = useReadAloud(readAloud, language, listening);
+  const { speak } = reading;
   const token = session.accessToken;
   useNavigationGuard(!!input.trim() || listening || !!pending.current, sending);
   const discardDraft = () => !input.trim() || window.confirm(t("Discard your typed message and continue?"));
@@ -102,14 +93,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
     }
   }, [wideLayout, historyOpen]);
 
-  const speak = (text: string, force = false) => {
-    if ((!readAloud && !force) || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = /[\u0900-\u097f]/.test(text) ? "hi-IN" : "en-IN";
-    window.speechSynthesis.speak(utterance);
-  };
-  const tell = (text: string, force = false) => { setNotice(text); speak(text, force); };
+  const tell = (text: string, force = false) => { const message = t(text); setNotice(message); speak(message, force); };
   const startBusy = () => { locked.current = true; setBusy(true); setError(""); };
   const endBusy = () => { locked.current = false; if (alive.current) setBusy(false); };
 
@@ -123,7 +107,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
     }).catch((e) => alive.current && setError(e instanceof ApiRequestError && e.status === 404
       ? "Chat is temporarily unavailable. Please try again shortly."
       : "I could not load your conversations. Please reload the page to try again.")).finally(endBusy);
-    return () => { alive.current = false; window.speechSynthesis?.cancel(); pending.current = null; };
+    return () => { alive.current = false; reading.cancel(); pending.current = null; };
   }, [token]);
 
   const latest = (smooth = true) => {
@@ -247,7 +231,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
       if (!alive.current) return;
       setConversations(items => items.filter(item => item.id !== conversation.id));
       if (current?.id === conversation.id) {
-        window.speechSynthesis?.cancel();
+        reading.cancel();
         setCurrent(null); setTurns([]); setOlder(false); setInput(""); setOutgoing(null);
         setGuidance(null); setHasNew(false); animatedTurn.current = null; followLatest.current = true;
         tell("This conversation has been deleted.");
@@ -282,8 +266,8 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
     if (command === "earlier messages") { setInput(""); await earlier(); return; }
     if (command === "more conversations") { setInput(""); if (moreHistory) await more(); else tell("All conversations are loaded."); return; }
     if (command === "read aloud") { setReadAloud(true); setInput(""); tell("Spoken replies are on. Say ‘stop reading’ to turn them off.", true); return; }
-    if (command === "stop reading") { window.speechSynthesis?.cancel(); setReadAloud(false); setInput(""); setNotice("Spoken replies are off."); return; }
-    if (command === "repeat") { speak(turns.length ? spokenResponse(turns[turns.length - 1]) : notice, true); setInput(""); return; }
+    if (command === "stop reading") { reading.cancel(); reading.clearError(); setReadAloud(false); setInput(""); setNotice(t("Spoken replies are off.")); return; }
+    if (command === "repeat") { speak(turns.length ? turns[turns.length - 1] : notice, true); setInput(""); return; }
     if (command === "sign out") { await onLogout(); return; }
     if (command === "delete conversation") {
       pendingDelete.current = current?.id || null; setInput("");
@@ -321,7 +305,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
       setOutgoing(null);
       animatedTurn.current = result.id;
       setTurns((items) => items.some((item) => item.id === result.id) ? items : [...items, result]);
-      setNotice(""); if (result.workflow?.status === "COMPLETED" || result.banking?.type === "ACCOUNTS") onRefreshAccounts(); speak(spokenResponse(result)); if (action?.type === "SELECT") textarea.current?.focus();
+      setNotice(""); if (result.workflow?.status === "COMPLETED" || result.banking?.type === "ACCOUNTS") onRefreshAccounts(); speak(result); if (action?.type === "SELECT") textarea.current?.focus();
       // Refresh titles without loading message bodies for every conversation.
       // A history refresh failure must not turn a successful send into a failed one.
       try {
@@ -400,7 +384,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
                 <div class="conversation-starters">
                   <QuickAction icon="accounts" title={t("Check Balance")} description={t("See what’s available across your accounts")} disabled={busy || listening} onClick={() => void submit(hindi ? "मेरा बैलेंस कितना है?" : "What’s my balance?")}/>
                   <QuickAction icon="payments" title={t("Transfer between accounts")} description={t("Review a transfer before sending")} disabled={busy || listening} onClick={() => void submit(hindi ? "मेरे खातों के बीच पैसे भेजें" : "Transfer between my accounts")}/>
-                  <QuickAction icon="transactions" title={t("Recent Transactions")} description={t("A closer look at money in and out")} disabled={busy || listening} onClick={() => void submit(hindi ? "पिछले 10 ट्रांज़ैक्शन दिखाओ।" : "Show my latest transactions")}/>
+                  <QuickAction icon="transactions" title={t("Recent Transactions")} description={t("A closer look at money in and out")} disabled={busy || listening} onClick={() => void submit(t("Show my latest transactions"))}/>
                   <QuickAction icon="insights" title={t("Spending by category")} description={t("Explore your spending by category")} disabled={busy || listening} onClick={() => void submit(hindi ? "इस महीने मैंने कितना खर्च किया?" : "Show my spending this month")}/>
                 </div>
               </div>
@@ -413,7 +397,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
                 <div class={animatedTurn.current === turn.id ? "messenger-arrival" : undefined}><AssistantResponse turn={turn} accessToken={token} busy={busy} active={!!turn.workflow && !turns.slice(index + 1).some(t => !!t.workflow)} onAction={action => void submit(action.type === "CONFIRM" ? workflowConfirmationLabel(turn.workflow!.operation) : action.type === "CANCEL" ? "Cancel" : turn.workflow?.choices.find(c => c.id === action.value)?.label || "Choose account", "TEXT", action)} /></div>
               </div>)}
               {!sending && turns.length > 0 && !turns[turns.length - 1].workflow && <div class="messenger-suggestions" role="group" aria-label={t("Follow-up suggestions")}>
-                {(turns[turns.length - 1].banking?.type === "ACCOUNTS" ? ["Show my latest transactions", "Move money between my accounts"] : ["What’s my balance?", "Show transactions above ₹5,000"]).map(suggestion => <button key={suggestion} type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(t(suggestion))}>{t(suggestion)} <span aria-hidden="true">↗</span></button>)}
+                {getFollowUpSuggestions(turns[turns.length - 1].banking?.type).map(suggestion => <button key={suggestion} type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(t(suggestion))}>{t(suggestion)} <span aria-hidden="true">↗</span></button>)}
               </div>}
               {outgoing && <MessageBubble animate role="user" text={outgoing.text} timestamp={outgoing.createdAt} status={sending ? t("Sending…") : t("Not confirmed")} />}
               {sending && <MessageBubble animate role="assistant"><span class="messenger-thinking" role="status"><i /><i /><i /><span>{t("Finding your answer…")}</span></span></MessageBubble>}
@@ -440,10 +424,11 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
         <div class="messenger-quick-actions" role="group" aria-label={t("Banking quick actions")} lang={hindi ? "hi" : "en"}>
           <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(hindi ? "मेरा बैलेंस कितना है?" : "show my balance")}>{hindi ? "बैलेंस देखें" : t("Check Balance")}</button>
           <button type="button" disabled={busy || listening || !!pending.current} onClick={() => { window.location.hash = "/send-money"; }}>{hindi ? "पैसे भेजें" : t("Send Money")}</button>
-          <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(hindi ? "पिछले 10 ट्रांज़ैक्शन दिखाओ।" : "show recent transactions")}>{hindi ? "लेन-देन देखें" : t("Recent Transactions")}</button>
+          <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(t("Show my latest transactions"))}>{hindi ? "लेन-देन देखें" : t("Recent Transactions")}</button>
           <button type="button" disabled={listening} onClick={() => showGuidance("help")}>{hindi ? "मदद लें" : t("Get Help")}</button>
         </div>
         {voiceError && <div class="messenger-voice-error" role="alert"><p>{t(voiceError)}</p><button type="button" onClick={() => { setVoiceError(""); textarea.current?.focus(); }}>{t("Type instead")}</button></div>}
+        {reading.error && <div class="messenger-voice-error" role="alert"><p>{reading.error}</p><button type="button" onClick={reading.clearError}>{hindi ? "ठीक है" : "Got it"}</button></div>}
         <form class="messenger-composer" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
           {listening ? <div class="messenger-voice-session">
             <div class="messenger-voice-state" role="status"><span class={voice.phase === "listening" ? "recording-dot" : ""} /><strong>{voice.phase === "review" ? (voice.simulated ? t("Message ready") : t("Voice message ready")) : voice.phase === "stopping" ? t("Finishing…") : t("Listening")}</strong><time>{Math.floor(voice.seconds / 60)}:{String(voice.seconds % 60).padStart(2, "0")}</time></div>

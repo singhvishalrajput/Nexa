@@ -1,4 +1,5 @@
 import { getLocale, t } from "../../services/locale";
+import { localizeReply } from "../../services/reply-localization";
 import { ActionCommand, Workflow } from "../../services/conversations";
 import { formatMoney } from "../../services/banking-content";
 
@@ -11,7 +12,7 @@ export function workflowConfirmationLabel(operation: string) {
 
 export function WorkflowCard({ workflow: w, active, busy, onAction }: {workflow: Workflow; active: boolean; busy: boolean; onAction: (command: ActionCommand) => void}) {
   if (w.version !== 1) return <p>{t("This proposal requires a newer version of Nexa.")}</p>;
-  const message = w.message;
+  const message = localizeReply(w.message);
   if (!active && ["COLLECTING", "REVIEW"].includes(w.status)) return <details class="conversation-proposal-history"><summary>{t("Earlier step")} · {w.operation === "OWN_TRANSFER" ? t("Transfer between accounts") : t("Payment review")}</summary><p lang={/[\u0900-\u097f]/.test(message) ? "hi-IN" : "en-IN"}>{message}</p>{w.accountLabel && <p>{t("From")}: {w.accountLabel}</p>}{w.targetLabel && <p>{t("To")}: {w.targetLabel}</p>}{w.amount && <p>{t("Amount")}: {w.currency ? formatMoney(w.amount,w.currency) : w.amount}</p>}</details>;
   const simulated = w.operation !== "OWN_TRANSFER" && w.operation !== "CARD_CONTROL";
   const expired = Date.parse(w.expiresAt) <= Date.now() && ["COLLECTING", "REVIEW"].includes(w.status);
