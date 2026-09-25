@@ -154,11 +154,11 @@ public class WorkflowService {
                           + name(old.targetLabel())
                           + "."
                       : old.operation().equals("CANCEL_MANDATE")
-                          ? "Your cancellation for "
+                          ? "Simulation recorded; no external provider was contacted. Your cancellation for "
                               + name(old.targetLabel())
                               + " has been accepted."
                           : cardControl(old)
-                              ? "Your "
+                              ? "Simulation recorded; no real card-network change was made. Your "
                                   + noun(old)
                                   + " for "
                                   + name(old.targetLabel())

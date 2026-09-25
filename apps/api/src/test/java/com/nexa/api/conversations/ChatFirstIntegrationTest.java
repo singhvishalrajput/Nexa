@@ -40,6 +40,25 @@ public class ChatFirstIntegrationTest {
   @Autowired org.springframework.security.oauth2.jwt.JwtEncoder encoder;
   String auth, chat, source, destination;
 
+  @Test
+  void knowledgeQuestionCannotCreateOrConfirmAWorkflow() throws Exception {
+    var first = say("What is a personal loan?");
+    assertThat(first.get("intent").asText()).isEqualTo("KNOWLEDGE");
+    assertThat(say("What is the interest rate?").get("assistantText").asText()).contains("14.50%");
+    assertThat(say("What documents do I need?").get("assistantText").asText()).contains("three months");
+    var explanation = say("How do I freeze my card?");
+    assertThat(explanation.path("workflow").isNull() || explanation.path("workflow").isMissingNode()).isTrue();
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM conversation_workflows WHERE conversation_id=?", Integer.class, chat)).isZero();
+    payee("KB recipient");
+    var review = say("transfer 40 to KB recipient from Everyday").get("workflow");
+    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
+    var duringReview = say("What is a transfer?");
+    assertThat(duringReview.get("intent").asText()).isEqualTo("KNOWLEDGE");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+    var confirmed = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(confirmed.get("workflow").get("status").asText()).isEqualTo("COMPLETED");
+  }
+
   @BeforeAll
   void schema() {
     new ResourceDatabasePopulator(
@@ -262,6 +281,7 @@ public class ChatFirstIntegrationTest {
       assertThat(say("haan kar do").get("workflow").get("id")).isEqualTo(review.get("id"));
       var result = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
       assertThat(result.get("assistantText").asText()).contains("accepted").doesNotContain("Open");
+      assertThat(result.get("assistantText").asText()).contains("Simulation recorded");
     }
   }
 

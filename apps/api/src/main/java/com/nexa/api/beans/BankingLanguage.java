@@ -96,7 +96,8 @@ public final class BankingLanguage {
       return null;
     if (text.matches(".*\\b(cancel|stop)\\b.*\\b(mandate|autopay|direct debit)\\b.*"))
       return "CANCEL_MANDATE";
-    if (text.matches(".*\\b(repay|pay|repayment)\\b.*\\bloan\\b.*")
+    if (text.matches(".*\\b(pay|make)\\b.*\\bemi\\b.*")
+        || text.matches(".*\\b(repay|pay|repayment)\\b.*\\bloan\\b.*")
         || text.matches(".*\\bloan\\b.*\\b(repay|repayment|pay)\\b.*")) return "REPAY_LOAN";
     if (text.matches(".*\\bcard\\b.*")) {
       if (text.matches(".*\\bunfreeze\\b.*")) return "UNFREEZE_CARD";
