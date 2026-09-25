@@ -138,6 +138,44 @@
 .experience-workspace .bank-service-page .bank-operation-body label { display: grid; gap: 7px; font-size: 12px; font-weight: 550; }
 .experience-workspace .bank-service-page .bank-operation-body .bank-button { justify-self: start; }
 
+/* Payment review pairs a compact two-column form with equally aligned shortcuts. */
+.experience-workspace .bank-payments-page { container: payments-page / inline-size; }
+.experience-workspace .bank-payments-page .bank-payments-layout { display: grid; grid-template-columns: minmax(0,1.8fr) minmax(260px,1fr); gap: 20px; align-items: stretch; }
+.experience-workspace .bank-payments-page .bank-payment-review { min-width: 0; container: payment-review / inline-size; }
+.experience-workspace .bank-payments-page .bank-payment-fields { gap: 18px 20px; }
+.experience-workspace .bank-payments-page .bank-payment-target { display: grid; min-width: 0; gap: 8px; }
+.experience-workspace .bank-payments-page .bank-payment-target .bank-state { padding: 16px 12px; min-height: 0; font-size: 12px; }
+.experience-workspace .bank-payments-page .bank-pagination { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; margin: 0; padding: 0; border: 0; }
+.experience-workspace .bank-payments-page .bank-pagination span { flex-basis: 100%; }
+.experience-workspace .bank-payments-page .bank-pagination button { min-height: 32px; padding: 5px 8px; font-size: 11px !important; }
+.experience-workspace .bank-payments-page .bank-confirm-summary { margin: 0; padding: 14px 16px; border: 1px solid var(--nexa-border); border-radius: 8px; background: var(--nexa-background); }
+.experience-workspace .bank-payments-page .bank-confirm-summary h3 { font-size: 13px; line-height: 1.5; }
+.experience-workspace .bank-payments-page .bank-confirm-summary dl { padding: 0; }
+.experience-workspace .bank-payments-page .bank-confirm-summary .bank-detail:last-child { border-bottom: 0; padding-bottom: 0; }
+.experience-workspace .bank-payments-page .bank-payment-shortcuts { display: flex; flex-direction: column; min-width: 0; }
+.experience-workspace .bank-payments-page .bank-payment-links { display: grid; grid-template-rows: repeat(2,minmax(0,1fr)); gap: 12px; flex: 1; padding: 16px; }
+.experience-workspace .bank-payments-page .bank-payment-links a { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 16px 12px; border: 1px solid var(--nexa-border); border-radius: 9px; background: var(--nexa-background); color: var(--nexa-text); text-decoration: none; }
+.experience-workspace .bank-payments-page .bank-payment-links a:hover { border-color: var(--nexa-reference-f8c6b8); background: var(--nexa-soft); color: var(--nexa-text); }
+.experience-workspace .bank-payments-page .bank-payment-links a:focus-visible { outline: 2px solid var(--nexa-focus); outline-offset: 2px; }
+.experience-workspace .bank-payments-page .bank-payment-link-icon { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border: 1px solid var(--nexa-border); border-radius: 8px; background: var(--nexa-surface); color: var(--nexa-text-secondary); }
+.experience-workspace .bank-payments-page .bank-payment-links svg { width: 18px; height: 18px; flex-shrink: 0; }
+.experience-workspace .bank-payments-page .bank-payment-links a > svg { width: 15px; height: 15px; color: var(--nexa-text-muted); }
+.experience-workspace .bank-payments-page .bank-payment-link-copy { display: grid; gap: 4px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.experience-workspace .bank-payments-page .bank-payment-link-copy strong { font-size: 13px; font-weight: 600; line-height: 1.5; }
+.experience-workspace .bank-payments-page .bank-payment-link-copy small { color: var(--nexa-text-muted); }
+.experience-workspace .bank-payments-page .bank-request-history { margin-top: 24px; }
+@container payment-review (max-width: 520px) {
+  .experience-workspace .bank-payments-page .bank-payment-fields { grid-template-columns: minmax(0,1fr); }
+}
+@container payments-page (max-width: 900px) {
+  .experience-workspace .bank-payments-page .bank-payments-layout { grid-template-columns: minmax(0,1fr); }
+  .experience-workspace .bank-payments-page .bank-payment-links { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: auto; }
+}
+@media (max-width: 600px) {
+  .experience-workspace .bank-payments-page .bank-payment-links { grid-template-columns: minmax(0,1fr); }
+  .experience-workspace .bank-payments-page .bank-editor-actions .bank-button { width: 100%; }
+}
+
 @container transfer-entry (max-width: 640px) {
   .experience-workspace .bank-service-page :is(.bank-transfer-fields,.transfer-form-footer) { grid-template-columns: minmax(0,1fr); }
 }
