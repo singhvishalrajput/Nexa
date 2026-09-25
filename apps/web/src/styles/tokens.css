@@ -1,5 +1,9 @@
 /* Shared design tokens. Breakpoints: compact <600px; rail >=900px; context >=1280px. */
 :root {
+  --nexa-hue-angle: 0deg;
+  --nexa-ai-peach: #ffc7b8;
+  --nexa-ai-glow: #ff624830;
+  --nexa-ai-white-halo: #ffffff80;
   --nexa-action: #252525;
   --nexa-action-hover: #424242;
   --nexa-action-active: #181818;

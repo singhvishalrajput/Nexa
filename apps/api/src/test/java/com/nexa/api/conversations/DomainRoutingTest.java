@@ -82,9 +82,9 @@ class DomainRoutingTest {
                     .as(text)
                     .isEqualTo(type));
     verify(mandates).list(null, 0, 30);
-    verify(bills).list(null, 0, 30);
+    verify(bills).all(null);
     verify(cards).all();
-    verify(beneficiaries).list();
+    verify(beneficiaries).all();
     verify(scheduled).list(null, 0, 30);
     verify(loans).list(null, 0, 30);
   }
@@ -110,7 +110,7 @@ class DomainRoutingTest {
   @Test
   void dueBillsApplyTheExtractedStatusFilter() {
     interpreter(false).interpret("Which bills are due?");
-    verify(bills).list("DUE", 0, 30);
+    verify(bills).all("DUE");
   }
 
   @Test

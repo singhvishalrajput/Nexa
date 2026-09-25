@@ -46,7 +46,72 @@
 .bank-panel-heading{display:flex;align-items:center;justify-content:space-between;padding:22px 23px 17px;gap:15px}
 .bank-panel-heading h2{margin:0;font-size:15px}
 .bank-panel-heading a{font-size:11px;color:var(--nexa-text-muted)}
-.bank-next-step{padding:23px 26px;background:var(--nexa-background);border-color:var(--nexa-border)}
+@property --nexa-hue-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
+@keyframes nexa-hue-orbit{to{--nexa-hue-angle:360deg}}
+.bank-next-step{position:relative;isolation:isolate;padding:23px 26px;background:var(--nexa-background);border-color:var(--nexa-border);box-shadow:0 8px 28px var(--nexa-ai-glow)}
+.bank-next-step::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;background:linear-gradient(125deg,var(--nexa-coral),var(--nexa-ai-peach),var(--nexa-soft),var(--nexa-ai-peach),var(--nexa-reference-a34431),var(--nexa-coral));background-size:220% 220%;opacity:.24;animation:nexa-brand-drift 23s ease-in-out infinite}
+@keyframes nexa-brand-drift{0%,100%{background-position:12% 38%}17%{background-position:86% 14%}39%{background-position:34% 92%}58%{background-position:95% 64%}79%{background-position:8% 80%}}
+
+.bank-next-step>.bank-ai-badge{display:flex;align-items:center;gap:8px;width:fit-content;grid-column:1/-1;margin-bottom:14px;padding:8px 14px;border-radius:999px;background:color-mix(in srgb,var(--nexa-surface) 45%,transparent);border:1px solid color-mix(in srgb,var(--nexa-coral) 25%,transparent);backdrop-filter:blur(8px);color:var(--nexa-text);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+.bank-ai-badge>span{font-size:20px;line-height:1}
+
+.bank-next-step>.bank-ai-stars{position:absolute;inset:0;overflow:hidden;border-radius:inherit;pointer-events:none;z-index:0}
+.bank-next-step>:not(.bank-ai-stars){position:relative;z-index:1}
+.bank-ai-stars span{position:absolute;color:var(--nexa-coral);font-size:26px;opacity:.55;filter:drop-shadow(0 0 6px var(--nexa-ai-glow));animation:nexa-star-shimmer 4s ease-in-out infinite}
+.bank-ai-stars span:nth-child(1){left:75%;top:16%;font-size:36px;animation-delay:-1s}
+.bank-ai-stars span:nth-child(2){left:88%;top:48%;font-size:18px;animation-delay:-3s;color:var(--nexa-reference-a34431)}
+.bank-ai-stars span:nth-child(3){left:62%;top:70%;font-size:30px;animation-delay:-4.5s}
+.bank-ai-stars span:nth-child(4){left:40%;top:8%;font-size:15px;animation-delay:-2s;color:var(--nexa-coral)}
+.bank-ai-stars span:nth-child(5){left:14%;top:80%;font-size:19px;animation-delay:-5s;color:var(--nexa-reference-a34431)}
+.bank-ai-stars span:nth-child(6){left:92%;top:84%;font-size:24px;animation-delay:-.5s;color:var(--nexa-coral)}
+.bank-ai-stars span:nth-child(7){left:52%;top:42%;font-size:14px;animation-delay:-3.5s}
+.bank-topbar .bank-know-nexa{white-space:nowrap;min-height:34px;padding:6px 12px;font-size:12px}
+@keyframes nexa-star-shimmer{0%,100%{opacity:.3;transform:translateY(4px) scale(.8) rotate(-8deg)}50%{opacity:.8;transform:translateY(-7px) scale(1.15) rotate(8deg)}}
+.bank-app.bank-dialog.oj-dialog.nexa-intro-dialog{width:min(1080px,calc(100vw - 24px));min-width:0;max-width:calc(100vw - 24px);height:min(660px,calc(100dvh - 24px));max-height:calc(100dvh - 24px);overflow:hidden;display:flex;flex-direction:column}
+.bank-app.bank-dialog.nexa-intro-dialog :is(.oj-dialog-container,.oj-dialog-body-wrapper){display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;overflow:hidden}
+.bank-app.bank-dialog.nexa-intro-dialog .oj-dialog-header{padding:12px 22px;flex-shrink:0}
+.bank-app.bank-dialog.nexa-intro-dialog .oj-dialog-content{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.bank-app.bank-dialog.nexa-intro-dialog .oj-dialog-body{padding:18px 24px;flex:1;min-height:0;max-height:none;overflow:hidden;display:flex;flex-direction:column}
+.nexa-intro-dialog [slot="body"]{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.nexa-intro{display:flex;flex-direction:column;gap:16px;flex:1;min-height:0;overflow:hidden}
+.nexa-intro-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+.nexa-intro-heading .bank-eyebrow{font-size:10px;margin:0 0 6px}
+.bank-dialog .nexa-intro-heading h2{font-size:clamp(19px,2.5vw,28px);line-height:1.2;margin:0}
+.nexa-intro-score{flex-shrink:0;padding:8px 12px;border-radius:20px;background:var(--nexa-soft);color:var(--nexa-action);font-size:12px}
+.nexa-intro-chapters{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;flex-shrink:0}
+.nexa-intro-chapters button{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 5px;border:1px solid var(--nexa-border);border-radius:12px;background:var(--nexa-surface);color:var(--nexa-text-muted);font-size:11px;line-height:1.3}
+.nexa-intro-chapters button[aria-current]{background:var(--nexa-soft);border-color:var(--nexa-action);color:var(--nexa-text)}
+.nexa-intro-chapters i{position:absolute;bottom:0;left:0;height:3px;width:100%;background:var(--nexa-action);transform-origin:left;transition:transform .35s}
+.nexa-intro-stage{flex:1;min-height:0;display:grid;grid-template-columns:.85fr 1.15fr;gap:28px;align-items:center;padding:24px;border:1px solid var(--nexa-border);border-radius:20px;background:radial-gradient(ellipse at 10% 85%,var(--nexa-ai-peach),transparent 65%),var(--nexa-soft);overflow:hidden}
+.nexa-intro-story{min-width:0;animation:nexa-tour-enter .45s both}
+.nexa-intro-count{font-size:11px;letter-spacing:.16em;color:var(--nexa-action)}
+.nexa-intro-story h3{font-size:clamp(22px,2.8vw,32px);line-height:1.15;margin:10px 0}
+.nexa-intro-story p{font-size:14px;line-height:1.6;color:var(--nexa-text-secondary);margin:0 0 16px}
+.nexa-intro-status{font-size:11px;color:var(--nexa-text-muted)}
+.nexa-intro-chat{height:100%;min-height:0;min-width:0;display:flex;flex-direction:column;gap:14px;padding:18px;border:1px solid var(--nexa-border);border-radius:18px;background:var(--nexa-surface);box-shadow:0 8px 30px var(--nexa-ai-glow)}
+.nexa-intro-chat>header{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;flex-shrink:0}
+.nexa-intro-demo{font-size:10px;color:var(--nexa-text-muted)}
+.nexa-intro-messages{display:flex;flex-direction:column;justify-content:center;gap:14px;flex:1;min-height:0}
+.nexa-intro-bubble{font-size:14px;line-height:1.5;padding:12px 14px;animation:nexa-tour-enter .4s both}
+.nexa-intro-bubble.user{align-self:flex-end;max-width:92%;border-radius:16px 16px 4px 16px;background:var(--nexa-soft)}
+.nexa-intro-bubble.assistant{display:flex;gap:9px;padding-left:0}.nexa-intro-bubble.assistant>span{color:var(--nexa-action);font-size:23px}.nexa-intro-bubble p{margin:0}
+.nexa-intro-hint{font-size:12px;color:var(--nexa-text-muted);text-align:center;animation:nexa-tour-enter .4s both}
+.nexa-intro-try{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:12px 14px;border:1px solid var(--nexa-action);border-radius:12px;background:var(--nexa-action);color:var(--nexa-on-action);font-size:13px;flex-shrink:0;transition:transform .2s}
+.nexa-intro-try:hover{transform:translateY(-2px)}.nexa-intro-try.is-complete{background:var(--nexa-soft);color:var(--nexa-action)}
+.nexa-intro-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}.nexa-intro-controls p{margin:0;font-size:12px;color:var(--nexa-text-muted)}.nexa-intro-actions{display:flex;gap:8px;flex-shrink:0}
+@keyframes nexa-tour-enter{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+@media(max-width:650px){.bank-app.bank-dialog.nexa-intro-dialog .oj-dialog-body{padding:12px}.nexa-intro{gap:10px}.nexa-intro-score{padding:6px 8px}.nexa-intro-score>span,.nexa-intro-chapter-label,.nexa-intro-count,.nexa-intro-status,.nexa-intro-controls>p{display:none}.nexa-intro-chapters button{padding:8px 4px}.nexa-intro-stage{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);gap:12px;padding:14px}.nexa-intro-story h3{font-size:20px;margin:0 0 6px}.nexa-intro-story p{font-size:12px;line-height:1.4;margin:0}.nexa-intro-chat{padding:12px;gap:10px}.nexa-intro-bubble{font-size:12px;padding:9px 10px}.nexa-intro-messages{gap:10px}.nexa-intro-controls{justify-content:flex-end}.nexa-intro-controls .bank-button{min-height:36px;padding:8px 12px}.nexa-intro-heading .bank-eyebrow{font-size:9px}.nexa-intro-try{padding:10px;font-size:12px}}
+@media(max-height:620px){.bank-app.bank-dialog.nexa-intro-dialog .oj-dialog-header{padding:8px 16px}.bank-app.bank-dialog.nexa-intro-dialog .oj-dialog-body{padding:10px 14px}.nexa-intro{gap:8px}.nexa-intro-heading .bank-eyebrow,.nexa-intro-chapter-label,.nexa-intro-count,.nexa-intro-status,.nexa-intro-controls>p{display:none}.nexa-intro-chapters button{padding:6px 4px}.nexa-intro-stage{gap:12px;padding:12px}.nexa-intro-story h3{font-size:18px;margin:0 0 6px}.nexa-intro-story p{font-size:11px;line-height:1.35;margin:0}.nexa-intro-chat{padding:10px;gap:6px}.nexa-intro-messages{gap:6px}.nexa-intro-bubble{font-size:11px;line-height:1.35;padding:6px 8px}.nexa-intro-try{font-size:11px;padding:7px 10px}.nexa-intro-controls{justify-content:flex-end}.nexa-intro-controls .bank-button{min-height:32px;padding:6px 12px}}
+@media(max-height:460px){.nexa-intro-heading,.nexa-intro-story p{display:none}.nexa-intro-stage{grid-template-columns:.65fr 1.35fr;grid-template-rows:1fr}.nexa-intro-demo{font-size:9px}.nexa-intro-chat>header{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.nexa-intro *{animation:none!important;transition:none!important}}
+.bank-app.nexa-intro-dialog .nexa-intro-story p{font-size:14px;line-height:1.6}
+.bank-app.nexa-intro-dialog .nexa-intro-bubble p{font-size:inherit;line-height:inherit}
+.bank-app.nexa-intro-dialog .nexa-intro-chapters button{min-width:0;min-height:40px;font-size:11px}
+.bank-app.nexa-intro-dialog .nexa-intro-try{min-width:0;min-height:42px;font-size:13px;line-height:1.4}
+.bank-app.nexa-intro-dialog .nexa-intro-actions button{min-width:40px;min-height:40px}
+@media(max-width:650px){.bank-app.nexa-intro-dialog .nexa-intro-story p{font-size:12px;line-height:1.4}.bank-app.nexa-intro-dialog .nexa-intro-chat>header{font-size:12px}.bank-app.nexa-intro-dialog .nexa-intro-try{font-size:12px}.bank-app.nexa-intro-dialog .nexa-intro-actions button{min-height:36px}}
+@media(max-height:620px){.bank-app.nexa-intro-dialog .nexa-intro-story p{font-size:11px;line-height:1.35}.bank-app.nexa-intro-dialog .nexa-intro-chapters button{min-height:30px}.bank-app.nexa-intro-dialog .nexa-intro-try{min-height:34px;font-size:11px}.bank-app.nexa-intro-dialog .nexa-intro-actions button{min-height:32px}}
+@media(prefers-reduced-motion:reduce){.bank-next-step::before,.bank-next-step::after,.nexa-intro *{animation:none!important}}
 .bank-next-step .bank-tile-symbol{float:right;margin-left:8px}
 .bank-next-step .bank-eyebrow{margin-top:2px;color:var(--nexa-text-muted)}
 .bank-next-step h2{font-size:24px;line-height:1.2;font-weight:500;max-width:220px;margin-bottom:12px}
@@ -250,7 +315,7 @@
 .bank-next-step>.bank-eyebrow{grid-column:1/-1;margin:0}
 .bank-next-step>h2{font-size:21px;grid-column:1;max-width:none;margin:0}
 .bank-next-step>p:not(.bank-eyebrow){grid-column:1;font-size:11px;margin:0;max-width:none}
-.bank-next-step>.bank-button{grid-column:2;grid-row:2/4;align-self:center}
+.bank-next-step>.bank-button{grid-column:2;grid-row:3/5;align-self:center}
 .bank-account-grid{display:flex;overflow:auto;scroll-snap-type:x mandatory;gap:13px;padding-bottom:6px;margin-bottom:22px}
 .bank-account-grid>.bank-account-tile{flex:0 0 78%;scroll-snap-align:start;padding:22px}
 .bank-activity-grid,.bank-detail-grid{grid-template-columns:1fr;gap:18px}
@@ -746,4 +811,105 @@ html, .bank-app, .bank-app.bank-app * { scrollbar-color: auto; scrollbar-width: 
   .bank-app .loan-payment-body { padding: 18px 16px; gap: 16px; }
   .bank-app .loan-payment-comparison { grid-template-columns: 1fr; }
   .bank-app .loan-payment-date { display: inline; }
+}
+/* Compact collectible account cards for the overview. */
+.bank-app .bank-account-collection { min-width:0; align-self:start; }
+.bank-app .bank-collection-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.bank-app .bank-collection-heading h2 { margin:0; font-size:16px; }
+.bank-app .bank-collection-heading > span { font-size:9px; letter-spacing:.04em; color:var(--nexa-text-muted); }
+.bank-app .bank-collection-heading strong { display:inline-block; margin-left:8px; color:var(--nexa-text); font-size:14px; }
+.bank-app .bank-account-hand { display:flex; align-items:stretch; gap:12px; padding:8px 0 12px; min-width:0; isolation:isolate; }
+.bank-app .bank-collectible { position:relative; display:flex; flex-direction:column; flex:1 1 0; min-width:0; max-width:280px; min-height:190px; padding:16px; border:1px solid color-mix(in srgb,var(--nexa-coral) 38%,var(--nexa-border)); border-radius:16px; color:var(--nexa-text); background:linear-gradient(135deg,var(--nexa-soft),var(--nexa-surface) 65%); box-shadow:0 6px 14px color-mix(in srgb,var(--nexa-text) 8%,transparent),inset 0 0 0 4px var(--nexa-surface); transition:box-shadow 260ms ease; }
+.bank-app .bank-collectible-1 { background:linear-gradient(145deg,var(--nexa-surface),var(--nexa-soft)); }
+.bank-app .bank-collectible-top { display:flex; align-items:center; justify-content:space-between; gap:8px; text-transform:uppercase; font-size:9px; font-weight:700; letter-spacing:.12em; }
+
+.bank-app .bank-collectible h3 { margin:12px 0 2px; font-size:15px; overflow-wrap:anywhere; }
+.bank-app .bank-collectible-number { color:var(--nexa-text-muted); font-size:11px; }
+.bank-app .bank-collectible-balance { margin-top:auto; padding-top:14px; }
+.bank-app .bank-collectible-balance > span { display:block; font-size:10px; color:var(--nexa-text-muted); }
+.bank-app .bank-collectible-balance strong { display:block; font-size:clamp(16px,1.7vw,24px); letter-spacing:-.04em; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.bank-app .bank-collectible footer { display:flex; justify-content:space-between; gap:8px; border-top:1px solid var(--nexa-border); margin-top:12px; padding-top:8px; font-size:9px; }
+.bank-app .bank-collectible footer > span:last-child { opacity:0; transition:opacity 180ms ease; }
+.bank-app .bank-account-hand:focus-within .bank-collectible footer > span:last-child { opacity:1; }
+.bank-app .bank-collection-empty { padding:16px 0; }
+@media (hover:hover) and (pointer:fine) {
+ .bank-app .bank-account-hand .bank-collectible:hover { box-shadow:0 14px 24px color-mix(in srgb,var(--nexa-text) 14%,transparent),inset 0 0 0 4px var(--nexa-surface); }
+ .bank-app .bank-account-hand:hover .bank-collectible footer > span:last-child { opacity:1; }
+}
+@media (hover:none), (max-width:600px) {
+ .bank-app .bank-account-hand { overflow-x:auto; gap:12px; padding:8px 4px 14px; scroll-snap-type:x proximity; }
+ .bank-app .bank-account-hand .bank-collectible { flex:0 0 220px; max-width:85%; margin-left:0; transform:none; scroll-snap-align:start; }
+ .bank-app .bank-collectible footer > span:last-child { opacity:1; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .bank-app .bank-collectible,.bank-app .bank-collectible footer > span:last-child { transition:none; }
+}
+
+/* Morph only the selected card to the destination card’s measured bounds. */
+.bank-app .bank-account-expanded { min-height:280px; }
+::view-transition-group(account-expand) { animation-duration:560ms; animation-timing-function:cubic-bezier(.22,1,.36,1); overflow:hidden; border-radius:16px; }
+::view-transition-old(account-expand) { width:100%; height:100%; object-fit:fill; animation:account-card-out 220ms ease-out both; }
+::view-transition-new(account-expand) { width:100%; height:100%; object-fit:fill; animation:account-details-in 420ms 90ms ease-out both; }
+@keyframes account-card-out { to { opacity:0; } }
+@keyframes account-details-in { from { opacity:0; } to { opacity:1; } }
+@media (prefers-reduced-motion:reduce) {
+ ::view-transition-group(account-expand),::view-transition-old(account-expand),::view-transition-new(account-expand) { animation:none; }
+}
+
+/* Larger collections form one straight deck; navigation never changes its width. */
+.bank-app .bank-account-stack .bank-collectible footer > span:last-child { opacity:1; }
+
+/* Both visible cards share one grid row, independent of the collection controls. */
+.bank-app .bank-account-layout { align-items:stretch; }
+.bank-app .bank-account-layout .bank-account-hand { padding-top:0; padding-bottom:0; }
+.bank-app .bank-account-layout .bank-collectible { max-width:none; }
+.bank-app .bank-account-layout .bank-next-step { align-self:stretch; min-width:0; }
+
+/* Horizontal overlapping cards widen independently on hover or keyboard focus. */
+.bank-app .bank-account-layout.is-stacked .bank-account-stack { display:flex; align-items:stretch; gap:0; padding:6px 0; overflow:visible; }
+.bank-app .bank-account-hand.bank-account-stack .bank-collectible { flex:1 1 0; z-index:var(--card-order); width:0; max-width:none; min-width:0; margin:0; min-height:230px; overflow:hidden; background:linear-gradient(135deg,var(--nexa-soft),var(--nexa-surface) 65%); border-color:color-mix(in srgb,var(--nexa-coral) 45%,var(--nexa-border)); box-shadow:-6px 0 16px color-mix(in srgb,var(--nexa-text) 9%,transparent); transition:flex-grow 320ms cubic-bezier(.22,1,.36,1),transform 320ms ease,box-shadow 320ms ease; }
+.bank-app .bank-account-hand.bank-account-stack .bank-collectible + .bank-collectible { margin-left:-48px; }
+.bank-app .bank-account-stack .bank-collectible h3 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bank-app .bank-account-stack .bank-collectible-number { white-space:nowrap; }
+.bank-app .bank-account-stack .bank-collectible-balance strong { white-space:nowrap; font-size:clamp(16px,1.7vw,24px); }
+.bank-app .bank-account-stack .bank-collectible footer { opacity:0; transition:opacity 180ms ease; }
+.bank-app .bank-account-hand.bank-account-stack .bank-collectible:focus-visible { flex-grow:3; z-index:5; transform:translateY(-4px); }
+.bank-app .bank-account-stack .bank-collectible:focus-visible footer { opacity:1; }
+.bank-app .bank-account-layout.is-stacked .bank-next-step { margin:6px 0; }
+@media (hover:hover) and (pointer:fine) {
+ .bank-app .bank-account-hand.bank-account-stack .bank-collectible:hover { flex-grow:3; z-index:5; transform:translateY(-4px); box-shadow:0 12px 24px color-mix(in srgb,var(--nexa-text) 14%,transparent); }
+ .bank-app .bank-account-stack .bank-collectible:hover footer { opacity:1; }
+}
+@media (hover:none), (max-width:600px) {
+ .bank-app .bank-account-layout.is-stacked .bank-account-stack { overflow-x:auto; padding:6px 4px 14px; scroll-snap-type:x proximity; }
+ .bank-app .bank-account-hand.bank-account-stack .bank-collectible { flex:0 0 220px; max-width:90%; }
+ .bank-app .bank-account-stack .bank-collectible footer { opacity:1; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .bank-app .bank-account-hand.bank-account-stack .bank-collectible,.bank-app .bank-account-stack .bank-collectible footer { transition:none; }
+}
+/* Keep card text away from the edges and soften only inactive card content. */
+.bank-app .bank-account-hand .bank-collectible { padding:24px 28px; text-align:left; }
+.bank-app .bank-account-stack .bank-collectible > * { min-width:0; max-width:100%; transition:filter 200ms ease,opacity 200ms ease; }
+.bank-app .bank-account-stack .bank-collectible-balance { overflow:hidden; }
+.bank-app .bank-account-stack:has(.bank-collectible:focus-visible) .bank-collectible:not(:focus-visible):not(:hover) > * { filter:blur(3px); opacity:.45; }
+@media (hover:hover) and (pointer:fine) {
+ .bank-app .bank-account-stack:has(.bank-collectible:hover) .bank-collectible:not(:hover) > * { filter:blur(3px); opacity:.45; }
+}
+@media (max-width:600px) {
+ .bank-app .bank-account-hand .bank-collectible { padding:22px 24px; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .bank-app .bank-account-stack .bank-collectible > * { transition:none; }
+}
+
+/* Keep every account reachable after removing the deck picker. */
+.bank-app .bank-account-layout.is-stacked .bank-account-stack-scroll { overflow-x:auto; padding-bottom:14px; scroll-snap-type:x proximity; }
+.bank-app .bank-account-hand.bank-account-stack-scroll .bank-collectible { flex:0 0 240px; max-width:90%; scroll-snap-align:start; transition:flex-basis 320ms ease,box-shadow 320ms ease; }
+.bank-app .bank-account-hand.bank-account-stack-scroll .bank-collectible:focus-visible { flex:0 0 320px; }
+@media (hover:hover) and (pointer:fine) {
+ .bank-app .bank-account-hand.bank-account-stack-scroll .bank-collectible:hover { flex:0 0 320px; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .bank-app .bank-account-hand.bank-account-stack-scroll .bank-collectible { transition:none; }
 }

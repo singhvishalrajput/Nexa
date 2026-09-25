@@ -212,6 +212,7 @@ public class WorkflowService {
           if (!latestRead.isEmpty() && latestRead.get(0) != null) return null;
         }
         if (BankingLanguage.readRequest(text)
+            && PaymentAmountRequest.parse(text, old.operation()) == null
             && !BankingLanguage.continuation(text)
             && !normalized.startsWith("what about ")) return null;
         if (BankingLanguage.guarded(text)
@@ -357,7 +358,7 @@ public class WorkflowService {
                           a.id(), a.displayName() + " · " + a.accountNumberMasked()))
               .toList();
       case "PAY_CARD", "FREEZE_CARD", "UNFREEZE_CARD", "REPLACE_CARD" ->
-          cards.list(null, 0, 100).stream()
+          cards.all().stream()
               .filter(
                   c ->
                       !"CLOSED".equals(c.status())
@@ -374,15 +375,17 @@ public class WorkflowService {
               .map(m -> new Workflow.Choice(m.id(), m.payee()))
               .toList();
       case "PAY_BILL" ->
-          bills.list(null, 0, 100).stream()
+          bills.all(null).stream()
               .filter(b -> Set.of("DUE", "UPCOMING", "OVERDUE", "FAILED").contains(b.status()))
               .map(
                   b ->
                       new Workflow.Choice(
-                          b.id(), b.billerName() + " · " + b.currencyCode() + " " + b.amount()))
+                          b.id(), b.billerName()
+                              + (b.category() == null ? "" : " (" + b.category() + ")")
+                              + " · " + b.currencyCode() + " " + b.amount()))
               .toList();
       default ->
-          beneficiaries.list().stream()
+          beneficiaries.all().stream()
               .filter(b -> "ACTIVE".equals(b.status()))
               .map(
                   b ->
@@ -403,6 +406,26 @@ public class WorkflowService {
         .toList();
   }
 
+  private List<Workflow.Choice> sourceMatches(Workflow w, String text) {
+    if (text == null) return List.of();
+    if (!Set.of("PAY_BILL", "PAY_CARD").contains(w.operation())) return matches(sources(w), text);
+    String normalized = BankingLanguage.normalize(text);
+    String type = normalized.matches(".*\\bcredit[- ]card\\b.*") ? "CARD"
+        : normalized.matches(".*\\bsavings?\\b.*") ? "SAVINGS"
+        : normalized.matches(".*\\bcurrent\\b.*") ? "CURRENT" : null;
+    var choices = sources(w);
+    if (type == null) return matches(choices, text);
+    var eligible = (w.operation().equals("PAY_BILL")
+        ? cardService.billFundingAccounts() : accounts.currentAccounts()).stream()
+        .filter(a -> type.equals(a.accountType()))
+        .map(a -> a.id()).collect(java.util.stream.Collectors.toSet());
+    choices = choices.stream().filter(c -> eligible.contains(c.id())).toList();
+    var named = matches(choices, text);
+    boolean generic = normalized.replaceAll(
+        "\\b(my|the|a|an|savings?|current|credit|card|account|please|use)\\b|[- ]", "").isEmpty();
+    return named.isEmpty() && generic ? choices : named;
+  }
+
   private List<Workflow.Choice> matches(List<Workflow.Choice> choices, String text) {
     if (text == null || text.isBlank()) return List.of();
     String normalized = BankingLanguage.normalize(text);
@@ -417,7 +440,11 @@ public class WorkflowService {
                         || BankingLanguage.normalize(name(c.label())).equals(normalized))
             .toList();
     if (!exact.isEmpty()) return exact;
-    var tokens = new HashSet<>(Arrays.asList(normalized.split("[^\\p{L}\\p{N}_-]+")));
+    // An amount in a request must not make a numbered bill/payee a plausible name match.
+    String names = normalized.replaceAll(
+        "[+-]?[0-9]+(?:\\.[0-9]+)?\\s*(?:%|percent\\b|per cent\\b)", " ")
+        .replaceAll("(?:\\b(?:pay|send|transfer|repay|amount|make it|instead|inr|rs)\\s+|₹)[+-]?[0-9][0-9,]*(?:\\.[0-9]+)?", " ");
+    var tokens = new HashSet<>(Arrays.asList(names.split("[^\\p{L}\\p{N}_-]+")));
     tokens.removeAll(
         Set.of(
             "pay",
@@ -447,6 +474,8 @@ public class WorkflowService {
             "transfer",
             "demo",
             "bank"));
+    tokens.removeAll(Set.of("half", "quarter", "percent", "of", "minimum", "due", "full",
+        "outstanding", "clear", "balance", "payment", "repay", "on", "in", "a"));
     int best = 0;
     var found = new ArrayList<Workflow.Choice>();
     for (var choice : choices) {
@@ -489,7 +518,8 @@ public class WorkflowService {
         w.expiresAt(),
         true,
         true,
-        null);
+        null,
+        w.amountRequest());
   }
 
   private Workflow revised(String conversation, Workflow w) {
@@ -515,7 +545,8 @@ public class WorkflowService {
         OffsetDateTime.now().plusMinutes(10),
         true,
         true,
-        null);
+        null,
+        w.amountRequest());
   }
 
   private Workflow select(String conversation, Workflow w, String value) {
@@ -532,6 +563,12 @@ public class WorkflowService {
 
   private Workflow fill(String conversation, Workflow w, String input) {
     String text = BankingLanguage.normalize(input);
+    var requestedAmount = PaymentAmountRequest.parse(text, w.operation());
+    boolean amountPreferenceChanged = requestedAmount != null;
+    if (amountPreferenceChanged) {
+      w = details(revised(conversation, w), w.accountId(), w.targetId(), w.accountLabel(),
+          w.targetLabel(), null).withAmountRequest(requestedAmount);
+    }
     String sourceText = null, targetText = text;
     boolean sourceBeforeSe = false;
     var from =
@@ -576,7 +613,7 @@ public class WorkflowService {
             ? List.<Workflow.Choice>of()
             : matches(targets(w), targetText);
     var sourceMatches =
-        matches(sources(w), sourceText == null && "account".equals(w.field()) ? text : sourceText);
+        sourceMatches(w, sourceText == null && "account".equals(w.field()) ? text : sourceText);
     if (sourceBeforeSe && sourceMatches.size() == 1)
       targetMatches =
           matches(
@@ -591,7 +628,7 @@ public class WorkflowService {
         accountLabel = w.accountLabel(),
         targetLabel = w.targetLabel(),
         amount = w.amount();
-    boolean changed = false;
+    boolean changed = amountPreferenceChanged;
     if (targetMatches.size() == 1 && !targetMatches.get(0).id().equals(target)) {
       target = targetMatches.get(0).id();
       targetLabel = targetMatches.get(0).label();
@@ -605,6 +642,11 @@ public class WorkflowService {
     if (sourceMatches.size() == 1 && !sourceMatches.get(0).id().equals(account)) {
       account = sourceMatches.get(0).id();
       accountLabel = sourceMatches.get(0).label();
+      changed = true;
+    }
+    if (sourceMatches.size() > 1 || sourceText != null && sourceMatches.isEmpty()) {
+      account = null;
+      accountLabel = null;
       changed = true;
     }
     // IDs and account suffixes must not be interpreted as amounts.
@@ -633,7 +675,11 @@ public class WorkflowService {
               .matcher(text);
       if (beforeVerb.find()) amountText = beforeVerb.group(1);
     }
+    // A percentage is never a literal rupee amount, including when it is invalid.
+    if (requestedAmount != null) amountText = null;
     if (amountText != null && !cardControl(w) && !w.operation().equals("CANCEL_MANDATE")) {
+      if (w.amountRequest() != null) changed = true;
+      w = w.withAmountRequest(null);
       if (!amountText.matches("(?:[0-9]{1,13}|[0-9]{1,3}(?:,[0-9]{3})+)(?:\\.[0-9]{1,2})?")
           || new BigDecimal(amountText.replace(",", "")).signum() <= 0)
         return save(
@@ -651,7 +697,7 @@ public class WorkflowService {
         changed = true;
       }
     }
-    if (amountText == null && text.matches("^(?:make it|amount|instead) .+")) {
+    if (amountText == null && requestedAmount == null && text.matches("^(?:make it|amount|instead) .+")) {
       var next =
           details(revised(conversation, w), account, target, accountLabel, targetLabel, null);
       return save(conversation, prompt(next, "amount", List.of()));
@@ -659,13 +705,12 @@ public class WorkflowService {
     String targetHint =
         targetText
             .replaceAll(
-                "\\b(repay|repayment|loan|pay|payment|bill|send|transfer|money|my|the|please|do|it|karo|kar|to|ko|actually|instead|from|inr|rs)\\b|[0-9.,₹]",
+                "\\b(repay|repayment|loan|pay|payment|bill|send|transfer|money|my|the|please|do|it|karo|kar|to|ko|actually|instead|from|inr|rs|half|quarter|percent|percentage|per|cent|full|minimum|min|due|amount|outstanding|clear|balance|entire|total|on|of|a|credit|card|in)\\b|[0-9.,₹%+-]",
                 " ")
             .trim();
     if (targetMatches.isEmpty()
         && w.operation().equals(BankingLanguage.operation(input))
         && !targetHint.isEmpty()
-        && sourceMatches.isEmpty()
         && w.targetId() != null) {
       var next =
           details(
@@ -692,12 +737,18 @@ public class WorkflowService {
               next,
               "COLLECTING",
               "target",
-              "I found more than one match. Which one do you mean?",
-              targetMatches,
+              "I found more than one match. Which one do you mean?"
+                  + (targetMatches.size() > 10 ? " Showing 10 choices; type a more specific name." : ""),
+              targetMatches.stream().limit(10).toList(),
               null));
     }
     if (sourceMatches.size() > 1 || sourceText != null && sourceMatches.isEmpty()) {
       var next = details(revised(conversation, w), null, target, null, targetLabel, amount);
+      if (w.operation().equals("PAY_CARD") && sourceText != null
+          && sourceText.matches(".*\\bcard\\b.*"))
+        return save(conversation, copy(next, "COLLECTING", "account",
+            "A credit-card bill cannot be paid using another credit card. Choose a savings or current account.",
+            sources(next), null));
       return save(
           conversation,
           prompt(next, "account", sourceMatches.isEmpty() ? sources(next) : sourceMatches));
@@ -711,8 +762,27 @@ public class WorkflowService {
   }
 
   private Workflow progress(String conversation, Workflow w) {
+    if (w.amountRequest() != null && w.amountRequest().mode().equals("INVALID_PERCENT"))
+      return save(conversation, copy(w, "COLLECTING", "amount",
+          "Enter a valid percentage greater than 0% and no more than 100% (for example, half, quarter or 25%).",
+          List.of(), null));
     if (w.targetId() == null) return save(conversation, prompt(w, "target", targets(w)));
     String account = w.accountId(), accountLabel = w.accountLabel(), amount = w.amount();
+    if (w.amountRequest() != null) {
+      var request = w.amountRequest();
+      if (w.operation().equals("PAY_BILL") && request.mode().equals("PERCENT"))
+        amount = new BigDecimal(bills.detail(w.targetId()).amount())
+            .multiply(request.percentage()).movePointLeft(2)
+            .setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+      if (w.operation().equals("PAY_CARD")) {
+        var card = cards.detail(w.targetId());
+        amount = request.mode().equals("MINIMUM") ? card.minimumPayment() : card.outstanding();
+        if (amount == null || new BigDecimal(amount).signum() <= 0)
+          return save(conversation, copy(w, "COLLECTING", "amount",
+              "This card has no payable " + (request.mode().equals("MINIMUM") ? "minimum due" : "outstanding")
+                  + ". Enter another amount or choose another card.", List.of(), null));
+      }
+    }
     if (w.operation().equals("REPAY_LOAN")) {
       var loan = loans.detail(w.targetId());
       account = loan.accountId();
@@ -785,7 +855,10 @@ public class WorkflowService {
               next,
               "COLLECTING",
               field,
-              ex.getMessage()
+              (w.amountRequest() != null && w.amountRequest().mode().equals("PERCENT")
+                      ? "The requested " + w.amountRequest().percentage().toPlainString()
+                          + "% calculates to INR " + amount + ". " : "")
+                  + ex.getMessage()
                   + (field.equals("account")
                       ? " Choose another account."
                       : " Enter another amount, or choose a different account."),
@@ -825,7 +898,8 @@ public class WorkflowService {
             next.expiresAt(),
             true,
             true,
-            reference));
+            reference,
+            next.amountRequest()));
   }
 
   private Workflow prompt(Workflow w, String field, List<Workflow.Choice> choices) {
@@ -869,6 +943,11 @@ public class WorkflowService {
                   + " to choose from.",
           List.of(),
           null);
+    if (field.equals("target") && Set.of("PAY_BILL", "START_TRANSFER", "PAY_CARD").contains(w.operation())
+        && choices.size() > 10) {
+      message += " Showing 10 choices; type a name to narrow the search.";
+      choices = choices.stream().limit(10).toList();
+    }
     return copy(w, "COLLECTING", field, message, choices, null);
   }
 
@@ -896,7 +975,8 @@ public class WorkflowService {
         w.expiresAt(),
         w.confirmationRequired(),
         w.executionAvailable(),
-        reference);
+        reference,
+        w.amountRequest());
   }
 
   private Workflow save(String conversation, Workflow w) {

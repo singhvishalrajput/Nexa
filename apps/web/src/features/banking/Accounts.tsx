@@ -1,4 +1,5 @@
 import { SensitiveNumber } from "./SensitiveNumber";
+
 import "ojs/ojcollapsible";
 import { ActivitySummary, TransactionList } from "./Activity";
 import { t } from "../../services/locale";
@@ -11,21 +12,33 @@ import { openAccount } from "../../services/banking";
 import { go, sumMoney } from "./utils";
 export function AccountTile({ account }: {
     account: BankAccount;
-}) { return <section class="bank-account-tile"><div><span class="bank-tile-symbol" aria-hidden="true">▤</span><Status value={account.status}/></div><h3><a href={"#/accounts/" + encodeURIComponent(account.id)}>{account.displayName}</a></h3><span>{account.accountType.toLowerCase()} · <SensitiveNumber id={account.id} masked={account.accountNumberMasked}/></span><strong>{formatMoney(account.availableBalance, account.currencyCode)}</strong><footer>{t("Available balance")}<span aria-hidden="true">↗</span></footer></section>; }
-export function Overview({ token, name, accounts, reload }: {
+}) { return <section class="bank-account-tile" data-account-card={account.id}><div><span class="bank-tile-symbol" aria-hidden="true">▤</span><Status value={account.status}/></div><h3><a href={"#/accounts/" + encodeURIComponent(account.id)}>{account.displayName}</a></h3><span>{account.accountType.toLowerCase()} · <SensitiveNumber id={account.id} masked={account.accountNumberMasked}/></span><strong>{formatMoney(account.availableBalance, account.currencyCode)}</strong><footer>{t("Available balance")}<span aria-hidden="true">↗</span></footer></section>; }
+export function Overview({ token, name, accounts, reload, onAskNexa }: {
     token: string;
     name: string;
+    onAskNexa: () => void;
     accounts: BankAccount[];
     reload: () => void;
 }) {
     const [selected, setSelected] = useState(accounts[0]?.id || "");
+    const stacked = accounts.length > 1;
+
     const [opening, setOpening] = useState(false);
     const account = accounts.find(a => a.id === selected) || accounts[0];
     const recent = useLoad(() => account ? bankApi.transactions(token, account.id) : Promise.resolve(null), [token, account?.id]);
     return <><PageHeading eyebrow="A CLEARER VIEW OF YOUR MONEY" title={"Welcome back, " + name.split(" ")[0] + "."} description={t("Your accounts, activity and next steps. All in one place.")} action={<button class="bank-button" onClick={() => setOpening(true)}>{t("＋ Open an account")}</button>}/>
- <div class="bank-overview-grid"><section class="bank-balance-hero"><div><span class="bank-eyebrow">{t("TOTAL AVAILABLE BALANCE")}</span><span class="bank-live"><i />{t("Connected accounts")}</span></div><strong>{formatMoney(sumMoney(accounts.map(a => a.availableBalance)))}</strong><p>{t("Across")} {accounts.length} {accounts.length === 1 ? "account" : "accounts"} · INR</p><footer><a class="bank-button bank-white" href="#/accounts">{t("View accounts")}<span>↗</span></a><a href="#/send-money">{t("Send money →")}</a></footer></section>
- <Panel className="bank-next-step"><span class="bank-tile-symbol">✧</span><p class="bank-eyebrow">{t("BANKING, MADE SIMPLE")}</p><h2>{t("Start with a conversation.")}</h2><p>{t("Type or speak to check your balance, see recent payments, or get help. English and Hindi voice available.")}</p><a class="bank-button" href="#/assistant">{t("Ask Nexa")}<span>↗</span></a></Panel></div>
- <div class="bank-section-title"><h2>{t("Your accounts")}<span>{accounts.length}</span></h2><a href="#/accounts">{t("View all accounts ↗")}</a></div><div class="bank-account-grid bank-overview-accounts">{accounts.slice(0, 3).map(a => <AccountTile key={a.id} account={a}/>)}{!accounts.length && <Panel><State empty={t("Your first account starts here")}/><button class="bank-button" onClick={() => setOpening(true)}>{t("Open a bank account")}</button></Panel>}</div>
+ <section class="bank-account-collection" aria-label={t("Your accounts")}>
+ <header class="bank-collection-heading"><h2>{t("TOTAL AVAILABLE BALANCE")} <strong>{formatMoney(sumMoney(accounts.map(a => a.availableBalance)))}</strong></h2></header>
+ <div class={"bank-overview-grid bank-account-layout" + (stacked ? " is-stacked" : "")}><div class={"bank-account-hand" + (stacked ? " bank-account-stack" : "") + (accounts.length > 3 ? " bank-account-stack-scroll" : "")}>{accounts.map((a, index) => <a key={a.id} style={stacked ? { "--card-order": index + 1 } : undefined} data-account-card={a.id} class={"bank-collectible bank-collectible-" + index} href={"#/accounts/" + encodeURIComponent(a.id)}>
+ <div class="bank-collectible-top"><span>{t(humanize(a.accountType))}</span></div>
+ <h3>{a.displayName}</h3><span class="bank-collectible-number">{a.accountNumberMasked}</span>
+ <div class="bank-collectible-balance"><span>{t("Available balance")}</span><strong>{formatMoney(a.availableBalance, a.currencyCode)}</strong></div>
+ <footer><span>{t(humanize(a.status))}</span><span>{t("Account details")} ↗</span></footer>
+ </a>)}
+ {!accounts.length && <div class="bank-collection-empty"><State empty={t("Your first account starts here")}/><button class="bank-button" onClick={() => setOpening(true)}>{t("Open a bank account")}</button></div>}
+ </div>
+ <Panel className="bank-next-step"><div class="bank-ai-stars" aria-hidden="true">{Array.from({ length: 7 }, (_, index) => <span key={index}>✦</span>)}</div><div class="bank-ai-badge"><span aria-hidden="true">✦</span>{t("Powered By AI")}</div><p class="bank-eyebrow">{t("BANKING, MADE SIMPLE")}</p><h2>{t("Start with a conversation.")}</h2><p>{t("Type or speak to check your balance, see recent payments, or get help. English and Hindi voice available.")}</p><button type="button" class="bank-button" onClick={onAskNexa}>{t("Ask Nexa")}<span aria-hidden="true">↗</span></button></Panel></div></section>
+
  <div class="bank-activity-grid"><Panel title={t("Recent activity")} action={<a href={"#/transactions?account=" + encodeURIComponent(account?.id || "")}>{t("View history ↗")}</a>}><div class="bank-inline-filter"><label>{t("Account")}<select value={account?.id || ""} onChange={e => setSelected(e.currentTarget.value)} disabled={!accounts.length}>{accounts.map(a => <option value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}</select></label></div><State loading={recent.loading} error={recent.error} retry={recent.reload} empty={!recent.loading && !recent.error && !recent.data?.content.length ? "No transactions yet" : undefined}>{recent.data && <TransactionList items={recent.data.content.slice(0, 5)} compact/>}</State></Panel>
  <Panel title={t("Activity at a glance")} className="activity-summary"><State loading={recent.loading} error={recent.error} retry={recent.reload}>{account && recent.data ? <ActivitySummary items={recent.data.content} currency={account.currencyCode} accountName={account.displayName}/> : <p class="activity-summary-empty">{t("Choose an account to see its activity.")}</p>}</State></Panel></div>
  {opening && <OpenAccount token={token} close={() => setOpening(false)} done={() => { setOpening(false); reload(); }}/>}</>;
@@ -38,7 +51,8 @@ export function AccountsPage({ token, id, accounts, reload }: {
 }) {
     const [opening, setOpening] = useState(false);
     const detail = useLoad(() => id ? bankApi.account(token, id) : Promise.resolve(null), [token, id]);
-    return <><PageHeading title={id ? "Account details" : t("Your accounts")} description={t("A clear view of every account you hold with Nexa.")} action={!id && <button class="bank-button" onClick={() => setOpening(true)}>{t("＋ Open account")}</button>}/>{id ? <State loading={detail.loading} error={detail.error} retry={detail.reload}>{detail.data && <div class="bank-detail-grid"><AccountTile account={detail.data}/><Panel title={t("Account information")}><dl><Detail label={t("Account name")}>{detail.data.displayName}</Detail><Detail label={t("Account number")}><SensitiveNumber id={id!} masked={detail.data.accountNumberMasked}/></Detail><Detail label={t("Status")}><Status value={detail.data.status}/></Detail><Detail label={t("Ledger balance")}>{formatMoney(detail.data.ledgerBalance, detail.data.currencyCode)}</Detail><Detail label={t("Last updated")}>{detail.data.updatedAt ? formatDate(detail.data.updatedAt, true) : "Not available"}</Detail></dl><a class="bank-button" href={"#/transactions?account=" + encodeURIComponent(id)}>{t("View transactions")}</a></Panel></div>}</State> : <div class="bank-account-grid">{accounts.map(a => <AccountTile account={a} key={a.id}/>)}{!accounts.length && <State empty={t("No bank accounts yet")}/>}</div>}{opening && <OpenAccount token={token} close={() => setOpening(false)} done={() => { setOpening(false); reload(); }}/>}</>;
+    const accountDetail = detail.data || accounts.find(account => account.id === id);
+    return <><PageHeading title={id ? "Account details" : t("Your accounts")} description={t("A clear view of every account you hold with Nexa.")} action={!id && <button class="bank-button" onClick={() => setOpening(true)}>{t("＋ Open account")}</button>}/>{id ? <section class="bank-account-expanded"><State loading={detail.loading && !accountDetail} error={detail.error} retry={detail.reload}>{accountDetail && <div class="bank-detail-grid"><AccountTile account={accountDetail}/><Panel title={t("Account information")}><dl><Detail label={t("Account name")}>{accountDetail.displayName}</Detail><Detail label={t("Account number")}><SensitiveNumber id={id!} masked={accountDetail.accountNumberMasked}/></Detail><Detail label={t("Status")}><Status value={accountDetail.status}/></Detail><Detail label={t("Ledger balance")}>{formatMoney(accountDetail.ledgerBalance, accountDetail.currencyCode)}</Detail><Detail label={t("Last updated")}>{accountDetail.updatedAt ? formatDate(accountDetail.updatedAt, true) : "Not available"}</Detail></dl><a class="bank-button" href={"#/transactions?account=" + encodeURIComponent(id)}>{t("View transactions")}</a></Panel></div>}</State></section> : <div class="bank-account-grid">{accounts.map(a => <AccountTile account={a} key={a.id}/>)}{!accounts.length && <State empty={t("No bank accounts yet")}/>}</div>}{opening && <OpenAccount token={token} close={() => setOpening(false)} done={() => { setOpening(false); reload(); }}/>}</>;
 }
 function OpenAccount({ token, close, done }: {
     token: string;

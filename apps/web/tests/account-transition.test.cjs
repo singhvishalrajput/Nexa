@@ -1,0 +1,31 @@
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const ts = require('typescript');
+const code = ts.transpileModule(fs.readFileSync('src/features/banking/account-transition.ts', 'utf8'), {compilerOptions: {module: ts.ModuleKind.CommonJS}}).outputText;
+for (const scenario of ['animate', 'reduced', 'unsupported', 'missing']) test('account navigation: ' + scenario, async () => {
+ const sourceStyles = new Map(), destinationStyles = new Map();
+ const card = styles => ({dataset: {accountCard: 'one'}, style: {setProperty: (k,v) => styles.set(k,v), removeProperty: k => styles.delete(k)}});
+ const source = card(sourceStyles), destination = card(destinationStyles);
+ let commit, finish; let updates = 0, sync = false, scrolled = false;
+ const finished = new Promise(resolve => { finish = resolve; });
+ const document = {querySelectorAll: () => [updates ? destination : source]};
+ if (scenario !== 'unsupported') document.startViewTransition = callback => {commit = callback; return {finished, skipTransition() {finish();}};};
+ const context = {exports: {}, document, require: name => {assert.equal(name, 'preact/compat'); return {flushSync: callback => {sync = true; callback(); sync = false;}};}, window: {matchMedia: () => ({matches: scenario === 'reduced'}), scrollTo: () => {scrolled = true;}}, requestAnimationFrame: () => {throw Error('Cannot wait for paused animation frames');}};
+ vm.runInNewContext(code, context);
+ context.exports.transitionToAccount(scenario === 'missing' ? 'other' : 'one', () => {if (scenario === 'animate') assert.equal(sync, true); updates++;});
+ if (scenario === 'animate') {
+  assert.equal(updates, 0);
+  assert.equal(sourceStyles.get('view-transition-name'), 'account-expand');
+  await commit();
+  assert.equal(sourceStyles.size, 0);
+  assert.equal(destinationStyles.get('view-transition-name'), 'account-expand');
+  assert.equal(scrolled, true);
+  finish();
+  await new Promise(resolve => setImmediate(resolve));
+ } else assert.equal(commit, undefined);
+ assert.equal(updates, 1);
+ assert.equal(sourceStyles.size, 0);
+ assert.equal(destinationStyles.size, 0);
+});

@@ -14,7 +14,7 @@ async function appHarness(initialSession,hash='#home') {
  const h=hookHarness(),events={};let allow=true,logoutCalls=0,tree;
  const window={location:{hash,pathname:'/',search:''},history:{replaceState(_,__,url){window.location.hash=url.slice(url.indexOf('#'));}},addEventListener:(name,fn)=>events[name]=fn,removeEventListener(){}};
  const utils=compile('src/features/banking/utils.ts',()=>({}));
- const deps=name=>name==='preact/hooks'?h.hooks:name.endsWith('/auth')?{restoreSession:async()=>initialSession,logout:async()=>{logoutCalls++;}}:name.endsWith('/locale')?{getLocale:()=> 'en-IN',t:x=>x}:name.endsWith('/utils')?utils:name.endsWith('/useNavigationGuard')?{confirmNavigation:()=>allow,hasUnsavedWork:()=>false}:new Proxy({},{get:(_,key)=>key});
+ const deps=name=>name==='preact/hooks'?h.hooks:name.endsWith('/auth')?{restoreSession:async()=>initialSession,logout:async()=>{logoutCalls++;}}:name.endsWith('/locale')?{getLocale:()=> 'en-IN',t:x=>x}:name.endsWith('/utils')?utils:name.endsWith('/account-transition')?{transitionToAccount:(_,update)=>update()}:name.endsWith('/useNavigationGuard')?{confirmNavigation:()=>allow,hasUnsavedWork:()=>false}:new Proxy({},{get:(_,key)=>key});
  const {BankingApp}=compile('src/features/banking/BankingApp.tsx',deps,{window,document:{documentElement:{}}});
  const render=()=>tree=h.render(()=>BankingApp());render();await new Promise(setImmediate);render();
  return {get tree(){return tree;},get hash(){return window.location.hash;},get logoutCalls(){return logoutCalls;},navigate(hash){window.location.hash=hash;events.hashchange();render();},deny(){allow=false;},expire(){events['nexa-session-expired']();render();},async signOut(){await tree.props.onSignOut();render();}};

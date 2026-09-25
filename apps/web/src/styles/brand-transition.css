@@ -13,8 +13,20 @@
 }
 .nexa-route-transition {
   pointer-events: none;
-  animation: nexa-transition-reveal 1450ms ease both;
+  animation: nexa-transition-reveal 2800ms ease both;
 }
+.nexa-transition-ai::before{content:"";position:absolute;inset:-12%;pointer-events:none;background:radial-gradient(ellipse at 15% 28%,color-mix(in srgb,var(--nexa-coral) 16%,transparent),transparent 52%),radial-gradient(ellipse at 88% 76%,color-mix(in srgb,var(--nexa-ai-peach) 28%,transparent),transparent 54%);animation:nexa-ai-arrive 2800ms ease-in-out both}
+.nexa-transition-ai .nexa-transition-halo{background:radial-gradient(circle,var(--nexa-ai-glow),transparent 72%)}
+.nexa-transition-ai .nexa-transition-mark{fill:var(--nexa-coral)}
+.nexa-transition-ai-label{color:var(--nexa-text);font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;animation:nexa-wordmark-in 550ms 1250ms both}
+.nexa-transition-ai-stars{position:absolute;inset:0;pointer-events:none}
+.nexa-transition-ai-stars>span{position:absolute;color:var(--nexa-coral);animation:nexa-ai-star-arrive 2500ms ease-out both}
+.nexa-transition-ai-stars>span:nth-child(3n){color:var(--nexa-reference-a34431)}
+.nexa-transition-ai-stars>span:nth-child(3n + 1){color:var(--nexa-coral)}
+@keyframes nexa-ai-arrive{0%{opacity:0;transform:translate(-3%,2%) scale(1.04)}35%{opacity:.8}75%{opacity:.65}100%{opacity:0;transform:translate(3%,-2%) scale(1)}}
+@keyframes nexa-ai-star-arrive{0%{opacity:0;transform:translateY(16px) scale(.8) rotate(-10deg)}40%{opacity:var(--star-opacity,.2)}100%{opacity:0;transform:translateY(-16px) scale(1.05) rotate(10deg)}}
+.nexa-transition-ai :is(.nexa-transition-wordmark,.nexa-transition-ai-label){position:relative;isolation:isolate}
+.nexa-transition-ai :is(.nexa-transition-wordmark,.nexa-transition-ai-label)::before{content:"";position:absolute;inset:-24px -48px;z-index:-1;pointer-events:none;background:radial-gradient(ellipse,var(--nexa-ai-white-halo),transparent 72%);filter:blur(12px)}
 .nexa-transition-lockup {
   position: relative;
   display: flex;
@@ -44,6 +56,9 @@
   color: var(--nexa-text);
   animation: nexa-wordmark-in 400ms 840ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+.nexa-transition-ai .nexa-transition-wordmark{animation:nexa-wordmark-in 550ms 350ms cubic-bezier(0.22,1,0.36,1) both}
+.nexa-transition-ai .nexa-transition-turn{animation-duration:1800ms}
+.nexa-transition-ai .nexa-transition-halo{animation-duration:2200ms}
 .nexa-transition-halo {
   position: absolute;
   width: 190px;

@@ -1,3 +1,5 @@
+import { transitionToAccount } from "./account-transition";
+import { NexaIntro } from "./NexaIntro";
 import { LandingPage } from "../../components/landing/LandingPage";
 import { AdminApp } from "./AdminApp";
 import { SidebarBrand, SidebarChatLink, SidebarNavigation, SidebarFooter, primaryNavigation, secondaryNavigation } from "../../components/SidebarNavigation";
@@ -7,7 +9,7 @@ import { getLocale, t } from "../../services/locale";
 import { MoneyTransfer } from "./MoneyTransfer";
 import { ConnectionNotice } from "../../components/ConnectionNotice";
 import { confirmNavigation, hasUnsavedWork } from "../../hooks/useNavigationGuard";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { AuthSession, restoreSession, logout } from "../../services/auth";
 import { AuthPage } from "../../components/auth/AuthPage";
 import { AccountSettings } from "../../components/chat/AccountSettings";
@@ -48,7 +50,9 @@ export function BankingApp({onReady}: {onReady?: () => void} = {}) {
     } }
     useEffect(() => { const unload = (event: BeforeUnloadEvent) => { if (hasUnsavedWork()) { event.preventDefault(); event.returnValue = ""; } }; window.addEventListener("beforeunload", unload); restore(); const change = () => {
         if (!confirmNavigation()) { window.history.replaceState(null, "", window.location.pathname + window.location.search + acceptedHash.current); return; }
-        acceptedHash.current = window.location.hash; setRoute(parseRoute(window.location.hash));
+        acceptedHash.current = window.location.hash;
+        const nextRoute = parseRoute(window.location.hash);
+        transitionToAccount(nextRoute.page === "accounts" ? nextRoute.id : undefined, () => setRoute(nextRoute));
     }; const expired = () => { const destination = landingHashes.includes(acceptedHash.current) ? "#home" : "#/login"; generation.current++; setSession(null); setNotice("Your session has expired. Sign in again to continue."); window.history.replaceState(null, "", destination); acceptedHash.current = destination; setRoute(parseRoute(destination)); }; window.addEventListener("hashchange", change); window.addEventListener("nexa-session-expired", expired); return () => { window.removeEventListener("beforeunload", unload); generation.current++; window.removeEventListener("hashchange", change); window.removeEventListener("nexa-session-expired", expired); }; }, []);
     async function signOut() { if (!confirmNavigation()) return; const destination = landingHashes.includes(acceptedHash.current) ? "#home" : "#/login"; generation.current++; setSession(null); window.history.replaceState(null, "", destination); acceptedHash.current = destination; setRoute(parseRoute(destination)); try {
         await logout();
@@ -73,35 +77,42 @@ function Workspace({ session, setSession, signOut, route }: {
     route: ReturnType<typeof parseRoute>;
 }) {
     const [menu, setMenu] = useState(false);
+    const [introOpen, setIntroOpen] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
     const [showPageTransition, setShowPageTransition] = useState(false);
+
+
     const [loanCalculatorDraft, setLoanCalculatorDraft] = useState<LoanCalculatorDraft>({ amount: "100000", months: "12" });
     const heading = useRef<HTMLElement>(null);
     const previousPage = useRef<string | null>(null);
     const data = useLoad(() => bankApi.accounts(session.accessToken), [session.user.id, route.page]);
-    const accounts = data.data || [];
+    const cachedAccounts = useRef(data.data);
+    useLayoutEffect(() => { if (data.data) cachedAccounts.current = data.data; }, [data.data]);
+    const accounts = data.data || cachedAccounts.current || [];
     const page = route.page === "login" || route.page === "register" ? "assistant" : route.page;
     const pageTitle = [...primaryNavigation, ...secondaryNavigation].find(n => n.page === page)?.label || ({settings: "Profile & settings", security: "Security & session", assistant: "Chat", operations: "Banking operations"} as Record<string, string>)[page] || "Page not found";
     useEffect(() => { setMenu(false); window.scrollTo(0, 0); document.title = pageTitle + " · Nexa"; heading.current?.querySelector<HTMLElement>("h1")?.focus(); }, [page, route.id]);
-    useEffect(() => {
+    useLayoutEffect(() => {
         const previous = previousPage.current;
         previousPage.current = page;
+        setShowPageTransition(false);
+        // Mount the opaque cover before the browser paints the destination page.
         if (!previous || previous === page || (previous !== "assistant" && page !== "assistant")) return;
         if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
         setShowPageTransition(true);
-        const timer = window.setTimeout(() => setShowPageTransition(false), 1450);
+        const timer = window.setTimeout(() => setShowPageTransition(false), 2800);
         return () => window.clearTimeout(timer);
     }, [page]);
     const endSession = async () => { if (signingOut)
         return; setSigningOut(true); try { await signOut(); } finally { setSigningOut(false); } };
     if (page === "assistant")
-        return <><ConversationWorkspace session={session} onClose={() => go("overview")} onLogout={endSession} accounts={accounts} accountsLoading={data.loading} accountsError={data.error} onRefreshAccounts={data.reload}/>{showPageTransition && <NexaPageTransition/>}</>;
+        return <><ConversationWorkspace session={session} onClose={() => go("overview")} onLogout={endSession} accounts={accounts} accountsLoading={data.loading} accountsError={data.error} onRefreshAccounts={data.reload}/>{showPageTransition && <NexaPageTransition ai/>}</>;
     const accountPage = ["overview", "accounts", "transactions", "payments"].includes(page);
     function content() {
         if (accountPage && (data.loading || data.error))
             return <State loading={data.loading} error={data.error} retry={data.reload}/>;
         if (page === "overview")
-            return <Overview token={session.accessToken} name={session.profile.fullName} accounts={accounts} reload={data.reload}/>;
+            return <Overview onAskNexa={() => { if (!confirmNavigation()) return; go("assistant"); }} token={session.accessToken} name={session.profile.fullName} accounts={accounts} reload={data.reload}/>;
         if (page === "accounts")
             return <AccountsPage token={session.accessToken} id={route.id} accounts={accounts} reload={data.reload}/>;
         if (page === "transactions")
@@ -125,5 +136,5 @@ function Workspace({ session, setSession, signOut, route }: {
         return <><PageHeading title={page === "operations" ? "Administrator access required" : "Page not found"} description={t("This page is not available for your session.")}/><a class="bank-button" href="#/overview">{t("Back to overview")}</a></>;
     }
     const nav = <><div class="sidebar-persistent"><SidebarBrand/><SidebarChatLink page={page}/></div><div class="sidebar-scroll"><SidebarNavigation page={page} admin={session.user.role === "ADMIN"} omitChat/><SidebarFooter page={page} onLogout={endSession} disabled={signingOut}/></div></>;
-    return <div class="bank-app experience-workspace"><a class="bank-skip" href="#bank-main" onClick={e => { e.preventDefault(); heading.current?.focus(); }}>{t("Skip to main content")}</a><aside class="nexa-sidebar bank-sidebar" aria-label={t("Banking navigation")}>{nav}</aside>{menu && <Modal title={t("Navigation")} onClose={() => setMenu(false)}><div class="nexa-sidebar bank-mobile-nav">{nav}</div></Modal>}<div class="bank-workspace"><header class="bank-topbar"><div><button class="bank-icon-button bank-menu-toggle" aria-label={t("Open navigation")} aria-expanded={menu} onClick={() => setMenu(true)}>{t("☰ Menu")}</button><span class="experience-section-title">{t(pageTitle)}</span></div><div><LanguageSelect compact/></div></header><main id="bank-main" ref={heading} tabIndex={-1} class="bank-main"><ConnectionNotice/>{content()}<footer class="bank-footer"><span>nexa <span>·</span>{t("Your everyday banking, connected.")}</span><a href="#/security">{t("Security & session ↗")}</a></footer></main><nav class="bank-mobile-tabs" aria-label={t("Quick navigation")}>{primaryNavigation.filter(n => n.page !== "cards").map(n => <a href={"#/" + n.page} aria-current={page === n.page ? "page" : undefined} class={page === n.page ? "active" : ""}><BankingIcon name={n.icon}/>{t(n.label)}</a>)}<button onClick={() => setMenu(true)}><span>☰</span>{t("More")}</button></nav></div>{showPageTransition && <NexaPageTransition/>}</div>;
+    return <div class="bank-app experience-workspace"><a class="bank-skip" href="#bank-main" onClick={e => { e.preventDefault(); heading.current?.focus(); }}>{t("Skip to main content")}</a><aside class="nexa-sidebar bank-sidebar" aria-label={t("Banking navigation")}>{nav}</aside>{menu && <Modal title={t("Navigation")} onClose={() => setMenu(false)}><div class="nexa-sidebar bank-mobile-nav">{nav}</div></Modal>}<div class="bank-workspace"><header class="bank-topbar"><div><button class="bank-icon-button bank-menu-toggle" aria-label={t("Open navigation")} aria-expanded={menu} onClick={() => setMenu(true)}>{t("☰ Menu")}</button><span class="experience-section-title">{t(pageTitle)}</span></div><div><button type="button" class="bank-button secondary bank-know-nexa" aria-haspopup="dialog" onClick={() => setIntroOpen(true)}><span aria-hidden="true">✧</span>{t("Know Nexa")}</button><LanguageSelect compact/></div></header><main id="bank-main" ref={heading} tabIndex={-1} class="bank-main"><ConnectionNotice/>{content()}<footer class="bank-footer"><span>nexa <span>·</span>{t("Your everyday banking, connected.")}</span><a href="#/security">{t("Security & session ↗")}</a></footer></main><nav class="bank-mobile-tabs" aria-label={t("Quick navigation")}>{primaryNavigation.filter(n => n.page !== "cards").map(n => <a href={"#/" + n.page} aria-current={page === n.page ? "page" : undefined} class={page === n.page ? "active" : ""}><BankingIcon name={n.icon}/>{t(n.label)}</a>)}<button onClick={() => setMenu(true)}><span>☰</span>{t("More")}</button></nav></div>{introOpen && <NexaIntro onClose={() => setIntroOpen(false)}/>}{showPageTransition && <NexaPageTransition ai/>}</div>;
 }

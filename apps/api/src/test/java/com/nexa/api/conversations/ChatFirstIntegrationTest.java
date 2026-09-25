@@ -400,6 +400,178 @@ public class ChatFirstIntegrationTest {
     chat = postJson("/api/v1/conversations", Map.of(), 201).get("id").asText();
   }
 
+  @Test
+  void percentageSurvivesSelectionsAndUsesCurrentPayableAmount() throws Exception {
+    String bill = namedProduct("BILL", "Electricity");
+    var start = say("Pay half my bill").get("workflow");
+    assertThat(start.get("field").asText()).isEqualTo("target");
+    String id = start.get("id").asText();
+    var funding = command(id, "SELECT", bill, UUID.randomUUID().toString()).get("workflow");
+    assertThat(funding.get("amount").asText()).isEqualTo("50.00");
+    db.update("UPDATE transactions SET amount=80 WHERE id=?", bill);
+    var review = command(id, "SELECT", source, UUID.randomUUID().toString()).get("workflow");
+    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
+    assertThat(review.get("amount").asText()).isEqualTo("40.00");
+    assertThat(review.get("message").asText()).contains("INR 40.00", "Electricity", "Everyday");
+    say("yes");
+    assertThat(db.queryForObject("SELECT amount FROM transactions WHERE id=?", Integer.class, bill)).isEqualTo(80);
+    command(id, "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(db.queryForObject("SELECT amount FROM transactions WHERE id=?", Integer.class, bill)).isEqualTo(40);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(9960);
+  }
+
+  @Test
+  void percentageSupportsCreditFundingAndSavingsDisambiguation() throws Exception {
+    String bill = namedProduct("BILL", "Broadband");
+    String card = namedProduct("CARD", "Violet Credit");
+    var savings = say("Pay 25% of my broadband bill from savings").get("workflow");
+    assertThat(savings.get("field").asText()).isEqualTo("account");
+    assertThat(savings.get("choices").size()).isEqualTo(2);
+    var review = command(savings.get("id").asText(), "SELECT", source, UUID.randomUUID().toString()).get("workflow");
+    assertThat(review.get("amount").asText()).isEqualTo("25.00");
+    var credit = say("Pay 50% of my broadband bill using my credit card").get("workflow");
+    assertThat(credit.get("operation").asText()).isEqualTo("PAY_BILL");
+    assertThat(credit.get("status").asText()).isEqualTo("REVIEW");
+    assertThat(credit.get("amount").asText()).isEqualTo("50.00");
+    command(credit.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?", Integer.class, card)).isEqualTo(550);
+    assertThat(db.queryForObject("SELECT amount FROM transactions WHERE id=?", Integer.class, bill)).isEqualTo(50);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+  }
+
+  @Test
+  void invalidPercentagesAndBillLimitsCannotProduceAReview() throws Exception {
+    String bill = namedProduct("BILL", "Electricity");
+    db.update("UPDATE transactions SET minimum_amount=30 WHERE id=?", bill);
+    for (String percentage : List.of("0%", "-10%", "101%", "abc%", "1.2.3%")) {
+      var rejected = say("pay " + percentage + " of my electricity bill from Everyday").get("workflow");
+      assertThat(rejected.get("status").asText()).isEqualTo("COLLECTING");
+      assertThat(rejected.get("message").asText()).contains("valid percentage", "100%");
+    }
+    var tooSmall = say("pay a quarter of my electricity bill from Everyday").get("workflow");
+    assertThat(tooSmall.get("status").asText()).isEqualTo("COLLECTING");
+    assertThat(tooSmall.get("message").asText()).contains("25%", "INR 25.00", "outside the bill payment range");
+    postJson("/api/v1/conversations/" + chat + "/actions/" + tooSmall.get("id").asText(),
+        Map.of("clientId", UUID.randomUUID().toString(), "type", "CONFIRM"), 400);
+    var fixed = say("50%").get("workflow");
+    assertThat(fixed.get("amount").asText()).isEqualTo("50.00");
+    assertThat(fixed.get("status").asText()).isEqualTo("REVIEW");
+    var literal = say("make it 40").get("workflow");
+    assertThat(literal.get("amount").asText()).isEqualTo("40");
+    assertThat(literal.path("amountRequest").isNull()).isTrue();
+  }
+
+  @Test
+  void cardMinimumAndFullShortcutsKeepExplicitConfirmation() throws Exception {
+    String card = namedProduct("CARD", "Violet Credit");
+    var start = say("Pay the minimum due on my credit card from savings").get("workflow");
+    var selection = command(start.get("id").asText(), "SELECT", source, UUID.randomUUID().toString()).get("workflow");
+    assertThat(selection.get("field").asText()).isEqualTo("target");
+    var review = command(selection.get("id").asText(), "SELECT", card, UUID.randomUUID().toString()).get("workflow");
+    assertThat(new java.math.BigDecimal(review.get("amount").asText())).isEqualByComparingTo("10");
+    assertThat(review.get("status").asText()).isEqualTo("REVIEW");
+    say("yes");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?", Integer.class, card)).isEqualTo(500);
+    command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE product_id=?", Integer.class, card)).isEqualTo(490);
+    for (String shortcut : List.of("Pay my full credit-card outstanding", "Pay my credit card full due", "Clear my card bill", "Clear my bill")) {
+      chat = postJson("/api/v1/conversations", Map.of(), 201).get("id").asText();
+      var next = say(shortcut).get("workflow");
+      assertThat(next.get("operation").asText()).isEqualTo("PAY_CARD");
+      var account = command(next.get("id").asText(), "SELECT", card, UUID.randomUUID().toString()).get("workflow");
+      var full = command(account.get("id").asText(), "SELECT", source, UUID.randomUUID().toString()).get("workflow");
+      assertThat(full.get("status").asText()).isEqualTo("REVIEW");
+      assertThat(new java.math.BigDecimal(full.get("amount").asText())).isEqualByComparingTo("490");
+    }
+  }
+
+  @Test
+  void percentageDisambiguationRoundingAndFundingValidationUseExistingRules() throws Exception {
+    String north = namedProduct("BILL", "Electricity North");
+    String south = namedProduct("BILL", "Electricity South");
+    db.update("UPDATE transactions SET amount=100.01 WHERE id=?", north);
+    var ambiguous = say("pay half my electricity bill from Everyday").get("workflow");
+    assertThat(ambiguous.get("field").asText()).isEqualTo("target");
+    assertThat(ambiguous.get("choices").size()).isEqualTo(2);
+    var rounded = command(ambiguous.get("id").asText(), "SELECT", north, UUID.randomUUID().toString()).get("workflow");
+    assertThat(rounded.get("amount").asText()).isEqualTo("50.01");
+    var changed = say("Electricity South instead").get("workflow");
+    assertThat(changed.get("targetId").asText()).isEqualTo(south);
+    assertThat(changed.get("amount").asText()).isEqualTo("50.00");
+    postJson("/api/v1/conversations/" + chat + "/actions/" + rounded.get("id").asText(),
+        Map.of("clientId", UUID.randomUUID().toString(), "type", "CONFIRM"), 400);
+    db.update("UPDATE accounts SET balance=20 WHERE id=?", source);
+    var insufficient = say("100%").get("workflow");
+    assertThat(insufficient.get("status").asText()).isEqualTo("COLLECTING");
+    assertThat(insufficient.get("message").asText()).contains("available balance is insufficient");
+    db.update("UPDATE accounts SET balance=10000 WHERE id=?", source);
+    String debit = namedProduct("CARD", "Digital Debit");
+    db.update("UPDATE accounts SET product_type='DEBIT' WHERE product_id=?", debit);
+    var ineligible = say("pay half my electricity south bill using Digital Debit").get("workflow");
+    assertThat(ineligible.get("status").asText()).isEqualTo("COLLECTING");
+    assertThat(ineligible.get("field").asText()).isEqualTo("account");
+    assertThat(ineligible.get("choices").toString()).doesNotContain("Digital Debit");
+    var unknown = say("pay half my missing broadband bill from Everyday").get("workflow");
+    assertThat(unknown.get("field").asText()).isEqualTo("target");
+    assertThat(unknown.get("targetId").isNull()).isTrue();
+    var selected = command(unknown.get("id").asText(), "SELECT", north, UUID.randomUUID().toString()).get("workflow");
+    assertThat(selected.get("amount").asText()).isEqualTo("50.01");
+  }
+
+  @Test
+  void cardShortcutRejectsCardFundingAndRecalculatesAfterTargetChange() throws Exception {
+    String violet = namedProduct("CARD", "Violet Credit");
+    String amber = namedProduct("CARD", "Amber Credit");
+    db.update("UPDATE accounts SET minimum_payment=35 WHERE product_id=?", amber);
+    var ambiguous = say("pay minimum due on my credit card from Everyday").get("workflow");
+    assertThat(ambiguous.get("field").asText()).isEqualTo("target");
+    assertThat(ambiguous.get("choices").size()).isEqualTo(2);
+    var first = command(ambiguous.get("id").asText(), "SELECT", violet, UUID.randomUUID().toString()).get("workflow");
+    assertThat(new java.math.BigDecimal(first.get("amount").asText())).isEqualByComparingTo("10");
+    var changed = say("Amber instead").get("workflow");
+    assertThat(new java.math.BigDecimal(changed.get("amount").asText())).isEqualByComparingTo("35");
+    var rejected = say("use my credit card").get("workflow");
+    assertThat(rejected.get("status").asText()).isEqualTo("COLLECTING");
+    assertThat(rejected.get("message").asText()).contains("cannot be paid using another credit card");
+    assertThat(rejected.get("choices").size()).isEqualTo(2);
+    var repaired = say("Everyday").get("workflow");
+    var full = say("full outstanding").get("workflow");
+    assertThat(repaired.get("status").asText()).isEqualTo("REVIEW");
+    assertThat(new java.math.BigDecimal(full.get("amount").asText())).isEqualByComparingTo("500");
+  }
+
+  @Test
+  void lookupFindsOwnedBillsAndPayeesPastOneHundredAndDisambiguates() throws Exception {
+    String template = namedProduct("BILL", "Other bill");
+    String owner = db.queryForObject("SELECT user_id FROM transactions WHERE id=?", String.class, template);
+    for (int i = 0; i < 110; i++) {
+      db.update("INSERT INTO transactions(id,record_kind,user_id,display_name,status,amount,currency_code,created_at,updated_at) VALUES(?,'BILL',?,'Other bill','DUE',100,'INR',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", "a-" + UUID.randomUUID(), owner);
+      payee("A filler " + i);
+    }
+    String bill = "zz-" + UUID.randomUUID();
+    db.update("INSERT INTO transactions(id,record_kind,user_id,display_name,category,status,amount,currency_code,created_at,updated_at) VALUES(?,'BILL',?,'City utility','ELECTRICITY','DUE',100,'INR',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", bill, owner);
+    String ravi = payee("Ravi Sharma");
+    assertThat(say("show bills").get("banking").get("bills").size()).isEqualTo(112);
+    assertThat(say("show beneficiaries").get("banking").get("beneficiaries").size()).isEqualTo(111);
+    var payment = say("Pay half my ELECTRICITY bill from Everyday").get("workflow");
+    assertThat(payment.get("targetId").asText()).isEqualTo(bill);
+    assertThat(payment.get("amount").asText()).isEqualTo("50.00");
+    var transfer = say("send 20 to rAvI from Everyday").get("workflow");
+    assertThat(transfer.get("targetId").asText()).isEqualTo(ravi);
+    payee("Ravi Kumar");
+    var ambiguous = say("send 20 to Ravi from Everyday").get("workflow");
+    assertThat(ambiguous.get("field").asText()).isEqualTo("target");
+    assertThat(ambiguous.get("choices").size()).isEqualTo(2);
+    assertThat(say("Ravi Kumar").get("workflow").get("status").asText()).isEqualTo("REVIEW");
+    db.update("UPDATE transactions SET user_id='another-owner' WHERE id IN (?,?)", bill, ravi);
+    chat = postJson("/api/v1/conversations", Map.of(), 201).get("id").asText();
+    var hidden = say("pay my electricity bill from Everyday").get("workflow");
+    assertThat(hidden.get("targetId").isNull()).isTrue();
+    assertThat(hidden.get("choices").toString()).doesNotContain(bill);
+    var hiddenPayee = say("send 20 to Ravi Sharma from Everyday").get("workflow");
+    assertThat(hiddenPayee.toString()).doesNotContain(ravi);
+  }
+
   String open(String name) throws Exception {
     return postJson(
             "/api/v1/accounts",

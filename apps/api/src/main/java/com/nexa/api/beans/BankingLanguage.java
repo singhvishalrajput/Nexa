@@ -84,6 +84,7 @@ public final class BankingLanguage {
   }
 
   public static boolean readRequest(String input) {
+    if (cardPaymentShortcut(normalize(input))) return false;
     return normalize(input)
         .matches(
             ".*\\b(show|check|list|view|tell|what|how"
@@ -94,6 +95,7 @@ public final class BankingLanguage {
     String text = normalize(input);
     if (guarded(text) || readRequest(text) || text.matches(".*\\b(how|why|help|safely)\\b.*"))
       return null;
+    if (cardPaymentShortcut(text)) return "PAY_CARD";
     if (text.matches(".*\\b(cancel|stop)\\b.*\\b(mandate|autopay|direct debit)\\b.*"))
       return "CANCEL_MANDATE";
     if (text.matches(".*\\b(pay|make)\\b.*\\bemi\\b.*")
@@ -113,6 +115,13 @@ public final class BankingLanguage {
           ? "OWN_TRANSFER"
           : "START_TRANSFER";
     return null;
+  }
+
+  private static boolean cardPaymentShortcut(String text) {
+    // Outstanding is normally a read keyword; a direct repayment request is an action.
+    return !text.matches(".*\\b(show|check|list|view|tell|what|how|why|help)\\b.*")
+        && (text.matches(".*\\b(?:pay|repay|clear)\\b.*\\b(?:credit[- ]?card|card)\\b.*\\b(?:outstanding|due|bill|balance)\\b.*")
+            || text.matches(".*\\bclear (?:my |the )?bill\\b.*"));
   }
 
   public static Intent intent(String input) {

@@ -147,11 +147,10 @@ public class BankingDomainRouter implements DomainRouter {
               "BILLS",
               e.from() == null && e.to() == null
                   ? "Here are your bills and their payment statuses."
-                  : "Here are recorded bills due in the requested period (from the first 100"
-                      + " bills).",
+                  : "Here are recorded bills due in the requested period.",
               e.from() == null && e.to() == null
-                  ? bills.list(e.status(), 0, 30)
-                  : bills.list(null, 0, 100).stream().filter(b -> inPeriod(b.dueAt(), e)).toList());
+                  ? bills.all(e.status())
+                  : bills.all(e.status()).stream().filter(b -> inPeriod(b.dueAt(), e)).toList());
       case GET_BILL_DETAIL ->
           e.targetId() == null
               ? reference()
@@ -195,7 +194,7 @@ public class BankingDomainRouter implements DomainRouter {
               "BENEFICIARY_LIST",
               "BENEFICIARIES",
               "Here are your beneficiaries.",
-              beneficiaries.list());
+              beneficiaries.all());
       case GET_SCHEDULED_PAYMENTS ->
           domain(
               "SCHEDULED_PAYMENT_LIST",

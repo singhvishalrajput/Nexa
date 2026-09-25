@@ -760,3 +760,10 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
   .experience-chat .messenger-selection-icons.is-selecting > button { animation:none; }
   .experience-chat .messenger-selection-icons.is-selecting::before { display:none; }
 }
+/* Match the account collection to the Recent activity column at every breakpoint. */
+.experience-workspace .bank-account-layout,
+.experience-workspace .bank-activity-grid { grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr); column-gap:16px; }
+@media (max-width:1200px) {
+ .experience-workspace .bank-account-layout,
+ .experience-workspace .bank-activity-grid { grid-template-columns:minmax(0,1fr); }
+}

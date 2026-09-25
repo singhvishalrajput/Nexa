@@ -27,6 +27,15 @@ public class BeneficiaryQueryService {
     return query(null);
   }
 
+  public List<Beneficiary> all() {
+    var result = new java.util.ArrayList<Beneficiary>();
+    for (int page = 0; ; page++) {
+      var rows = query(null, page, 100);
+      result.addAll(rows);
+      if (rows.size() < 100) return result;
+    }
+  }
+
   public Beneficiary detail(String id) {
     return query(id).stream()
         .findFirst()
@@ -130,15 +139,21 @@ public class BeneficiaryQueryService {
   }
 
   private List<Beneficiary> query(String id) {
+    return query(id, 0, 100);
+  }
+
+  private List<Beneficiary> query(String id, int page, int size) {
     return db.query(
         "SELECT id, display_name, bank_name, destination_masked, status FROM transactions WHERE"
             + " record_kind='BENEFICIARY' AND user_id = ? AND (? IS NULL OR id = ?) ORDER BY"
-            + " display_name FETCH NEXT 100 ROWS ONLY",
+            + " display_name, id OFFSET ? ROWS FETCH NEXT ? ROWS ONLY",
         (r, n) ->
             new Beneficiary(
                 r.getString(1), r.getString(2), r.getString(3), r.getString(4), r.getString(5)),
         user.userId(),
         id,
-        id);
+        id,
+        (long) page * size,
+        size);
   }
 }
