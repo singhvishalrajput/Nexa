@@ -656,8 +656,8 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 }
 
 
-/* Keep banking destinations visible and allow the sidebar to scroll. */
-.experience-chat .messenger-history-list { flex:1 0 120px; min-height:120px; overflow-y:auto; overscroll-behavior:contain; }
+/* Keep conversation history flexible above the banking disclosure. */
+.experience-chat .messenger-history-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
 .experience-chat .experience-banking-menu { position:relative; flex:0 0 auto; margin:0; }
 .experience-chat .sidebar-footer { flex:0 0 auto; margin-top:0; padding-top:8px; }
 .experience-chat .sidebar-footer .sidebar-session { margin-top:4px; padding-top:4px; }
@@ -671,3 +671,10 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link { min-height:46px; margin-block:2px 6px; font-size:14px; font-weight:650; color:var(--nexa-reference-a34431); background:var(--nexa-soft); box-shadow:0 0 14px rgba(199,108,80,.18), inset 0 0 0 1px rgba(199,108,80,.18); }
 :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link svg { width:22px; height:22px; flex-basis:22px; }
 :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link:hover { background:var(--nexa-reference-ffe3d9); box-shadow:0 0 18px rgba(199,108,80,.26), inset 0 0 0 1px rgba(199,108,80,.24); }
+
+.experience-banking-menu > summary { display:flex; align-items:center; gap:9px; min-height:40px; padding:0 10px; border:1px solid var(--nexa-border); border-radius:10px; background:var(--nexa-background); color:var(--nexa-text-secondary); cursor:pointer; list-style:none; }
+.experience-banking-menu > summary::-webkit-details-marker { display:none; }
+.experience-banking-menu > summary svg { width:17px; height:17px; }
+.experience-banking-menu > summary svg:last-child { margin-left:auto; width:14px; }
+.experience-banking-menu[open] > summary svg:last-child { transform:rotate(180deg); }
+.experience-chat .experience-banking-menu[open] > .sidebar-navigation { position:absolute; z-index:4; inset:auto 0 calc(100% + 8px); max-height:min(52dvh,460px); overflow-y:auto; padding:8px; border:1px solid var(--nexa-border); border-radius:12px; background:var(--nexa-surface); box-shadow:var(--nexa-shadow); }
