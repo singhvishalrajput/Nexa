@@ -186,4 +186,8 @@
   --nexa-accent-text: #A34431;
   --nexa-loading-halo: #ff62480b;
   --nexa-loading-halo-soft: #ff624804;
+  --nexa-sidebar-surface: #f3f4f4;
+  --nexa-chat-halo: rgba(199,108,80,.18);
+  --nexa-chat-halo-hover: rgba(199,108,80,.26);
+  --nexa-chat-ring-hover: rgba(199,108,80,.24);
 }

@@ -30,7 +30,7 @@ a { text-decoration:none; }
 .experience-rail-bottom { margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:20px; }
 .experience-avatar { display:grid; place-items:center; width:34px; height:34px; border:1px solid var(--nexa-reference-f8c6b8); border-radius:50%; background:var(--nexa-reference-ffebe5); color:var(--nexa-reference-a34431); font-size:12px; }
 .experience-workspace { grid-template-columns:248px minmax(0,1fr); }
-.experience-workspace :is(.bank-sidebar, .bank-mobile-nav) { background:#f3f4f4; }
+.experience-workspace :is(.bank-sidebar, .bank-mobile-nav) { background:var(--nexa-sidebar-surface); }
 .experience-workspace .bank-sidebar { position:sticky; top:12px; height:calc(100dvh - 24px); width:auto; border-right:1px solid var(--nexa-border); }
 .experience-workspace .bank-workspace { margin:0; min-width:0; min-height:0; }
 :is(.experience-workspace,.experience-chat) .nexa-sidebar { padding:25px 18px 20px; font-size:12px; gap:18px; scrollbar-gutter:auto; }
@@ -673,9 +673,9 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .experience-chat .sidebar-brand > img { display:block; }
 
 /* Give the conversation entry a little more prominence in the shared sidebar. */
-:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link { min-height:46px; margin-block:2px 6px; font-size:14px; font-weight:650; color:var(--nexa-reference-a34431); background:var(--nexa-soft); box-shadow:0 0 14px rgba(199,108,80,.18), inset 0 0 0 1px rgba(199,108,80,.18); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link { min-height:46px; margin-block:2px 6px; font-size:14px; font-weight:650; color:var(--nexa-reference-a34431); background:var(--nexa-soft); box-shadow:0 0 14px var(--nexa-chat-halo), inset 0 0 0 1px var(--nexa-chat-halo); }
 :is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link svg { width:22px; height:22px; flex-basis:22px; }
-:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link:hover { background:var(--nexa-reference-ffe3d9); box-shadow:0 0 18px rgba(199,108,80,.26), inset 0 0 0 1px rgba(199,108,80,.24); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link:hover { background:var(--nexa-reference-ffe3d9); box-shadow:0 0 18px var(--nexa-chat-halo-hover), inset 0 0 0 1px var(--nexa-chat-ring-hover); }
 
 .experience-banking-menu > summary { display:flex; align-items:center; gap:9px; min-height:40px; padding:0 10px; border:1px solid var(--nexa-border); border-radius:10px; background:var(--nexa-background); color:var(--nexa-text-secondary); cursor:pointer; list-style:none; }
 .experience-banking-menu > summary::-webkit-details-marker { display:none; }
