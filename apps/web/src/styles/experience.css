@@ -29,6 +29,8 @@ a { text-decoration:none; }
 .experience-rail svg { width:20px; height:20px; }
 .experience-rail-bottom { margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:20px; }
 .experience-avatar { display:grid; place-items:center; width:34px; height:34px; border:1px solid var(--nexa-reference-f8c6b8); border-radius:50%; background:var(--nexa-reference-ffebe5); color:var(--nexa-reference-a34431); font-size:12px; }
+.experience-workspace { grid-template-columns:248px minmax(0,1fr); }
+.experience-workspace :is(.bank-sidebar, .bank-mobile-nav) { background:#f3f4f4; }
 .experience-workspace .bank-sidebar { position:sticky; top:12px; height:calc(100dvh - 24px); width:auto; border-right:1px solid var(--nexa-border); }
 .experience-workspace .bank-workspace { margin:0; min-width:0; min-height:0; }
 :is(.experience-workspace,.experience-chat) .nexa-sidebar { padding:25px 18px 20px; font-size:12px; gap:18px; scrollbar-gutter:auto; }
@@ -224,11 +226,6 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .experience-chat .messenger-header { min-height:64px; height:64px; }
 .experience-chat .messenger-conversation-title { display:block; max-width:min(440px,100%); overflow:hidden; padding:0; border:0; border-radius:0; background:transparent; color:var(--nexa-text); text-overflow:ellipsis; white-space:nowrap; }
 .experience-banking-menu { margin-top:6px; font-size:12px; }
-.experience-banking-menu > summary { display:flex; align-items:center; gap:9px; min-height:42px; padding:0 10px; border:1px solid var(--nexa-border); border-radius:10px; background:var(--nexa-background); color:var(--nexa-text-secondary); cursor:pointer; list-style:none; }
-.experience-banking-menu > summary::-webkit-details-marker { display:none; }
-.experience-banking-menu > summary svg { width:17px; height:17px; }
-.experience-banking-menu > summary svg:last-child { margin-left:auto; width:14px; }
-.experience-banking-menu[open] > summary svg:last-child { transform:rotate(180deg); }
 .experience-banking-menu .sidebar-navigation { margin-top:6px; }
 .experience-banking-menu .sidebar-primary, .experience-banking-menu .sidebar-secondary { display:grid; grid-template-columns:1fr; gap:3px; }
 .experience-banking-menu .sidebar-primary .sidebar-link, .experience-banking-menu .sidebar-secondary .sidebar-link { min-height:36px; padding:7px 9px; font-size:11px; }
@@ -305,12 +302,13 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .site-shell .menu-toggle { display:none; }
 @media(min-width:900px) { .experience-workspace .bank-menu-toggle, .experience-workspace .bank-mobile-tabs { display:none; } }
 @media(max-width:1100px) and (min-width:900px) {
-  .experience-workspace, .nexa-messenger.experience-chat { grid-template-columns:60px 220px minmax(0,1fr); }
+  .experience-workspace { grid-template-columns:220px minmax(0,1fr); }
+  .nexa-messenger.experience-chat { grid-template-columns:60px 220px minmax(0,1fr); }
   .bank-topbar { padding:0 20px; }
   .bank-profile-link > span:last-child { display:none; }
 }
 @media(max-width:899px) {
-  .experience-workspace { grid-template-columns:60px minmax(0,1fr); }
+  .experience-workspace { grid-template-columns:minmax(0,1fr); }
   .experience-workspace .bank-sidebar { display:none; }
   .experience-workspace .bank-workspace { margin:0; }
   .experience-workspace .bank-mobile-tabs { display:none; }
@@ -663,12 +661,9 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 }
 
 
-/* Keep the chat sidebar focused on history. More banking expands over the
-   sidebar rather than displacing history or making the footer dominate it. */
+/* Keep conversation history flexible above the banking disclosure. */
 .experience-chat .messenger-history-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
 .experience-chat .experience-banking-menu { position:relative; flex:0 0 auto; margin:0; }
-.experience-chat .experience-banking-menu > summary { min-height:36px; }
-.experience-chat .experience-banking-menu[open] > .sidebar-navigation { position:absolute; z-index:4; inset:auto 0 calc(100% + 8px); max-height:min(52dvh,460px); overflow-y:auto; padding:8px; border:1px solid var(--nexa-border); border-radius:12px; background:var(--nexa-surface); box-shadow:var(--nexa-shadow); }
 .experience-chat .sidebar-footer { flex:0 0 auto; margin-top:0; padding-top:8px; }
 .experience-chat .sidebar-footer .sidebar-session { margin-top:4px; padding-top:4px; }
 /* Without a separate rail, tablet chat uses the full content column too. */
@@ -676,3 +671,15 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
   .nexa-messenger.experience-chat { grid-template-columns:minmax(0,1fr); }
 }
 .experience-chat .sidebar-brand > img { display:block; }
+
+/* Give the conversation entry a little more prominence in the shared sidebar. */
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link { min-height:46px; margin-block:2px 6px; font-size:14px; font-weight:650; color:var(--nexa-reference-a34431); background:var(--nexa-soft); box-shadow:0 0 14px rgba(199,108,80,.18), inset 0 0 0 1px rgba(199,108,80,.18); }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link svg { width:22px; height:22px; flex-basis:22px; }
+:is(.bank-app,.nexa-messenger) .nexa-sidebar .sidebar-link.sidebar-chat-link:hover { background:var(--nexa-reference-ffe3d9); box-shadow:0 0 18px rgba(199,108,80,.26), inset 0 0 0 1px rgba(199,108,80,.24); }
+
+.experience-banking-menu > summary { display:flex; align-items:center; gap:9px; min-height:40px; padding:0 10px; border:1px solid var(--nexa-border); border-radius:10px; background:var(--nexa-background); color:var(--nexa-text-secondary); cursor:pointer; list-style:none; }
+.experience-banking-menu > summary::-webkit-details-marker { display:none; }
+.experience-banking-menu > summary svg { width:17px; height:17px; }
+.experience-banking-menu > summary svg:last-child { margin-left:auto; width:14px; }
+.experience-banking-menu[open] > summary svg:last-child { transform:rotate(180deg); }
+.experience-chat .experience-banking-menu[open] > .sidebar-navigation { position:absolute; z-index:4; inset:auto 0 calc(100% + 8px); max-height:min(52dvh,460px); overflow-y:auto; padding:8px; border:1px solid var(--nexa-border); border-radius:12px; background:var(--nexa-surface); box-shadow:var(--nexa-shadow); }

@@ -17,7 +17,7 @@ const adminDestinations: { page: string; label: string; icon: BankingIconName }[
 export function WorkspaceRail({ page, name, email, admin = false, onLogout }: { page: string; name: string; email?: string; admin?: boolean; onLogout?: () => void | Promise<void> }) {
   const links = admin ? adminDestinations : destinations;
   return <nav class="experience-rail" aria-label={t("Nexa workspace")}>
-    <a class="experience-brand" href="#home" aria-label="Nexa home"><img src="styles/images/nexa.svg" width="28" height="28" alt=""/></a>
+    <a class="experience-brand" href={admin ? "#home" : "#/overview"} aria-label={t(admin ? "Nexa home" : "Overview")}><img src="styles/images/nexa.svg" width="28" height="28" alt=""/></a>
     {links.map(item => <a key={item.page} href={`#/${item.page}`} title={t(item.label)} aria-label={t(item.label)} aria-current={page === item.page ? "page" : undefined}><BankingIcon name={item.icon}/></a>)}
     <div class="experience-rail-bottom">
       {!admin && !onLogout && <a href="#/settings" title={t("Profile & settings")} aria-label={t("Profile & settings")} aria-current={page === "settings" ? "page" : undefined}><BankingIcon name="profile"/></a>}

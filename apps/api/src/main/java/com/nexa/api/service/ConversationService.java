@@ -72,6 +72,12 @@ public class ConversationService {
   private final ConversationInterpreter interpreter;
   private final ObjectMapper json;
   private final WorkflowService workflows;
+  private KnowledgeRouter knowledge;
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public void setKnowledge(KnowledgeRouter knowledge) {
+    this.knowledge = knowledge;
+  }
 
   public ConversationService(
       JdbcTemplate db,
@@ -145,8 +151,10 @@ public class ConversationService {
             && (text.matches(
                     "(?is).*\\b(password|passcode|pin|otp|cvv|bearer|secret|api.?key)\\b.*")
                 || text.matches("(?s).*(?:\\d[ -]?){13,19}.*"));
+    var knowledgeAnswer = sensitive || command != null || knowledge == null ? null
+        : knowledge.route(text, previousKnowledgeTopic(id)).answer();
     var workflow =
-        sensitive
+        sensitive || knowledgeAnswer != null
             ? null
             : workflows.handle(
                 id, command == null ? resolveActionReference(id, text) : text, command);
@@ -157,6 +165,7 @@ public class ConversationService {
                 "Sensitive message removed.",
                 "Please do not send passwords, PINs, verification codes or full card numbers. This"
                     + " message was not retained. Describe what you need without those details.")
+            : knowledgeAnswer != null ? knowledgeAnswer
             : workflow == null
                 ? interpretWithContext(id, text)
                 : new ConversationInterpreter.Interpretation(
@@ -207,6 +216,16 @@ public class ConversationService {
   public void delete(String id) {
     requireOwned(id, true);
     db.update("DELETE FROM conversations WHERE id = ? AND user_id = ?", id, user.userId());
+  }
+
+  private String previousKnowledgeTopic(String id) {
+    // Immediate context only: an intervening data/action turn clears the KB reference.
+    var latest = db.query("SELECT * FROM conversation_turns WHERE conversation_id = ?"
+        + " ORDER BY sequence_id DESC FETCH NEXT 1 ROWS ONLY", this::turn, id);
+    if (latest.isEmpty() || latest.get(0).banking() == null
+        || latest.get(0).banking().meta() == null) return null;
+    Object topic = latest.get(0).banking().meta().get("knowledgeTopic");
+    return topic instanceof String value && !value.isBlank() ? value : null;
   }
 
   private String workflowTitle(Workflow workflow) {

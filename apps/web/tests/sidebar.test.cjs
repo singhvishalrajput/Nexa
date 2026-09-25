@@ -27,34 +27,32 @@ test('shared navigation preserves all routes once and gates administrator naviga
   }
 });
 
-test('a secondary destination is disclosed and exactly one current page is announced', () => {
+test('secondary destinations stay visible and exactly one current page is announced', () => {
   for (const page of routes) {
     const tree = render(page, true);
     const current = tree.filter(n => n.props['aria-current'] === 'page');
     assert.equal(current.length, 1, page);
     assert.equal(current[0].props.href, '#/' + page);
-    if (page === 'mandates' || page === 'operations') assert.equal(tree.find(n => n.type === 'details').props.open, true);
+    assert.ok(!tree.some(n => n.type === 'details' || n.type === 'summary'));
   }
 });
 
-test('Hindi navigation keeps route identifiers and localizes the disclosure and labels', () => {
+test('Hindi navigation keeps route identifiers and localizes labels', () => {
   setLocale('hi-IN');
   try {
     const tree = render('accounts');
-    assert.ok(tree.some(n => n.type === 'span' && n.props.children === t('More banking')));
-    assert.notEqual(t('More banking'), 'More banking');
     const account = tree.find(n => n.type === 'a' && n.props.href === '#/accounts');
     assert.equal(account.props.children[1].props.children, t('Accounts'));
   } finally { setLocale('en-IN'); }
 });
 
-test('workspace branding opens the public landing page while banking routes remain available', () => {
+test('customer workspace branding opens overview while banking routes remain available', () => {
   const {SidebarBrand} = require('../src/components/SidebarNavigation.tsx');
   const {WorkspaceRail} = require('../src/components/design/WorkspaceRail.tsx');
-  assert.equal(nodes(SidebarBrand({})).find(n => n.type === 'a').props.href, '#home');
+  assert.equal(nodes(SidebarBrand({})).find(n => n.type === 'a').props.href, '#/overview');
   for (const admin of [false, true]) {
     const links = nodes(WorkspaceRail({page: admin ? 'admin' : 'assistant', name: 'Test Customer', admin})).filter(n => n.type === 'a');
-    assert.ok(links.some(n => n.props.href === '#home' && n.props['aria-label'] === 'Nexa home'));
+    assert.ok(links.some(n => n.props.href === (admin ? '#home' : '#/overview') && n.props['aria-label'] === (admin ? 'Nexa home' : 'Overview')));
     assert.ok(links.some(n => n.props.href === (admin ? '#/admin' : '#/assistant')));
   }
 });

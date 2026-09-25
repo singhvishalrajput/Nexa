@@ -46,7 +46,7 @@ export type BankingContent = { version: 1; responseType?: string; errorCode?: st
   { type: "LOANS"; loans: LoanSnapshot[] } |
   { type: "ACTION_REQUIRED"; action?: { operation: string; status: string; accountId: string; targetId: string; amount?: Money; currencyCode: string; confirmationRequired: boolean; executionAvailable: boolean } } |
   { type: "TRANSFER_STATUS"; transfer: { id: string; reference: string; amount: Money; currencyCode: string; status: string } } |
-  { type: "TEXT" } | { type: "ERROR" }
+  { type: "TEXT"; meta?: { knowledgeTopic?: string; knowledgeId?: string; knowledgeVersion?: number; source?: string; category?: string; language?: string } } | { type: "ERROR" }
 );
 
 /** Round decimal strings without losing paise to a floating-point conversion. */

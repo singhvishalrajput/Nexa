@@ -10,8 +10,13 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class LoanCalculationService {
+  public static final BigDecimal MIN_AMOUNT = new BigDecimal("1000");
+  public static final BigDecimal MAX_AMOUNT = new BigDecimal("1000000");
+  public static final int MAX_MONTHS = 60;
   private static final MathContext PRECISION = MathContext.DECIMAL128;
   private final BigDecimal annualInterestRate;
+
+  public BigDecimal annualInterestRate() { return annualInterestRate; }
 
   public LoanCalculationService(@Value("${app.loans.annual-interest-rate:14.50}") BigDecimal rate) {
     if (rate == null
@@ -26,12 +31,12 @@ public class LoanCalculationService {
   public Quote quote(QuoteRequest request) {
     if (request == null
         || request.amount() == null
-        || request.amount().compareTo(new BigDecimal("1000")) < 0
-        || request.amount().compareTo(new BigDecimal("1000000")) > 0
+        || request.amount().compareTo(MIN_AMOUNT) < 0
+        || request.amount().compareTo(MAX_AMOUNT) > 0
         || request.amount().stripTrailingZeros().scale() > 2
         || request.tenureMonths() == null
         || request.tenureMonths() < 1
-        || request.tenureMonths() > 60)
+        || request.tenureMonths() > MAX_MONTHS)
       throw new InvalidRequestException(
           "Loans support INR 1,000 to 10,00,000 with at most two decimals and 1 to 60 months");
     var rows =

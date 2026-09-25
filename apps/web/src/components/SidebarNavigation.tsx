@@ -5,7 +5,7 @@ import { t } from "../services/locale";
 
 type NavigationItem = { page: Route; label: string; icon: BankingIconName };
 export const primaryNavigation: NavigationItem[] = [
-  { page: "assistant", label: "Home", icon: "home" },
+  { page: "assistant", label: "Chat", icon: "chat" },
   { page: "accounts", label: "Accounts", icon: "accounts" },
   { page: "payments", label: "Payments", icon: "payments" },
   { page: "cards", label: "Cards", icon: "cards" },
@@ -23,25 +23,22 @@ export const secondaryNavigation: NavigationItem[] = [
 
 export function SidebarBrand({ action, textOnly = false }: { action?: ComponentChildren; textOnly?: boolean }) {
   return <header class="sidebar-brand-row">
-    <a class="sidebar-brand" href="#home" aria-label={t("Nexa home")}>
+    <a class="sidebar-brand" href="#/overview" aria-label={t("Overview")}>
       {!textOnly && <img src="styles/images/nexa.svg" width="28" height="28" alt=""/>}<span>Nexa</span>
     </a>{action}
   </header>;
 }
 
-export function SidebarNavigation({ page, admin = false, children, expanded = false }: {
-  page: string; admin?: boolean; children?: ComponentChildren; expanded?: boolean;
+export function SidebarNavigation({ page, admin = false, children }: {
+  page: string; admin?: boolean; children?: ComponentChildren;
 }) {
   const secondary = admin ? [...secondaryNavigation, { page: "operations", label: "Banking operations", icon: "shield" } as NavigationItem] : secondaryNavigation;
-  const link = (item: NavigationItem) => <a key={item.page} class="sidebar-link" href={"#/" + item.page} aria-current={page === item.page ? "page" : undefined}>
+  const link = (item: NavigationItem) => <a key={item.page} class={item.page === "assistant" ? "sidebar-link sidebar-chat-link" : "sidebar-link"} href={"#/" + item.page} aria-current={page === item.page ? "page" : undefined}>
     <BankingIcon name={item.icon}/><span>{t(item.label)}</span>
   </a>;
   return <nav class="sidebar-navigation" aria-label={t("Main navigation")}>
     <div class="sidebar-primary">{primaryNavigation.map(link)}{children}</div>
-    {expanded ? <div class="sidebar-secondary">{secondary.map(link)}</div> : <details class="sidebar-more" key={page} open={secondary.some(item => item.page === page)}>
-      <summary><BankingIcon name="more"/><span>{t("More banking")}</span><BankingIcon name="chevron"/></summary>
-      <div class="sidebar-secondary">{secondary.map(link)}</div>
-    </details>}
+    <div class="sidebar-secondary">{secondary.map(link)}</div>
   </nav>;
 }
 

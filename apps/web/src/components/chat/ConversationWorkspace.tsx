@@ -345,7 +345,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
         {moreHistory && <button type="button" disabled={busy || listening} onClick={more}>{t("Load more conversations")}</button>}
       </div>
       {historySearch && !conversations.some(item => item.title.toLocaleLowerCase().includes(historySearch.toLocaleLowerCase())) && <p role="status">{t("No matching conversations.")}</p>}
-      <details class="experience-banking-menu"><summary><BankingIcon name="accounts"/><span>{t("More banking")}</span><BankingIcon name="chevron"/></summary><SidebarNavigation page="assistant" admin={session.user.role === "ADMIN"} expanded/></details>
+      <details class="experience-banking-menu"><summary><BankingIcon name="accounts"/><span>{t("More Banking")}</span><BankingIcon name="chevron"/></summary><SidebarNavigation page="assistant" admin={session.user.role === "ADMIN"}/></details>
       <SidebarFooter page="assistant" onLogout={() => runCommand("sign out")} disabled={busy || listening || !!pending.current}/>
   </>;
   const context = <AccountContext accounts={accounts} loading={accountsLoading} error={accountsError} hidden={balancesHidden} onToggle={() => setBalancesHidden(value => !value)} onRetry={onRefreshAccounts}/>;
