@@ -1,5 +1,6 @@
 import { WorkspaceRail } from "../../components/design/WorkspaceRail";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { AdminAccountApplications } from "./AdminAccountApplications";
 import { AdminLoanQueue, LoanRequest } from "./AdminLoanQueue";
 import { AuthSession, authenticatedRequest } from "../../services/auth";
 import { formatMoney, formatDate } from "../../services/banking-content";
@@ -56,8 +57,8 @@ export function AdminApp({ session, signOut, route }: {
     finally {
         setSigningOut(false);
     } }
-    return <div class="bank-app admin-app experience-admin"><WorkspaceRail page={route.section === "loans" ? "admin/loans" : "admin"} name={session.profile.fullName} email={session.user.email} admin onLogout={exit}/><div class="experience-admin-body"><header class="admin-topbar"><a class="admin-brand" href="#home" aria-label="Nexa home"><strong>Nexa</strong><span>Administration</span></a></header><main class="bank-main">
- {route.section==="loans"?<AdminLoanQueue token={token} requests={loans.data||[]} loading={loans.loading} error={loans.error} reload={refreshLoans}/>:route.page === "admin" && route.id ? <AccountWorkspace key={route.id} id={route.id} section={route.section || "overview"} token={token} onChanged={data.reload}/> : <>
+    return <div class="bank-app admin-app experience-admin"><WorkspaceRail page={route.section === "applications" ? "admin/applications" : route.section === "loans" ? "admin/loans" : "admin"} name={session.profile.fullName} email={session.user.email} admin onLogout={exit}/><div class="experience-admin-body"><header class="admin-topbar"><a class="admin-brand" href="#home" aria-label="Nexa home"><strong>Nexa</strong><span>Administration</span></a></header><main class="bank-main">
+ {route.section==="applications"?<AdminAccountApplications key={route.id || "application-queue"} token={token} applicationId={route.id}/>:route.section==="loans"?<AdminLoanQueue token={token} requests={loans.data||[]} loading={loans.loading} error={loans.error} reload={refreshLoans}/>:route.page === "admin" && route.id ? <AccountWorkspace key={route.id} id={route.id} section={route.section || "overview"} token={token} onChanged={data.reload}/> : <>
  <PageHeading eyebrow="" title="Find an account" description="Search by account number, customer name or email. Open an account to see everything connected to it." action={<button class="bank-button secondary" onClick={data.reload}>Refresh accounts</button>}/>
  <Panel title="Account directory"><div class="admin-filters"><label class="bank-search-label">Search accounts<input type="search" value={search} onInput={e => { setSearch(e.currentTarget.value); setPage(0); }} placeholder="Account number, name or email"/></label>
  <label>Status<select value={status} onChange={e => { setStatus(e.currentTarget.value); setPage(0); }}><option value="">All statuses</option>{["ACTIVE", "BLOCKED", "CLOSED"].map(s => <option value={s}>{s}</option>)}</select></label>

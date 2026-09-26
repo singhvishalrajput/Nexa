@@ -9,6 +9,12 @@ import org.springframework.stereotype.Component;
 @Component
 class AuthenticatedCurrentUserProvider implements CurrentUserProvider {
 
+    private final com.nexa.api.repository.UserRepository users;
+
+    AuthenticatedCurrentUserProvider(com.nexa.api.repository.UserRepository users) {
+        this.users = users;
+    }
+
     @Override
     public String userId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -16,6 +22,12 @@ class AuthenticatedCurrentUserProvider implements CurrentUserProvider {
                 || authentication.getName() == null || authentication.getName().isBlank()) {
             throw new AuthenticationCredentialsNotFoundException("Authentication is required.");
         }
-        return authentication.getName();
+        String id = authentication.getName();
+        var user = users.findById(id).orElseThrow(() ->
+                new com.nexa.api.exep.UnauthorizedException("This user account is unavailable."));
+        if (!"ACTIVE".equals(user.getStatus())) {
+            throw new com.nexa.api.exep.UnauthorizedException("This user account is not active.");
+        }
+        return id;
     }
 }

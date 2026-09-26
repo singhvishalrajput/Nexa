@@ -176,6 +176,7 @@ public class AdminAccountService {
             .findLockedById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
     em.refresh(a);
+    OpeningCashPostingService.rejectManagedAccountEdit(a);
     if (!r.version().equals(a.getVersion()))
       throw new ConflictException("This account changed. Refresh before editing.");
     if (r.status() == AccountStatus.CLOSED && a.getBalance().signum() != 0)
@@ -233,6 +234,7 @@ public class AdminAccountService {
     }
     var a =
         accounts.findById(id).orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+    OpeningCashPostingService.rejectReservedAccount(a);
     if (a.getAccountCategory() != AccountCategory.CUSTOMER
         || !Set.of(AccountType.SAVINGS, AccountType.CURRENT).contains(a.getAccountType()))
       throw new InvalidRequestException(

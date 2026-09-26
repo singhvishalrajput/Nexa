@@ -37,9 +37,10 @@ class MergedApplicationTest {
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper json;
   @Autowired AccountService accounts;
+  @Autowired com.nexa.api.repository.CustomerDao customerFixtures;
 
   @Test
-  void loginAccountOpeningAdminDepositAndCustomerHistoryUseOneCore() throws Exception {
+  void loginExistingAccountAdminDepositAndCustomerHistoryUseOneCore() throws Exception {
     var registration =
         mvc.perform(
                 post("/api/v1/auth/register")
@@ -54,21 +55,18 @@ class MergedApplicationTest {
             .getContentAsString();
     String token = json.readTree(registration).get("accessToken").asText();
     String auth = "Bearer " + token;
-    var opened =
-        mvc.perform(
-                post("/api/v1/accounts")
-                    .header("Authorization", auth)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(
-                        """
-{"displayName":"Primary","accountType":"SAVINGS","currencyCode":"INR","dateOfBirth":"1990-01-01","address":"Mumbai"}
-"""))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.availableBalance").value(0))
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-    String id = json.readTree(opened).get("id").asText();
+    // A pre-existing account fixture keeps this test focused on the merged banking core.
+    var profile = json.readTree(mvc.perform(get("/api/v1/me").header("Authorization", auth))
+        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    var account = new Account();
+    account.setCustomer(customerFixtures.findByUserId(profile.get("userId").asText()).orElseThrow());
+    account.setAccountNumber("900000000001");
+    account.setAccountName("Primary");
+    account.setAccountType(AccountType.SAVINGS);
+    account.setAccountCategory(AccountCategory.CUSTOMER);
+    String id = accounts.create(account).getId().toString();
+    mvc.perform(get("/api/v1/accounts/" + id + "/balance").header("Authorization", auth))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.availableBalance").value(0));
     mvc.perform(get("/api/accounts").header("Authorization", auth))
         .andExpect(status().isForbidden());
     mvc.perform(get("/api/accounts")).andExpect(status().isUnauthorized());

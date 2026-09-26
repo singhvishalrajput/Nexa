@@ -58,6 +58,8 @@ class LoanIntegrationTest {
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper json;
   @Autowired JdbcTemplate db;
+  @Autowired com.nexa.api.service.AccountService accountFixtures;
+  @Autowired com.nexa.api.repository.CustomerDao customerFixtures;
   @Autowired com.nexa.api.repository.UserRepository users;
   @Autowired org.springframework.security.crypto.password.PasswordEncoder passwords;
   String auth, otherAuth, source, destination, email;
@@ -101,23 +103,17 @@ class LoanIntegrationTest {
   }
 
   String open(String token) throws Exception {
-    return postJson(
-            "/api/v1/accounts",
-            Map.of(
-                "displayName",
-                "Validation savings",
-                "accountType",
-                "SAVINGS",
-                "currencyCode",
-                "INR",
-                "dateOfBirth",
-                "1990-01-01",
-                "address",
-                "Mumbai"),
-            token,
-            201)
-        .get("id")
-        .asText();
+    // Fixture setup bypasses the retired instant-opening route; onboarding has its own integration tests.
+    var profile = json.readTree(mvc.perform(get("/api/v1/me").header("Authorization", token))
+        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    var account = new com.nexa.api.beans.Account();
+    account.setCustomer(customerFixtures.findByUserId(profile.get("userId").asText()).orElseThrow());
+    account.setAccountNumber("9" + String.format("%011d", java.util.concurrent.ThreadLocalRandom.current().nextLong(100000000000L)));
+    account.setAccountName("Validation savings");
+    account.setAccountType(com.nexa.api.beans.AccountType.SAVINGS);
+    account.setAccountCategory(com.nexa.api.beans.AccountCategory.CUSTOMER);
+    account.setCurrencyCode("INR");
+    return accountFixtures.create(account).getId().toString();
   }
 
   BigDecimal balance(String id) {

@@ -14,6 +14,12 @@ export function parseRoute(hash: string): {
     const [pathname, query] = hash.replace(/^#\/?/, "").split("?");
     const parts = pathname.split("/");
     const page = parts[0] || "assistant";
+    if (pathname === "account-applications") return {page: "accounts"};
+    if (pathname === "admin/applications") return {page: "admin", section: "applications"};
+    if (page === "admin" && parts[1] === "applications") {
+        if (parts.length !== 3 || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parts[2])) return {page: "not-found"};
+        return {page: "admin", section: "applications", id: parts[2]};
+    }
     if (pathname === "admin/loans") return {page:"admin",section:"loans"};
     if (page === "admin" && parts.length > 1) {
         if (parts[1] !== "accounts" || !/^[1-9]\d*$/.test(parts[2] || "") || parts.length > 4 ||

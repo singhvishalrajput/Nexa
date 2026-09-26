@@ -1,3 +1,5 @@
+> Historical demo instructions, superseded by the account-opening upgrade. Do not run the old seed or customer-cleanup tools for the current submission. See docs/ACCOUNT_OPENING_UPGRADE.md and docs/DEMO_RETIREMENT.md in the repository root.
+
 # Demo setup: 17 September 2026
 
 Only three customer identities remain, plus the existing administrator. Loan/card products and system accounts are separate rows, not additional customer logins.

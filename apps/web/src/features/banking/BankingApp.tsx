@@ -91,7 +91,7 @@ function Workspace({ session, setSession, signOut, route }: {
         if (page === "overview")
             return <Overview token={session.accessToken} name={session.profile.fullName} accounts={accounts} reload={data.reload}/>;
         if (page === "accounts")
-            return <AccountsPage token={session.accessToken} id={route.id} accounts={accounts} reload={data.reload}/>;
+            return <AccountsPage token={session.accessToken} profile={session.profile} id={route.id} accounts={accounts} reload={data.reload}/>;
         if (page === "transactions")
             return <TransactionsPage key={route.id || route.account || "history"} token={session.accessToken} id={route.id} accounts={accounts} initialAccount={route.account}/>;
         if (page === "send-money")

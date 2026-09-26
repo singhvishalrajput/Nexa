@@ -1,5 +1,6 @@
 import java.nio.file.Path;
 import java.sql.*;
+import com.nexa.api.config.MigrationLocations;
 import org.flywaydb.core.Flyway;
 
 /** Source-launched by setup-db.ps1; intentionally outside the application build. */
@@ -55,6 +56,7 @@ public class SetupDatabase {
   }
 
   public static void main(String[] args) {
+    String stage = "configuration";
     try {
       String url = required("NEXA_SETUP_URL");
       String app = schema(required("NEXA_SETUP_SCHEMA"));
@@ -66,10 +68,13 @@ public class SetupDatabase {
         if (admin.equals("SYS"))
           throw new IllegalArgumentException("Use SYSTEM or a PDB administrator, not SYS.");
         String tablespace = identifier(required("NEXA_SETUP_TABLESPACE"));
+        stage = "administrator connection";
         try (var connection =
             DriverManager.getConnection(url, admin, required("NEXA_SETUP_ADMIN_PASSWORD"))) {
+          stage = "administrator PDB check";
           checkContainer(connection);
           boolean exists;
+          stage = "schema lookup";
           try (var query =
               connection.prepareStatement("SELECT COUNT(*) FROM dba_users WHERE username = ?")) {
             query.setString(1, app);
@@ -82,6 +87,7 @@ public class SetupDatabase {
             System.out.println("Schema already exists; preserving its password, grants and data.");
           } else {
             password(secret, true);
+            stage = "schema creation";
             try (var statement = connection.createStatement()) {
               // Identifiers are allowlisted; Oracle quoted passwords cannot contain double quotes.
               statement.execute(
@@ -93,6 +99,7 @@ public class SetupDatabase {
                       + tablespace
                       + " QUOTA 500M ON "
                       + tablespace);
+              stage = "schema grants (the new schema may already have been created)";
               statement.execute("GRANT CREATE SESSION, CREATE TABLE, CREATE SEQUENCE TO " + app);
             }
             System.out.println("Created dedicated schema " + app + " with a 500 MB quota.");
@@ -100,8 +107,13 @@ public class SetupDatabase {
         }
       }
       // Always authenticate as the app owner before allowing migrations to touch its schema.
+      String[] migrationLocations;
+      stage = "application schema connection";
       try (var connection = DriverManager.getConnection(url, app, secret)) {
+        stage = "application PDB check";
         checkContainer(connection);
+        stage = "migration history inspection";
+        migrationLocations = MigrationLocations.select(connection, app);
       }
       Path resources = Path.of(required("NEXA_SETUP_RESOURCES")).toAbsolutePath();
       if (!java.nio.file.Files.isDirectory(resources.resolve("db/migration"))
@@ -113,7 +125,7 @@ public class SetupDatabase {
               .dataSource(url, app, secret)
               .defaultSchema(app)
               .schemas(app)
-              .locations("classpath:db/migration", "classpath:db/local-migration")
+              .locations(migrationLocations)
               .cleanDisabled(true)
               .baselineOnMigrate(false)
               .validateOnMigrate(true)
@@ -129,7 +141,7 @@ public class SetupDatabase {
     } catch (SQLException ex) {
       // Never print the SQL statement: CREATE USER contains the new password.
       System.err.println(
-          "Oracle setup failed (ORA-"
+          "Oracle setup failed during " + stage + " (ORA-"
               + String.format("%05d", ex.getErrorCode())
               + "). Check credentials, PDB/service, tablespace and administrator privileges. No"
               + " cleanup/drop was performed.");

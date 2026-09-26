@@ -11,6 +11,7 @@ const destinations: { page: string; label: string; icon: BankingIconName }[] = [
 ];
 const adminDestinations: { page: string; label: string; icon: BankingIconName }[] = [
   {page: "admin", label: "Accounts", icon: "accounts"},
+  {page: "admin/applications", label: "Account applications", icon: "profile"},
   {page: "admin/loans", label: "Loan requests", icon: "transactions"}
 ];
 

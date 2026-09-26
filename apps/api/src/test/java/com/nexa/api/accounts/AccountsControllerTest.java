@@ -72,8 +72,8 @@ class AccountsControllerTest {
     }
 
     @Test
-    void opensAnAccountAndReturnsCreated() throws Exception {
-        when(accountOpeningService.open(org.mockito.ArgumentMatchers.any())).thenReturn(account());
+    void directsLegacyOpeningToTheReviewedWorkflow() throws Exception {
+        when(accountOpeningService.open(org.mockito.ArgumentMatchers.any())).thenThrow(new com.nexa.api.exep.ConflictException("Use the account-application workflow."));
 
         mockMvc.perform(post("/api/v1/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -86,9 +86,7 @@ class AccountsControllerTest {
                                   "address": "Mumbai"
                                 }
                                 """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(ACCOUNT_ID))
-                .andExpect(jsonPath("$.availableBalance").value(96280.0));
+                .andExpect(status().isConflict());
     }
 
     @Test

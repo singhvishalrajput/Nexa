@@ -3,6 +3,7 @@ import java.nio.file.*;
 import java.sql.*;
 import java.util.*;
 import java.util.zip.*;
+import com.nexa.api.config.MigrationLocations;
 import org.flywaydb.core.Flyway;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -158,12 +159,16 @@ public class SixTableCutover {
         }
         break;
       case "migrate":
+        String[] migrationLocations;
+        try (var connection = connect()) {
+          migrationLocations = MigrationLocations.select(connection);
+        }
         Flyway.configure()
             .dataSource(url, user, password)
             .defaultSchema(schema)
             .schemas(schema)
             .initSql("ALTER SESSION SET CURRENT_SCHEMA=" + schema)
-            .locations("classpath:db/migration", "classpath:db/local-migration")
+            .locations(migrationLocations)
             .cleanDisabled(true)
             .load()
             .migrate();

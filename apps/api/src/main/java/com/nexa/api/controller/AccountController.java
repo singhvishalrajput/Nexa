@@ -19,7 +19,8 @@ public class AccountController {
 
   @PostMapping
   public ResponseEntity<Account> create(@RequestBody Account a) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(service.create(a));
+    throw new com.nexa.api.exep.ConflictException(
+        "Use the reviewed account-application workflow. Direct administrator account creation is unavailable.");
   }
 
   @GetMapping

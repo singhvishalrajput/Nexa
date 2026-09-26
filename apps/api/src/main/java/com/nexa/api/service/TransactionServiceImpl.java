@@ -139,6 +139,10 @@ public class TransactionServiceImpl implements TransactionService {
     Account sourceAccount = getActiveAccount(request.getSourceAccountId());
     Account destinationAccount = getActiveAccount(request.getDestinationAccountId());
 
+    if (sourceAccount.getAccountType() == AccountType.CASH
+        || destinationAccount.getAccountType() == AccountType.CASH)
+      throw new InvalidRequestException("CASH accounts cannot participate in generic transfers. Use a recorded cash posting.");
+
     if (!sourceAccount.getCurrencyCode().equals(destinationAccount.getCurrencyCode()))
       throw new InvalidRequestException("Account currencies must match");
 
@@ -182,6 +186,7 @@ public class TransactionServiceImpl implements TransactionService {
             .findLockedById(accountId)
             .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountId));
     entities.refresh(account);
+    OpeningCashPostingService.rejectReservedAccount(account);
 
     if (account.getAccountType() == AccountType.LOAN
         || account.getAccountType() == AccountType.CARD)

@@ -1,6 +1,6 @@
 # Nexa
 
-Banking now uses six domain tables. See [the final schema, mandate/loan workflows, migration and validation](docs/SIX_TABLE_BANKING.md).
+Banking uses six core domain tables plus supporting security, conversation, audit and account-opening tables. See [the banking core](docs/SIX_TABLE_BANKING.md) and [the account-opening upgrade and teammate setup](docs/ACCOUNT_OPENING_UPGRADE.md).
 
 This is a learning showcase. See [showcase flows and simulation boundaries](docs/SHOWCASE.md) for confirmed demo payments, card controls, saved receipts and microphone-free voice demonstrations.
 
@@ -26,4 +26,4 @@ See [chat-first banking architecture and verification](docs/CHAT_FIRST_BANKING.m
 
 See [conversation context and follow-up handling](docs/CONVERSATION_CONTEXT.md) for Hindi/Hinglish requests, corrections, cancellations, read follow-ups and payment confirmation behavior.
 
-New teammate? Run `.\scripts\setup-db.ps1` from PowerShell 7 to provision the local Oracle schema and apply migrations. See [database setup prerequisites and commands](apps/api/docs/local-oracle-setup.md).
+New teammate? Run `.\scripts\setup-db.ps1 -Schema NEXA_BANK_APP` from PowerShell 7 to provision a separate local Oracle schema and apply migrations. Keep any reference project's `NEXA_APP` intact. See [database setup prerequisites and commands](apps/api/docs/local-oracle-setup.md).

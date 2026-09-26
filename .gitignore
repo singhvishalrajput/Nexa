@@ -15,6 +15,7 @@
 # Frontend test and tooling output
 **/coverage/
 **/.cache/
+**/.npm-cache/
 *.tsbuildinfo
 
 # Spring Boot / Maven generated output

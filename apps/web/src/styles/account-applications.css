@@ -1,0 +1,117 @@
+/* Manual applications are separate from instant account creation and generic cash adjustments. */
+.application-page, .application-customer, .application-admin, .application-record { min-width: 0; }
+.accounts-hub { display: grid; gap: 1.5rem; min-width: 0; }
+.application-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.application-section-heading h2 { margin: 0; font-size: 1.3rem; }
+.application-section-heading p { margin: .6rem 0 0; line-height: 1.6; color: var(--nexa-text-secondary); }
+.application-page, .application-selected, .application-review-actions { display: grid; gap: 1.25rem; }
+.application-page > .application-feedback:empty { display: none; }
+:is(.application-page, .application-admin) .bank-panel { padding: 1.25rem; }
+:is(.application-page, .application-admin) .bank-panel-heading { padding: 0 0 1rem; margin-bottom: 1rem; }
+:is(.application-page, .application-admin) .bank-form { padding: 0; }
+:is(.application-page, .application-admin) .bank-panel dl { padding: 0; }
+:is(.application-page, .application-admin) .bank-panel > p { line-height: 1.65; }
+:is(.application-page, .application-admin) .bank-panel + .bank-panel { margin-top: 0; }
+:is(.application-page, .application-admin) .bank-button { white-space: normal; text-align: center; }
+:is(.application-page, .application-admin) .bank-form fieldset { min-width: 0; display: grid; gap: .85rem; margin: 0; padding: 1rem; border: 1px solid var(--nexa-border); border-radius: 10px; }
+:is(.application-page, .application-admin) .bank-form legend { padding: 0 .4rem; font-weight: 600; }
+:is(.application-page, .application-admin) .bank-form small { line-height: 1.6; color: var(--nexa-text-secondary); }
+.application-profile { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem 1.5rem; }
+.application-profile .bank-detail { display: block; min-width: 0; padding: .6rem 0; }
+.application-profile dd { margin: .4rem 0 0; overflow-wrap: anywhere; }
+.application-opening-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; list-style: none; padding: 0; margin: 1.5rem 0; counter-reset: opening; }
+.application-opening-steps li { min-width: 0; padding: 1rem; background: var(--nexa-hover); border-radius: 10px; counter-increment: opening; }
+.application-opening-steps li::before { content: counter(opening, decimal-leading-zero); display: block; margin-bottom: .75rem; color: var(--nexa-action); font-size: .8rem; }
+.application-opening-steps strong, .application-opening-steps span { display: block; line-height: 1.6; }
+.application-opening-steps span { margin-top: .4rem; color: var(--nexa-text-secondary); font-size: .85rem; }
+.application-create-form > h3 { margin: 1.5rem 0 0; font-size: 1.15rem; }
+.application-opening-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; align-items: start; }
+.application-opening-field { display: grid; gap: .6rem; min-width: 0; }
+.application-opening-field input, .application-opening-field select { width: 100%; min-width: 0; box-sizing: border-box; }
+.application-service-details { padding: 1rem 1.25rem; border: 1px solid var(--nexa-border); border-radius: 10px; }
+.application-service-details summary { cursor: pointer; font-weight: 500; }
+.application-service-details .application-notice { margin: 1rem 0 0; }
+.application-service-details summary:focus-visible { outline: 3px solid var(--nexa-focus); outline-offset: 4px; }
+.application-consent-notice { padding: 1rem; background: var(--nexa-hover); border-radius: 10px; }
+.application-consent { display: flex !important; flex-direction: row !important; align-items: flex-start; gap: .75rem !important; line-height: 1.65; margin: .75rem 0; }
+.application-consent input, .application-check input { width: 1.15rem !important; min-height: 1.15rem !important; height: 1.15rem; margin: .25rem 0 0; flex-shrink: 0; }
+.application-consent input { accent-color: var(--nexa-action); }
+.application-next-step { margin: 0; padding: 1rem; border-left: 3px solid var(--nexa-focus); background: var(--nexa-hover); line-height: 1.65; }
+.application-help { font-size: .875rem; line-height: 1.7; color: var(--nexa-text-secondary); }
+.application-document-review + .application-document-review { margin-top: 1.25rem; }
+.application-review-actions { margin-top: 1.25rem; }
+.application-filters label { display: grid; gap: .5rem; font-size: .875rem; }
+.application-filters select { min-height: 44px; padding: .7rem; border: 1px solid var(--nexa-border); border-radius: 8px; background: var(--nexa-surface); color: inherit; font: inherit; }
+.application-result-count { margin-top: 1.25rem; font-size: .875rem; }
+.application-table-scroll { max-width: 100%; }
+.application-table-scroll:focus-visible { outline: 3px solid var(--nexa-focus); outline-offset: -3px; }
+.application-pagination { flex-wrap: wrap; }
+.application-record { display: grid; gap: 1rem; }
+.application-notice { margin: 0 0 1.25rem; padding: 1.1rem 1.25rem; border: 1px solid var(--nexa-warning); border-left: 4px solid var(--nexa-warning); border-radius: 12px; background: var(--nexa-warning-bg); color: var(--nexa-warning); }
+.application-notice strong { display: block; font-size: 1rem; }
+.application-notice p { margin: .55rem 0 0; line-height: 1.6; }
+.application-readiness { display: flex; flex-wrap: wrap; gap: .4rem 1.5rem; padding-left: 1.2rem; font-size: .875rem; }
+.application-muted { color: var(--nexa-text-secondary); font-size: .875rem; line-height: 1.6; }
+.application-record-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1.25rem; }
+.application-reference { display: block; overflow-wrap: anywhere; font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--nexa-text-muted); }
+.application-status { display: inline-flex; align-items: center; padding: .4rem .7rem; border: 1px solid var(--nexa-border); border-radius: 999px; font-size: .78rem; font-weight: 600; background: var(--nexa-warning-bg); color: var(--nexa-warning); }
+.application-status.positive { background: var(--nexa-success-bg); border-color: var(--nexa-success); color: var(--nexa-success); }
+.application-status.neutral { background: var(--nexa-hover); color: var(--nexa-text-secondary); }
+.application-details-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem 1.5rem; margin: 0; }
+.application-details-grid .bank-detail { min-width: 0; display: block; padding: .7rem 0; }
+.application-details-grid dt { font-size: .75rem; color: var(--nexa-text-muted); margin-bottom: .3rem; }
+.application-details-grid dd { margin: 0; overflow-wrap: anywhere; font-weight: 500; }
+.application-review-note { margin-top: .75rem; padding: .8rem 1rem; border-radius: 8px; background: var(--nexa-hover); white-space: pre-wrap; overflow-wrap: anywhere; }
+.application-review-note p { margin: .4rem 0 0; }
+.application-documents { list-style: none; padding: 0; margin: 1rem 0; }
+.application-document { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 0; border-top: 1px solid var(--nexa-border); }
+.application-document > div { min-width: 0; }
+.application-document p { font-size: .85rem; line-height: 1.5; margin: .4rem 0; }
+.application-document .application-reference { margin-top: .5rem; }
+.application-document button { flex-shrink: 0; }
+.application-receipt { padding: 1rem; border: 1px solid var(--nexa-border); border-radius: 10px; background: var(--nexa-background); margin-bottom: .75rem; }
+.application-timeline { list-style: none; padding: 0 0 0 .4rem; margin: 0; }
+.application-timeline li { border-left: 2px solid var(--nexa-border); padding: .2rem 0 1.25rem 1.1rem; position: relative; }
+.application-timeline li::before { content: ""; position: absolute; left: -.3rem; top: .55rem; height: .5rem; width: .5rem; background: var(--nexa-action); border-radius: 50%; }
+.application-timeline li > div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .35rem 1rem; }
+.application-timeline time { font-size: .75rem; color: var(--nexa-text-muted); }
+.application-timeline p { margin: .5rem 0 0; font-size: .875rem; }
+.application-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 1.25rem; align-items: start; }
+.application-form-grid, .application-filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+.application-form-grid > label, .application-filters > label { flex: 1 1 12rem; }
+.application-actions, .application-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 1rem; }
+.application-form, .application-upload, .application-decision { display: grid; gap: 1rem; }
+.application-form fieldset, .application-decision fieldset, .application-upload fieldset { min-width: 0; margin: 0; padding: 1rem; border: 1px solid var(--nexa-border); border-radius: 10px; }
+.application-form legend, .application-decision legend { font-weight: 600; padding: 0 .3rem; }
+.application-page input[type="file"], .application-customer input[type="file"] { max-width: 100%; white-space: normal; }
+.application-confirmation, .application-check { display: flex !important; flex-direction: row !important; align-items: flex-start; gap: .65rem; line-height: 1.6; font-size: .875rem; }
+.application-confirmation input, .application-check input { flex: 0 0 auto; margin-top: .35rem; width: auto !important; accent-color: var(--nexa-action); }
+.application-list { display: grid; gap: .75rem; list-style: none; padding: 0; }
+.application-list-item { display: grid; gap: .45rem; width: 100%; text-align: left; padding: 1rem; border: 1px solid var(--nexa-border-control); border-radius: 10px; background: var(--nexa-surface); color: inherit; font: inherit; overflow-wrap: anywhere; cursor: pointer; }
+.application-list-item.selected { border-color: var(--nexa-action); box-shadow: inset 0 0 0 1px var(--nexa-action); background: var(--nexa-hover); }
+.application-list-item small { color: var(--nexa-text-secondary); }
+.application-queue { overflow-x: auto; }
+.application-queue table { width: 100%; border-collapse: collapse; }
+.application-queue th, .application-queue td { text-align: left; padding: .85rem; border-bottom: 1px solid var(--nexa-border); vertical-align: top; }
+.application-queue td small { display: block; margin-top: .35rem; overflow-wrap: anywhere; }
+.application-page button:disabled, .application-customer button:disabled, .application-admin button:disabled { cursor: not-allowed; opacity: .6; }
+.application-page a:focus-visible, .application-page button:focus-visible, .application-record button:focus-visible { outline: 3px solid var(--nexa-focus); outline-offset: 3px; }
+@media (max-width: 760px) {
+  .application-opening-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .application-opening-fields { grid-template-columns: minmax(0, 1fr); }
+  .application-grid, .application-details-grid, .application-profile { grid-template-columns: minmax(0, 1fr); }
+  :is(.application-page, .application-admin) .bank-panel { padding: 1rem; }
+  :is(.application-page, .application-admin) .bank-form fieldset { padding: .85rem; }
+  .application-document { flex-direction: column; }
+  .application-document button { width: 100%; }
+  .application-actions > button, .application-toolbar > button { flex: 1 1 100%; }
+  .application-notice { padding: 1rem; }
+  .application-readiness { display: block; }
+  .application-readiness li { margin: .35rem 0; }
+}
+@media (max-width: 420px) {
+  .application-opening-steps { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .application-page *, .application-record * { scroll-behavior: auto !important; transition: none !important; }
+}

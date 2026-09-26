@@ -54,6 +54,11 @@ public class AccountsController {
     return accountQueryService.currentAccounts();
   }
 
+  @GetMapping("/opening-requirements")
+  public AccountOpeningService.OpeningRequirements openingRequirements() {
+    return accountOpeningService.openingRequirements();
+  }
+
   @GetMapping("/{accountId}")
   public AccountResponse account(@PathVariable String accountId) {
     return accountQueryService.requireOwnedAccount(accountId);

@@ -29,6 +29,7 @@ public class AccountServiceImpl implements AccountService {
   @Autowired CurrentUserProvider user;
 
   public Account create(Account a) {
+    OpeningCashPostingService.rejectReservedAccount(a);
     if (a.getBalance() != null && a.getBalance().signum() != 0)
       throw new InvalidRequestException("Open with zero balance, then use a posted deposit");
     if (a.getAccountType() == com.nexa.api.beans.AccountType.LOAN
@@ -80,6 +81,7 @@ public class AccountServiceImpl implements AccountService {
         accounts
             .findLockedById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+    OpeningCashPostingService.rejectManagedAccountEdit(a);
     if (input.getAccountName() == null
         || input.getAccountName().isBlank()
         || input.getAccountName().length() > 120

@@ -1,3 +1,5 @@
+> Historical demo instructions, superseded by the account-opening upgrade. Do not run the old seed or customer-cleanup tools for the current submission. See docs/ACCOUNT_OPENING_UPGRADE.md and docs/DEMO_RETIREMENT.md in the repository root.
+
 # Three-customer demonstration environment
 
 The demo keeps Vishal Singh (`vishal@example.com`) and adds Asha Rao (`asha@example.com`) and Rahul Sharma (`rahul@example.com`). These are three customer identities, each with login credentials and linked banking products; loan/card accounts and bank system accounts are separate rows in the existing `ACCOUNTS` table. The dedicated administrator remains `admin@nexa.local`.

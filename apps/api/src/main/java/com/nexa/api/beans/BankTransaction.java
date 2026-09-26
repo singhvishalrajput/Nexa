@@ -30,6 +30,14 @@ public class BankTransaction {
   private String category;
   private String paymentMethod;
 
+  public void setCategory(String value) {
+    category = value;
+  }
+
+  public void setPaymentMethod(String value) {
+    paymentMethod = value;
+  }
+
   public String getMerchantName() {
     return merchantName;
   }
