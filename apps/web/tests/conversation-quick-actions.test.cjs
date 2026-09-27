@@ -81,6 +81,23 @@ test('Hindi Send Money stays in chat and submits the supported Hindi transfer pr
   assert.equal(app.posts()[0].body.text, 'पैसे भेजें'); assert.equal(app.posts()[0].body.source, 'TEXT');
   assert.equal(app.browser.location.hash, '#/assistant'); app.dispose();
 });
+test('Open account and Create mandate suggestions submit the same text as typed requests without creating products',async()=>{
+  for(const [label,prompt] of [['Open account','open account'],['Create mandate','create mandate']]){
+    const quick=harness(),typed=harness();await quick.ready();await typed.ready();await quick.click(label);typed.input(prompt);await typed.submit();
+    assert.equal(quick.posts().length,1);assert.equal(quick.posts()[0].url,'/conversations/chat-1/turns');
+    assert.deepEqual({...quick.posts()[0].body,clientId:undefined},{...typed.posts()[0].body,clientId:undefined});
+    assert.equal(quick.posts()[0].body.text,prompt);assert.equal(quick.browser.location.hash,'#/assistant');quick.dispose();typed.dispose();
+  }
+});
+test('only the latest supported form across account, loan and mandate entries remains live',async()=>{
+  const app=harness({turns:[makeTurn('account','open account',{banking:{version:1,type:'ACCOUNT_APPLICATION'}}),makeTurn('loan','apply loan',{banking:{version:1,type:'LOAN_APPLICATION'}}),makeTurn('mandate','create mandate',{banking:{version:1,type:'MANDATE_APPLICATION'}}),makeTurn('future','open account',{banking:{version:2,type:'ACCOUNT_APPLICATION'}})]});await app.ready();
+  const replies=nodes(app.render()).filter(node=>node.type===app.components.AssistantResponse);
+  assert.deepEqual(replies.filter(node=>node.props.applicationActive).map(node=>node.props.turn.id),['mandate']);
+  replies.find(node=>node.props.turn.id==='mandate').props.onApplicationLocked(true);await app.ready();
+  assert.equal(app.button('Open account').props.disabled,true);assert.equal(app.button('Create mandate').props.disabled,true);assert.equal(app.composer().props.readOnly,true);
+  assert.equal(nodes(app.render()).find(node=>node.type===app.components.AssistantResponse&&node.props.turn.id==='mandate').props.applicationBusy,false);
+  app.input('open account');await app.submit();assert.equal(app.posts().length,0);app.dispose();
+});
 
 test('Send Money respects an existing typed draft before starting the chat workflow', async () => {
   const app = harness({acceptDiscard: false}); await app.ready(); app.input('Pay my electricity bill'); await app.click('Send Money');

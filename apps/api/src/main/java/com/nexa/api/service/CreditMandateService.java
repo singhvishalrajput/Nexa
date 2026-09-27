@@ -43,11 +43,17 @@ public class CreditMandateService {
       BigDecimal limit,
       LocalDate startDate,
       LocalDate endDate,
-      String payeeId) {
+      String payeeId,
+      String applicationKey) {
     public MandateRequest(long sourceAccountId, Long beneficiaryAccountId,
         String beneficiaryAccountNumber, String payee, BigDecimal limit,
         LocalDate startDate, LocalDate endDate) {
-      this(sourceAccountId, beneficiaryAccountId, beneficiaryAccountNumber, payee, limit, startDate, endDate, null);
+      this(sourceAccountId, beneficiaryAccountId, beneficiaryAccountNumber, payee, limit, startDate, endDate, null, null);
+    }
+    public MandateRequest(long sourceAccountId, Long beneficiaryAccountId,
+        String beneficiaryAccountNumber, String payee, BigDecimal limit,
+        LocalDate startDate, LocalDate endDate, String payeeId) {
+      this(sourceAccountId, beneficiaryAccountId, beneficiaryAccountNumber, payee, limit, startDate, endDate, payeeId, null);
     }
   }
 
@@ -184,6 +190,28 @@ public class CreditMandateService {
   public Map<String, Object> createMandate(MandateRequest r) {
     if (r == null) throw new InvalidRequestException("Enter the mandate details.");
     money(r.limit);
+    String owner = user.userId();
+    String requestHash = null;
+    String id = id("M-");
+    if (r.applicationKey != null) {
+      validateMandateKey(r.applicationKey);
+      r = normalizeMandateRequest(r);
+      requestHash = mandateFingerprint(r);
+      id = mandateRequestId(owner, r.applicationKey);
+      // Serialize retries across all of this customer's accounts before reading the request row.
+      // Do not lock a payee/account first: other keyed creations use this same customer-first order.
+      var owners = db.queryForList("SELECT status FROM customers WHERE user_id=? FOR UPDATE", String.class, owner);
+      if (owners.size() != 1 || !"ACTIVE".equals(owners.get(0)))
+        throw new UnauthorizedException("This user account is not active.");
+      var prior = db.queryForList("SELECT * FROM transactions WHERE id=?", id);
+      if (!prior.isEmpty()) {
+        var row = prior.get(0);
+        if (!"MANDATE".equals(row.get("RECORD_KIND")) || !owner.equals(row.get("USER_ID"))
+            || !requestHash.equals(row.get("DESTINATION_HASH")))
+          throw new ConflictException("Application key was already used with different mandate details.");
+        return mandateWithKey(row, r.applicationKey);
+      }
+    }
     if (r.payeeId != null && (r.beneficiaryAccountId != null || r.beneficiaryAccountNumber != null))
       throw new InvalidRequestException("Choose a saved payee or enter one beneficiary account, not both.");
     A source = account(r.sourceAccountId, false);
@@ -202,13 +230,12 @@ public class CreditMandateService {
         || payee.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 200)
       throw new InvalidRequestException(
           "Specify distinct accounts, a payee and valid effective dates");
-    String id = id("M-");
     db.update(
         "INSERT INTO"
-            + " transactions(id,record_kind,user_id,source_account_id,destination_account_id,display_name,amount,currency_code,status,operation,effective_date,end_date,transaction_reference,target_id)"
-            + " VALUES(?,'MANDATE',?,?,?,?,?,'INR','PENDING','TRANSFER',?,?,?,?)",
+            + " transactions(id,record_kind,user_id,source_account_id,destination_account_id,display_name,amount,currency_code,status,operation,effective_date,end_date,transaction_reference,target_id,destination_hash)"
+            + " VALUES(?,'MANDATE',?,?,?,?,?,'INR','PENDING','TRANSFER',?,?,?,?,?)",
         id,
-        user.userId(),
+        owner,
         source.id,
         destination.id,
         payee,
@@ -216,9 +243,75 @@ public class CreditMandateService {
         r.startDate.toString(),
         r.endDate == null ? null : r.endDate.toString(),
         id,
-        r.payeeId);
+        r.payeeId,
+        requestHash);
     event(id, "CREATED");
-    return mandate(id, false);
+    var created = mandate(id, false);
+    return r.applicationKey == null ? created : mandateWithKey(created, r.applicationKey);
+  }
+
+  /** A request lookup never creates, activates or executes a mandate. */
+  @Transactional(readOnly = true)
+  public Map<String, Object> mandateApplication(String applicationKey) {
+    validateMandateKey(applicationKey);
+    String owner = user.userId();
+    var rows = db.queryForList("SELECT * FROM transactions WHERE id=? AND record_kind='MANDATE'"
+        + " AND user_id=? AND destination_hash IS NOT NULL", mandateRequestId(owner, applicationKey), owner);
+    if (rows.isEmpty()) throw new ResourceNotFoundException("Mandate application not found.");
+    return mandateWithKey(rows.get(0), applicationKey);
+  }
+
+  private static void validateMandateKey(String key) {
+    if (key == null || !key.matches("[A-Za-z0-9_-]{1,80}"))
+      throw new InvalidRequestException("Supply an applicationKey with 1 to 80 letters, digits, underscores or hyphens.");
+  }
+
+  private MandateRequest normalizeMandateRequest(MandateRequest r) {
+    String payeeId = r.payeeId == null ? null : r.payeeId.trim();
+    String number = r.beneficiaryAccountNumber == null ? null : r.beneficiaryAccountNumber.trim();
+    String name = payeeId != null || r.payee == null ? null : r.payee.trim().replaceAll("\\s+", " ");
+    if (r.sourceAccountId <= 0 || r.startDate == null
+        || r.endDate != null && r.endDate.isBefore(r.startDate)
+        || payeeId != null && (payeeId.isEmpty() || payeeId.length() > 40
+            || r.beneficiaryAccountId != null || number != null)
+        || payeeId == null && ((r.beneficiaryAccountId == null) == (number == null)
+            || r.beneficiaryAccountId != null && r.beneficiaryAccountId <= 0
+            || number != null && (number.isBlank() || number.length() > 34)
+            || name == null || name.isBlank() || name.length() > 160
+            || name.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 200))
+      throw new InvalidRequestException("Specify a source account, one recipient, a payee and valid effective dates.");
+    return new MandateRequest(r.sourceAccountId, r.beneficiaryAccountId, number, name,
+        r.limit.setScale(2), r.startDate, r.endDate, payeeId, r.applicationKey);
+  }
+
+  private static String mandateFingerprint(MandateRequest r) {
+    return mandateHash("mandate-request-v1", r.applicationKey, r.sourceAccountId, r.beneficiaryAccountId,
+        r.beneficiaryAccountNumber, r.payee, r.limit.toPlainString(), r.startDate, r.endDate, r.payeeId);
+  }
+
+  private static String mandateRequestId(String owner, String key) {
+    String hash = mandateHash("mandate-id-v1", owner, key);
+    return "M-" + hash.substring(0, 8) + "-" + hash.substring(8, 12) + "-" + hash.substring(12, 16)
+        + "-" + hash.substring(16, 20) + "-" + hash.substring(20, 32);
+  }
+
+  private static String mandateHash(Object... fields) {
+    StringBuilder canonical = new StringBuilder();
+    for (Object field : fields) {
+      String value = field == null ? null : field.toString();
+      canonical.append(value == null ? -1 : value.length()).append(':');
+      if (value != null) canonical.append(value);
+    }
+    try {
+      return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+          .digest(canonical.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    } catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
+  }
+
+  private static Map<String, Object> mandateWithKey(Map<String, Object> row, String key) {
+    var result = new LinkedHashMap<>(row);
+    result.put("APPLICATION_KEY", key);
+    return result;
   }
 
   public Map<String, Object> mandate(String id, boolean lock) {

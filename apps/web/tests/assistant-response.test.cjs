@@ -51,6 +51,16 @@ test('unknown loan application versions remain readable messages without mountin
   const result = AssistantResponse({turn:{...turn,clientId:'loan-client',banking:{version:2,type:'LOAN_APPLICATION'}},accessToken:'owner-token',applicationActive:true});
   assert.equal(result.type,MessageBubble); assert.equal(result.props.text,turn.assistantText);
 });
+test('account and mandate entry envelopes mount only their supported inline forms', () => {
+  const {AccountApplicationCard,MandateApplicationCard}=require('../src/components/chat/BankingApplicationCard.tsx');
+  const profile={id:'owned-profile'},onLocked=()=>{},refresh=()=>{};
+  for(const [type,component] of [['ACCOUNT_APPLICATION',AccountApplicationCard],['MANDATE_APPLICATION',MandateApplicationCard]]){
+    const result=AssistantResponse({turn:{...turn,clientId:'entry-client',banking:{version:1,type}},accessToken:'owner-token',profile,applicationActive:true,applicationBusy:false,busy:true,onApplicationLocked:onLocked,onAccountsChanged:refresh});
+    assert.equal(result.type,component);assert.equal(result.props.active,true);assert.equal(result.props.busy,false);assert.equal(result.props.onSubmissionLocked,onLocked);assert.equal(result.props.accessToken,'owner-token');
+    if(type==='ACCOUNT_APPLICATION'){assert.equal(result.props.profile,profile);assert.equal(result.props.onAccountsChanged,refresh);}
+    assert.equal(AssistantResponse({turn:{...turn,banking:{version:2,type}},accessToken:'owner-token',applicationActive:true}).type,MessageBubble);
+  }
+});
 test('structured data renders outside the message bubble', () => {
   const result = AssistantResponse({ turn: { ...turn, banking: { version: 1, type: 'ACCOUNTS', accounts: [] } }, accessToken: 'test' });
   assert.equal(result.type, 'article');

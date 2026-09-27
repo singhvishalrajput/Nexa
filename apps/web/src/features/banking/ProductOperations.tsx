@@ -6,6 +6,7 @@ import { Panel, useLoad } from "./ui";
 import { formatMoney, formatDate } from "../../services/banking-content";
 import { SalarySlipFields, appendSalarySlips } from "./LoanSalarySlips";
 import { LoanApplication, LoanApplicationDraft, verifiedLoanApplication } from "../../services/loan-applications";
+import { MandateApplication, MandateApplicationDraft, verifiedMandateApplication } from "../../services/mandate-applications";
 import { useNavigationGuard } from "../../hooks/useNavigationGuard";
 type Kind = "mandates" | "loans";
 type LoanRepaymentOptions = {
@@ -26,13 +27,14 @@ type LoanRepaymentOptions = {
     };
 };
 const write = (token: string, path: string, value: unknown = {}) => authenticatedRequest<Record<string, unknown>>(path, token, { method: "POST", body: JSON.stringify(value) });
-export function ProductCreate({ token, kind, reload, initiallyOpen = false, applicationKey: suppliedApplicationKey, onCreated, onSubmissionUncertain, onSubmissionLocked, disabled = false }: {
+export function ProductCreate({ token, kind, reload, initiallyOpen = false, applicationKey: suppliedApplicationKey, onCreated, onMandateCreated, onSubmissionUncertain, onSubmissionLocked, disabled = false }: {
     token: string;
     kind: Kind;
     reload: () => void;
     initiallyOpen?: boolean;
     applicationKey?: string;
     onCreated?: (id: string, application: LoanApplication) => void;
+    onMandateCreated?: (mandate: MandateApplication) => void;
     onSubmissionUncertain?: (unknown: boolean) => void;
     onSubmissionLocked?: (locked: boolean) => void;
     disabled?: boolean;
@@ -40,6 +42,7 @@ export function ProductCreate({ token, kind, reload, initiallyOpen = false, appl
     const inFlight = useRef(false);
     const applicationKey = useRef(suppliedApplicationKey || crypto.randomUUID());
     const pendingLoan = useRef<{ body: FormData; draft: LoanApplicationDraft } | null>(null);
+    const pendingMandate = useRef<MandateApplicationDraft | null>(null);
     const unknownOutcome = useRef(false);
     const completed = useRef(false);
     const accounts = useLoad(() => bankApi.accounts(token), [token]);
@@ -52,16 +55,18 @@ export function ProductCreate({ token, kind, reload, initiallyOpen = false, appl
     const payees = useLoad(() => kind === "mandates" && open
         ? authenticatedRequest<Product[]>("/beneficiaries", token) : Promise.resolve([]), [token, kind, open]);
     const recipients = (payees.data || []).filter(payee => payee.status === "ACTIVE" && payee.transferType !== "EXTERNAL_BANK" && payee.bankName?.toLowerCase() === "nexa");
-    const fundingAccounts = (accounts.data || []).filter(account => ["SAVINGS", "CURRENT"].includes(account.accountType) && account.status === "ACTIVE" && (kind !== "loans" || account.currencyCode === "INR"));
-    const loanUnavailable = kind === "loans" && (accounts.loading || !!accounts.error || !fundingAccounts.length || salaryMonths.loading || !!salaryMonths.error || salaryMonths.data?.length !== 3);
+    const fundingAccounts = (accounts.data || []).filter(account => ["SAVINGS", "CURRENT"].includes(account.accountType) && account.status === "ACTIVE" && account.currencyCode === "INR");
+    const formUnavailable = accounts.loading || !!accounts.error || !fundingAccounts.length
+        || (kind === "loans" ? salaryMonths.loading || !!salaryMonths.error || salaryMonths.data?.length !== 3
+            : recipientMode === "saved" && (payees.loading || !!payees.error || !recipients.length));
     const formId = "create-" + kind + (suppliedApplicationKey ? "-" + suppliedApplicationKey : "");
     useEffect(() => { setOpen(initiallyOpen); }, [initiallyOpen]);
     async function submit(event: Event) {
         event.preventDefault();
-        if (inFlight.current || disabled || suppliedApplicationKey && completed.current || loanUnavailable && !pendingLoan.current)
+        if (inFlight.current || disabled || suppliedApplicationKey && completed.current || formUnavailable && !pendingLoan.current && !pendingMandate.current)
             return;
         inFlight.current = true;
-        if (kind === "loans") onSubmissionLocked?.(true);
+        onSubmissionLocked?.(true);
         setBusy(true);
         setError("");
         let posted = false;
@@ -84,10 +89,20 @@ export function ProductCreate({ token, kind, reload, initiallyOpen = false, appl
                 setUncertain(false);
                 onCreated?.(result.id, result);
             } else {
-                const form = new FormData(event.currentTarget as HTMLFormElement);
-                const recipient = recipientMode === "saved" ? { payeeId: form.get("payeeId") }
-                    : { beneficiaryAccountNumber: form.get("beneficiary"), payee: form.get("name") };
-                await write(token, "/" + kind, { sourceAccountId: Number(form.get("account")), ...recipient, limit: form.get("amount"), startDate: form.get("start"), endDate: form.get("end") || null });
+                if (!pendingMandate.current) {
+                    const form = new FormData(event.currentTarget as HTMLFormElement);
+                    const recipient = recipientMode === "saved" ? { payeeId: String(form.get("payeeId") || "") }
+                        : { beneficiaryAccountNumber: String(form.get("beneficiary") || ""), payee: String(form.get("name") || "") };
+                    pendingMandate.current = { applicationKey: applicationKey.current, sourceAccountId: Number(form.get("account")), ...recipient,
+                        limit: String(form.get("amount") || ""), startDate: String(form.get("start") || ""), endDate: String(form.get("end") || "") || null };
+                }
+                posted = true;
+                const result = verifiedMandateApplication(await write(token, "/mandates", pendingMandate.current), applicationKey.current, pendingMandate.current);
+                completed.current = true;
+                pendingMandate.current = null;
+                unknownOutcome.current = false;
+                setUncertain(false);
+                onMandateCreated?.(result);
             }
             if (!suppliedApplicationKey) applicationKey.current = crypto.randomUUID();
             setOpen(false);
@@ -95,16 +110,16 @@ export function ProductCreate({ token, kind, reload, initiallyOpen = false, appl
         }
         catch (e) {
             const unknown = posted && (retrying || !(e instanceof ApiRequestError && [400, 403, 404, 409, 413, 415, 422].includes(e.status)));
-            if (posted && !unknown) pendingLoan.current = null;
+            if (posted && !unknown) { pendingLoan.current = null; pendingMandate.current = null; }
             unknownOutcome.current = unknown;
             setUncertain(unknown);
-            setError(unknown ? "We could not confirm the application result. Check application status or retry the same application below. Your original details and files are kept for this retry." : e instanceof Error ? e.message : "Unable to create this request.");
+            setError(unknown ? kind === "loans" ? "We could not confirm the application result. Check application status or retry the same application below. Your original details and files are kept for this retry." : "We could not confirm whether the mandate was saved. Check mandate status or retry the same mandate below. Your original details and request identifier are kept for this retry." : e instanceof Error ? e.message : "Unable to create this request.");
             if (posted) onSubmissionUncertain?.(unknown);
         }
         finally {
             inFlight.current = false;
             setBusy(false);
-            if (kind === "loans" && !unknownOutcome.current) onSubmissionLocked?.(false);
+            if (!unknownOutcome.current) onSubmissionLocked?.(false);
         }
     }
     return <Panel className="bank-create-panel" title={kind === "loans" ? "Apply for a loan" : "Set up a direct debit"} action={<button class="bank-button secondary" type="button" disabled={busy || disabled || uncertain} aria-expanded={open} aria-controls={formId} onClick={() => setOpen(!open)}>{open ? "Close" : kind === "loans" ? "Request a loan" : "Create mandate"}</button>}>
@@ -112,16 +127,16 @@ export function ProductCreate({ token, kind, reload, initiallyOpen = false, appl
  {open && <form id={formId} class="bank-form bank-editor-form" onSubmit={submit}>
  <fieldset disabled={busy || disabled || uncertain} class="loan-application-fields bank-fields-grid">
  {kind === "loans" ? <label>Loan type<select name="name" required defaultValue=""><option value="" disabled>Choose a loan type</option>{["Personal loan", "Car loan", "Home loan", "Education loan", "Business loan", "Other loan"].map(type => <option key={type} value={type}>{type}</option>)}</select></label> : <label>Recipient<select value={recipientMode} onChange={event => setRecipientMode(event.currentTarget.value)}><option value="saved">Saved Nexa payee</option><option value="manual">Enter a Nexa account</option></select></label>}
- <label>{kind === "loans" ? "Disbursement and repayment account" : "Pay from"}<select name="account" required disabled={kind === "loans" && (accounts.loading || !!accounts.error)}><option value="">Choose an account</option>{fundingAccounts.map(a => <option key={a.id} value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}</select></label>
+ <label>{kind === "loans" ? "Disbursement and repayment account" : "Pay from"}<select name="account" required disabled={accounts.loading || !!accounts.error}><option value="">Choose an account</option>{fundingAccounts.map(a => <option key={a.id} value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}</select></label>
  {kind === "mandates" && (recipientMode === "saved" ? <label>Saved payee<select name="payeeId" required disabled={payees.loading || !!payees.error}><option value="">Choose a payee</option>{recipients.map(payee => <option key={payee.id} value={payee.id}>{payee.displayName} · {payee.accountNumberMasked}</option>)}</select><small>Choose the Nexa account authorised to receive this direct debit.</small></label> : <><label>Payee name<input name="name" required maxLength={120}/></label><label>Beneficiary Nexa account number<input name="beneficiary" required inputMode="numeric"/></label></>)}
  <label>{kind === "loans" ? "Principal (INR)" : "Maximum per payment (INR)"}<input name="amount" type="number" min={kind === "loans" ? "1000" : "0.01"} max={kind === "loans" ? "1000000" : undefined} step="0.01" required/></label>
  {kind === "loans" ? <label>Loan tenure (months)<input name="tenure" type="number" min="1" max="60" step="1" required/><small>The bank sets the annual rate. Review your approved terms before accepting the loan.</small></label> : <><label>Effective date<input name="start" type="date" required/></label><label>End date (optional)<input name="end" type="date"/></label></>}
  {kind === "loans" && <div class="bank-field-wide">{salaryMonths.loading && <p role="status">Loading required salary-slip months…</p>}{salaryMonths.error && <p role="alert">{salaryMonths.error}<button class="bank-button secondary" type="button" onClick={salaryMonths.reload}>Retry</button></p>}{salaryMonths.data?.length === 3 && <SalarySlipFields months={salaryMonths.data}/>}</div>}
  <p class="bank-form-note bank-field-wide">{kind === "loans" ? "Your request and salary slips go to the administrator for verification. No money moves until approval and your acceptance." : "Creation records a pending authorization. Activate it from its details page before making payments."}</p>
  </fieldset>
- {kind === "loans" && (accounts.loading ? <p role="status">Loading repayment accounts…</p> : accounts.error ? <p role="alert">Your accounts could not be loaded. <button type="button" class="bank-button secondary" disabled={busy || disabled} onClick={accounts.reload}>Retry accounts</button></p> : !fundingAccounts.length && <p>An active INR savings or current account is required. <a href="#/accounts">View your accounts</a>.</p>)}
+ {accounts.loading ? <p role="status">{kind === "loans" ? "Loading repayment accounts…" : "Loading payment accounts…"}</p> : accounts.error ? <p role="alert">Your accounts could not be loaded. <button type="button" class="bank-button secondary" disabled={busy || disabled} onClick={accounts.reload}>Retry accounts</button></p> : !fundingAccounts.length && <p>An active INR savings or current account is required. <a href="#/accounts">View your accounts</a>.</p>}
  {kind === "mandates" && recipientMode === "saved" && (payees.loading ? <p role="status">Loading saved payees…</p> : payees.error ? <p role="alert">Saved payees could not be loaded. <button type="button" onClick={payees.reload}>Retry payees</button></p> : !recipients.length && <p>No active Nexa payee is available. <a href="#/beneficiaries">Add or link a payee</a>, or enter a Nexa account.</p>)}
- {error && <p role="alert">{error}</p>}<div class="bank-editor-actions"><button class="bank-button" type="submit" disabled={busy || disabled || loanUnavailable && !pendingLoan.current || kind === "mandates" && recipientMode === "saved" && (payees.loading || !!payees.error || !recipients.length)}>{busy ? "Saving…" : kind === "loans" ? uncertain ? "Retry same application" : "Submit loan application" : "Create"}</button></div></form>}</Panel>;
+ {error && <p role="alert">{error}</p>}<div class="bank-editor-actions"><button class="bank-button" type="submit" disabled={busy || disabled || formUnavailable && !pendingLoan.current && !pendingMandate.current}>{busy ? "Saving…" : kind === "loans" ? uncertain ? "Retry same application" : "Submit loan application" : uncertain ? "Retry same mandate" : "Create"}</button></div></form>}</Panel>;
 }
 export function BillCreate({ token, reload, initiallyOpen = false }: { token: string; reload: () => void; initiallyOpen?: boolean; }) {
     const inFlight = useRef(false);

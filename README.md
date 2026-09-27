@@ -1,5 +1,7 @@
 # Nexa
 
+Start with [how Nexa works and the high-level architecture diagram](docs/PROJECT_ARCHITECTURE.md), then see the [current ER diagrams and table relationships](docs/ER_DIAGRAM.md).
+
 Banking uses six core domain tables plus supporting security, conversation, audit and account-opening tables. See [the banking core](docs/SIX_TABLE_BANKING.md) and [the account-opening upgrade and teammate setup](docs/ACCOUNT_OPENING_UPGRADE.md).
 
 This is a learning showcase. See [supported workflows and integration boundaries](docs/SHOWCASE.md) for persisted card controls, payment workflows and the remaining provider limitations.

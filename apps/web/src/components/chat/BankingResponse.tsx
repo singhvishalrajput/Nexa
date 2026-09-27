@@ -171,8 +171,8 @@ function BalancesResponse({ content, accessToken }: RendererProps<"ACCOUNTS">) {
  : content.accounts.length ? <><SectionHeader title={t("Account balances")} /><AccountSummary accounts={content.accounts} onTransactions={setAccount} /></> : <EmptySummary title="Account balances" />;
 }
 type RendererProps<K extends BankingContent["type"]> = { content: Extract<BankingContent, { type: K }>; accessToken: string };
-// Interactive loan application forms use LoanApplicationCard and the turn's stable request key.
-type SummaryContent = Exclude<BankingContent, { type: "LOAN_APPLICATION" }>;
+// Interactive application forms are mounted separately by AssistantResponse.
+type SummaryContent = Exclude<BankingContent, { type: "LOAN_APPLICATION" | "ACCOUNT_APPLICATION" | "MANDATE_APPLICATION" }>;
 const bankingRenderers: { [K in SummaryContent["type"]]: (props: RendererProps<K>) => h.JSX.Element } = {
  INSIGHTS: ({ content }) => <SpendingSummary content={content} />,
  ACCOUNTS: BalancesResponse,

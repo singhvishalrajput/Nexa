@@ -1,0 +1,37 @@
+flowchart TB
+    Customer["Customer"] --> Web
+    Admin["Administrator"] --> Web
+    Web["apps/web - browser application<br/>Oracle JET 20.1 / Preact / TypeScript<br/>Chat, banking screens and admin dashboard"]
+
+    subgraph API["apps/api - one Spring Boot 4.1.1 application / Java 17"]
+        Security["REST API and Spring Security<br/>JWT, roles and resource ownership"]
+        Banking["Banking services<br/>Applications, payments, bills, loans and cards"]
+        Reporting["Read services and admin analytics"]
+        Chat["Conversation and workflow services<br/>Rules, knowledge and explicit confirmation"]
+        Worker["Scheduled-payment worker<br/>Executes authorized internal payments when due"]
+        Data["JPA and JDBC repositories<br/>Atomic postings and account locks"]
+        Security --> Banking
+        Security --> Reporting
+        Security --> Chat
+        Chat -->|"Validated banking requests"| Banking
+        Chat -->|"Balances and other read requests"| Reporting
+        Worker --> Banking
+        Banking --> Data
+        Reporting --> Data
+        Chat -->|"Conversation and workflow history"| Data
+    end
+
+    Web <-->|"HTTP / JSON; JWT after sign-in<br/>Multipart for salary slips"| Security
+    Data <--> Oracle[("Oracle database<br/>Customers, accounts, journals, ledger<br/>Applications, products and conversation records")]
+    Flyway["Flyway migrations<br/>Schema changes through V32"] --> Oracle
+    Chat -.->|"Optional intent interpretation"| Ollama["Local Ollama / qwen3.5:4b<br/>No database access or payment authority"]
+    Banking -.->|"Other-bank transfer requests and status"| Cashfree["Cashfree Payouts sandbox<br/>No real settlement or Nexa balance change"]
+
+    classDef client fill:#eaf2ff,stroke:#365ca7,color:#10233f
+    classDef application fill:#eef8f3,stroke:#378267,color:#173d31
+    classDef database fill:#fff4dc,stroke:#a87a27,color:#47350f
+    classDef external fill:#f4edf9,stroke:#8054a5,color:#3c2252
+    class Web,Customer,Admin client
+    class Security,Banking,Reporting,Chat,Worker,Data application
+    class Oracle,Flyway database
+    class Ollama,Cashfree external

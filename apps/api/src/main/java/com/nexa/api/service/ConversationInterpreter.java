@@ -67,7 +67,7 @@ public class ConversationInterpreter {
   }
 
   public Interpretation interpret(String text, java.util.List<OllamaInterpreter.Message> history) {
-    var applicationEntry = LoanApplicationChatEntry.resolve(text);
+    var applicationEntry = ChatApplicationEntry.resolve(text);
     if (applicationEntry != null) return applicationEntry;
     var fastIntent = FastBankingIntent.match(text);
     if (fastIntent != null)

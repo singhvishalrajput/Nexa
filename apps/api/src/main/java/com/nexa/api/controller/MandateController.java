@@ -38,6 +38,14 @@ public class MandateController {
     return operations.createMandate(request);
   }
 
+  @GetMapping("/applications/by-request/{applicationKey}")
+  public org.springframework.http.ResponseEntity<java.util.Map<String, Object>> application(
+      @PathVariable String applicationKey) {
+    return org.springframework.http.ResponseEntity.ok()
+        .cacheControl(org.springframework.http.CacheControl.noStore())
+        .body(operations.mandateApplication(applicationKey));
+  }
+
   @GetMapping("/{id}/authorization")
   public java.util.Map<String, Object> authorization(@PathVariable String id) {
     return operations.mandate(id, false);

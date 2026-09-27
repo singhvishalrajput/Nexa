@@ -20,6 +20,7 @@ function setup(api=async()=>({}), download=async()=>new Blob(['%PDF-data']), pay
     n==='../../services/auth'?{authenticatedRequest:api,authenticatedBlobRequest:download}:
     n==='./LoanSalarySlips'?slips:n==='./api'?{bankApi:{accounts:async()=>[]}}:
     n==='../../services/loan-applications'?{verifiedLoanApplication:value=>value}:
+    n==='../../services/mandate-applications'?{verifiedMandateApplication:value=>value}:
     n==='../../hooks/useNavigationGuard'?{useNavigationGuard(){}}:
     n==='./ui'?{Panel:'panel',State:'state',useLoad:fn=>({data:fn.toString().includes('salary-slip-requirements')?months:fn.toString().includes('/beneficiaries')?payees:[{id:'12',status:'ACTIVE',accountType:'SAVINGS',currencyCode:'INR'}],reload(){}})}:{};
   for(const [file,exports] of [['LoanSalarySlips',slips],['ProductOperations',products]]){
@@ -103,7 +104,7 @@ test('mandates submit the saved payee reference without requesting or trusting a
   assert.equal(tree.some(n=>n.type==='input'&&n.props.name==='beneficiary'),false);
   const data=new FormDataFixture({entries:[['account','12'],['payeeId','saved'],['amount','500'],['start','2026-09-27'],['beneficiary','tampered']]});
   await tree.find(n=>n.type==='form').props.onSubmit({preventDefault(){},currentTarget:data});
-  assert.deepEqual(calls,[{path:'/mandates',body:{sourceAccountId:12,payeeId:'saved',limit:'500',startDate:'2026-09-27',endDate:null}}]);
+  assert.deepEqual(calls,[{path:'/mandates',body:{applicationKey:'application-key',sourceAccountId:12,payeeId:'saved',limit:'500',startDate:'2026-09-27',endDate:null}}]);
 });
 test('admin must download a slip before its verification checkbox is enabled',async()=>{
   const verified=[],app=setup(),props={token:'admin',loanId:'L-1',bundle:{requiredMonths:months,documents:[{id:'D-1',month:months[0],fileName:'June.pdf',size:100}]},verified:[],onVerify:ids=>verified.push(...ids)};

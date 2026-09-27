@@ -152,8 +152,8 @@ public class ConversationService {
                     "(?is).*\\b(password|passcode|pin|otp|cvv|bearer|secret|api.?key)\\b.*")
                 || text.matches("(?s).*(?:\\d[ -]?){13,19}.*"));
     // Open the existing application form before a pending payment can interpret these words
-    // as a recipient or amount. This entry neither changes that payment nor submits a loan.
-    var applicationEntry = sensitive || command != null ? null : LoanApplicationChatEntry.resolve(text);
+    // as a recipient or amount. This entry neither changes that payment nor submits a form.
+    var applicationEntry = sensitive || command != null ? null : ChatApplicationEntry.resolve(text);
     var knowledgeAnswer = applicationEntry != null ? applicationEntry
         : sensitive || command != null || knowledge == null ? null
             : knowledge.route(text, previousKnowledgeTopic(id)).answer();

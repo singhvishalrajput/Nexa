@@ -1,0 +1,170 @@
+%% Nexa operational schema, repository migrations through V32 plus Java V17.
+%% Source-based diagram; no live Oracle inspection. See ../ER_DIAGRAM.md for detail.
+%% All lines below represent actual FKs; line style does not indicate logical references.
+%% Alternate-key relationships to CUSTOMERS use user_id unless labeled customer_id.
+%% APPLICATION_DOCUMENTS retains metadata; its upload/review/download feature is retired.
+%% Legacy tables and flyway_schema_history are excluded, not asserted physically removed.
+erDiagram
+    CUSTOMERS {
+        NUMBER id PK
+        VARCHAR2 user_id UK "Nullable authentication alternate key"
+    }
+    CUSTOMER_CREDENTIALS {
+        VARCHAR2 id PK
+        VARCHAR2 user_id FK
+        VARCHAR2 credential_type
+    }
+    ACCOUNTS {
+        NUMBER id PK
+        NUMBER customer_id FK "Nullable for SYSTEM accounts"
+        NUMBER funding_account_id FK "Nullable"
+        VARCHAR2 product_id UK "Nullable loan or card public ID"
+        VARCHAR2 account_type
+    }
+    TRANSACTIONS {
+        VARCHAR2 id PK
+        VARCHAR2 record_kind
+        VARCHAR2 user_id FK "Nullable for PAYMENT"
+        NUMBER source_account_id FK "Nullable"
+        NUMBER destination_account_id FK "Nullable"
+        VARCHAR2 parent_id FK "Nullable"
+    }
+    JOURNAL_ENTRIES {
+        NUMBER id PK
+        VARCHAR2 transaction_id FK, UK
+    }
+    LEDGER_ENTRIES {
+        NUMBER id PK
+        NUMBER journal_entry_id FK
+        NUMBER account_id FK
+    }
+    ACCOUNT_APPLICATIONS {
+        VARCHAR2 id PK
+        NUMBER customer_id FK
+        NUMBER account_id FK, UK "Nullable composite FK"
+    }
+    APPLICATION_DOCUMENTS {
+        VARCHAR2 id PK
+        VARCHAR2 application_id FK
+    }
+    OPENING_CASH_RECEIPTS {
+        VARCHAR2 id PK
+        VARCHAR2 application_id FK, UK
+        VARCHAR2 receipt_transaction_id FK, UK
+        VARCHAR2 allocation_transaction_id FK, UK "Nullable"
+        VARCHAR2 refund_transaction_id FK, UK "Nullable"
+    }
+    APPLICATION_EVENTS {
+        VARCHAR2 id PK
+        VARCHAR2 application_id FK
+        VARCHAR2 actor_user_id FK
+        VARCHAR2 document_id FK "Nullable composite FK"
+        VARCHAR2 receipt_id FK "Nullable composite FK"
+    }
+    LOAN_SALARY_SLIPS {
+        VARCHAR2 id PK
+        NUMBER loan_account_id FK
+        VARCHAR2 salary_month
+    }
+    BANK_FUNDING_RECEIPTS {
+        VARCHAR2 id PK
+        VARCHAR2 transaction_id FK, UK
+        NUMBER cash_account_id FK
+        NUMBER reserve_account_id FK
+        VARCHAR2 recorded_by FK
+    }
+    BILL_PAYMENT_ATTEMPTS {
+        VARCHAR2 id PK
+        VARCHAR2 user_id FK
+        VARCHAR2 bill_id FK
+        VARCHAR2 payee_id FK
+        NUMBER source_account_id FK
+        NUMBER destination_account_id FK
+        VARCHAR2 transaction_reference FK, UK "Nullable"
+    }
+    EXTERNAL_BANK_PAYEES {
+        VARCHAR2 id PK
+        VARCHAR2 user_id FK
+        VARCHAR2 account_encrypted "External value, not a Nexa account FK"
+    }
+    EXTERNAL_TRANSFER_REVIEWS {
+        VARCHAR2 id PK
+        VARCHAR2 user_id FK
+        NUMBER source_account_id FK
+        VARCHAR2 payee_id FK
+    }
+    AUTHORIZED_SCHEDULED_PAYMENTS {
+        VARCHAR2 id PK
+        VARCHAR2 user_id FK
+        NUMBER source_account_id FK
+        NUMBER destination_account_id FK
+        VARCHAR2 payee_id FK
+        VARCHAR2 transaction_reference FK, UK "Nullable"
+    }
+    CONVERSATIONS {
+        VARCHAR2 id PK
+        VARCHAR2 user_id FK
+    }
+    CONVERSATION_TURNS {
+        NUMBER sequence_id PK
+        VARCHAR2 conversation_id FK
+        VARCHAR2 client_id "Unique with conversation_id"
+    }
+    CONVERSATION_WORKFLOWS {
+        VARCHAR2 id PK
+        VARCHAR2 conversation_id FK
+    }
+    CONVERSATION_ACTION_EVENTS {
+        VARCHAR2 id PK
+        VARCHAR2 action_id "Logical only; no FK"
+        VARCHAR2 user_id "Logical only; no FK"
+    }
+
+    CUSTOMERS ||..o{ CUSTOMER_CREDENTIALS : "user_id"
+    CUSTOMERS |o..o{ ACCOUNTS : "customer_id"
+    ACCOUNTS |o..o{ ACCOUNTS : "funding_account_id"
+    CUSTOMERS |o..o{ TRANSACTIONS : "user_id"
+    ACCOUNTS |o..o{ TRANSACTIONS : "source_account_id"
+    ACCOUNTS |o..o{ TRANSACTIONS : "destination_account_id"
+    TRANSACTIONS |o..o{ TRANSACTIONS : "parent_id"
+    TRANSACTIONS ||..o| JOURNAL_ENTRIES : "transaction_id"
+    JOURNAL_ENTRIES ||..o{ LEDGER_ENTRIES : "journal_entry_id"
+    ACCOUNTS ||..o{ LEDGER_ENTRIES : "account_id"
+
+    CUSTOMERS ||..o{ ACCOUNT_APPLICATIONS : "customer_id"
+    ACCOUNTS |o..o| ACCOUNT_APPLICATIONS : "opened-account composite FK"
+    ACCOUNT_APPLICATIONS ||..o{ APPLICATION_DOCUMENTS : "application_id"
+    ACCOUNT_APPLICATIONS ||..o| OPENING_CASH_RECEIPTS : "application and amount composite FK"
+    ACCOUNT_APPLICATIONS ||..o{ APPLICATION_EVENTS : "application_id"
+    CUSTOMERS ||..o{ APPLICATION_EVENTS : "actor_user_id"
+    APPLICATION_DOCUMENTS |o..o{ APPLICATION_EVENTS : "document and application composite FK"
+    OPENING_CASH_RECEIPTS |o..o{ APPLICATION_EVENTS : "receipt and application composite FK"
+    TRANSACTIONS ||..o| OPENING_CASH_RECEIPTS : "receipt_transaction_id"
+    TRANSACTIONS |o..o| OPENING_CASH_RECEIPTS : "allocation_transaction_id"
+    TRANSACTIONS |o..o| OPENING_CASH_RECEIPTS : "refund_transaction_id"
+
+    ACCOUNTS ||..o{ LOAN_SALARY_SLIPS : "loan_account_id"
+    TRANSACTIONS ||..o| BANK_FUNDING_RECEIPTS : "transaction_id"
+    CUSTOMERS ||..o{ BANK_FUNDING_RECEIPTS : "recorded_by"
+    ACCOUNTS ||..o{ BANK_FUNDING_RECEIPTS : "cash_account_id"
+    ACCOUNTS ||..o{ BANK_FUNDING_RECEIPTS : "reserve_account_id"
+
+    CUSTOMERS ||..o{ BILL_PAYMENT_ATTEMPTS : "user_id"
+    TRANSACTIONS ||..o{ BILL_PAYMENT_ATTEMPTS : "bill_id"
+    TRANSACTIONS ||..o{ BILL_PAYMENT_ATTEMPTS : "payee_id"
+    ACCOUNTS ||..o{ BILL_PAYMENT_ATTEMPTS : "source_account_id"
+    ACCOUNTS ||..o{ BILL_PAYMENT_ATTEMPTS : "destination_account_id"
+    TRANSACTIONS |o..o| BILL_PAYMENT_ATTEMPTS : "transaction_reference"
+    CUSTOMERS ||..o{ AUTHORIZED_SCHEDULED_PAYMENTS : "user_id"
+    TRANSACTIONS ||..o{ AUTHORIZED_SCHEDULED_PAYMENTS : "payee_id"
+    ACCOUNTS ||..o{ AUTHORIZED_SCHEDULED_PAYMENTS : "source_account_id"
+    ACCOUNTS ||..o{ AUTHORIZED_SCHEDULED_PAYMENTS : "destination_account_id"
+    TRANSACTIONS |o..o| AUTHORIZED_SCHEDULED_PAYMENTS : "transaction_reference"
+    CUSTOMERS ||..o{ EXTERNAL_BANK_PAYEES : "user_id"
+    CUSTOMERS ||..o{ EXTERNAL_TRANSFER_REVIEWS : "user_id"
+    ACCOUNTS ||..o{ EXTERNAL_TRANSFER_REVIEWS : "source_account_id"
+    EXTERNAL_BANK_PAYEES ||..o{ EXTERNAL_TRANSFER_REVIEWS : "payee_id"
+
+    CUSTOMERS ||..o{ CONVERSATIONS : "user_id"
+    CONVERSATIONS ||..o{ CONVERSATION_TURNS : "conversation_id, cascade delete"
+    CONVERSATIONS ||..o{ CONVERSATION_WORKFLOWS : "conversation_id, cascade delete"

@@ -110,9 +110,10 @@ class OllamaInterpreterTest {
     verifyNoInteractions(router, classifier, extractor);
   }
 
-  @Test
-  void modelCannotInventTheServerOnlyLoanApplicationEntry() throws Exception {
-    var ai = stub(plan("APPLY_LOAN", null, null), 200);
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(strings = {"APPLY_LOAN", "OPEN_ACCOUNT", "CREATE_MANDATE"})
+  void modelCannotInventServerOnlyApplicationEntries(String intent) throws Exception {
+    var ai = stub(plan(intent, null, null), 200);
     assertThat(ai.interpret("show my loans", List.of())).isNull();
     assertThat(request.get()).isNotNull();
   }

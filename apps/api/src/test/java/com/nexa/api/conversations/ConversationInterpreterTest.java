@@ -73,6 +73,24 @@ class ConversationInterpreterTest {
   }
 
   @Test
+  void accountAndMandateEntriesCannotBeReclassifiedByTheModel() {
+    var ollama = mock(OllamaInterpreter.class);
+    interpreter.setOllama(ollama);
+    when(ollama.interpret(anyString(), anyList())).thenReturn(
+        new OllamaInterpreter.Plan("GET_LOANS", null, null, null, null, null, null, null, null, null));
+    var history = List.of(new OllamaInterpreter.Message("user", "show loans"),
+        new OllamaInterpreter.Message("assistant", "Here are your loans and EMIs."));
+    for (String text : List.of("open account", "create account", "create mandate", "set up a direct debit")) {
+      var result = interpreter.interpret(text, history);
+      boolean account = text.contains("account");
+      assertThat(result.intent()).as(text).isEqualTo(account ? "OPEN_ACCOUNT" : "CREATE_MANDATE");
+      assertThat(result.banking().envelopeType()).isEqualTo(account ? "ACCOUNT_APPLICATION" : "MANDATE_APPLICATION");
+      assertThat(result.banking().action()).isNull();
+    }
+    verifyNoInteractions(ollama, accounts, transactions);
+  }
+
+  @Test
   void explicitBillCommandsNeverInheritLoanIntentFromTheLocalModel() {
     var ollama = mock(OllamaInterpreter.class);
     interpreter.setOllama(ollama);

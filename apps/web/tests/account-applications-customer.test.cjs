@@ -31,12 +31,14 @@ const text = node => node == null || typeof node === 'boolean' ? '' : typeof nod
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return {promise, resolve, reject}; };
 function harness(options = {}) {
   const slots = [], calls = [], effects = [], cache = new Map();
-  const focusEvents = [], scrollEvents = [], domNodes = new Map();
+  const focusEvents = [], scrollEvents = [], submissionLocks = [], domNodes = new Map();
   const browserDocument = {getElementById: id => domNodes.get(id) || null};
   let cursor = 0, dirty = true, tree, confirm = true, refreshes = 0;
   let currentPolicy = {...policy, ...options.policy, ...(options.enabled === false ? {applicationsAvailable: false} : {})}, rows = options.rows || [];
   const records = new Map(rows.map(item => [item.id, item]));
-  const props = {token: 'synthetic-token', profile: {...profile, ...options.profile}, accounts: options.accounts || [], onAccountsChanged: () => { refreshes++; }};
+  const props = {token: 'synthetic-token', profile: {...profile, ...options.profile}, accounts: options.accounts || [], onAccountsChanged: () => { refreshes++; },
+    initiallyOpen: options.initiallyOpen, disabled: options.disabled,
+    onSubmissionLocked: locked => { submissionLocks.push(locked); options.onSubmissionLocked?.(locked); }};
   const browser = {NEXA_ACCOUNT_APPLICATIONS_ENABLED: options.browserFlag, confirm: () => confirm, alert() {}, setTimeout, clearTimeout};
   const hooks = {
     useState(initial) { const at = cursor++; if (!(at in slots)) slots[at] = {value: typeof initial === 'function' ? initial() : initial};
@@ -95,7 +97,7 @@ function harness(options = {}) {
   async function ready() { for (let i = 0; i < 5; i++) { render(); await new Promise(setImmediate); } return render(); }
   const nodes = () => allNodes(render()), input = id => nodes().find(node => node.props.id === id);
   const button = label => nodes().find(node => node.type === 'button' && text(node) === label);
-  return {calls, props, ApiRequestError, ready, render, nodes, input, button, focusEvents, scrollEvents, text: () => text(render()),
+  return {calls, props, ApiRequestError, ready, render, nodes, input, button, focusEvents, scrollEvents, submissionLocks, text: () => text(render()),
     disabled(id) {
       let result;
       function inspect(node, inherited = false) {
@@ -533,4 +535,84 @@ test('consent and identity errors link to their fields and discarding an edit cl
   app.set('application-consent',true);app.set('application-identity-number','1234');await app.submit('application-create-form');
   await app.click('Review and update');app.set('application-birth','');await app.submit('application-details-form');assert.ok(app.input('application-validation-summary'));
   await app.click('Discard changes');assert.equal(app.input('application-validation-summary'),undefined);app.dispose();
+});
+
+test('duplicate-phone creation errors stay beside Save application details, receive focus and preserve entries for correction',async()=>{
+  let rejected=true;
+  const message='This phone number is already registered with another customer.';
+  const app=harness({handlers:{create:(_token,body)=>{
+    if(rejected)throw new app.ApiRequestError(409,message);
+    return record({phoneNumber:body.phoneNumber,openingAmount:body.openingAmount});
+  }}});
+  await filled(app,'4300.50');await app.submit('application-create-form');
+  const formNodes=allNodes(app.form('application-create-form')),alert=formNodes.find(node=>node.props.id==='application-save-error');
+  assert.ok(alert);assert.equal(alert.props.role,'alert');assert.equal(alert.props.tabIndex,-1);assert.match(text(alert),/phone number is already registered/);
+  assert.ok(formNodes.indexOf(alert)>formNodes.findIndex(node=>node.type==='button'&&text(node)==='Save application details'));
+  assert.ok(!allNodes(formNodes.find(node=>node.type==='fieldset')).includes(alert));
+  const pageFeedback=app.nodes().find(node=>node.props.class==='application-feedback');assert.doesNotMatch(text(pageFeedback),/phone number is already registered/);
+  assert.equal(app.nodes().filter(node=>node.props.role==='alert'&&text(node).includes(message)).length,1);
+  assert.equal(app.focusEvents.at(-1).id,'application-save-error');assert.equal(app.scrollEvents.at(-1).id,'application-save-error');assert.equal(app.scrollEvents.at(-1).options.block,'center');
+  assert.equal(app.input('application-opening-amount').props.value,'4300.50');assert.equal(app.input('application-identity-number').props.value,'1234');
+  assert.equal(app.submissionLocks.at(-1),false);assert.equal(app.button('Save application details').props.disabled,false);
+  await app.submit('application-create-form');assert.equal(app.focusEvents.filter(event=>event.id==='application-save-error').length,2);
+  rejected=false;app.set('application-phone','9876543211');await app.submit('application-create-form');
+  assert.equal(app.input('application-save-error'),undefined);assert.equal(app.mutationCalls().at(-1).args[1].phoneNumber,'9876543211');app.dispose();
+});
+
+test('duplicate-phone detail-update errors appear after Save changes and disappear when edits are discarded',async()=>{
+  const app=harness({rows:[record({version:7})],handlers:{updateDetails:()=>{throw new app.ApiRequestError(409,'This phone number is already registered with another customer.');}}});
+  await app.ready();await app.select();await app.click('Review and update');app.set('application-phone','9876543211');app.set('application-opening-amount','7200.00');
+  await app.submit('application-details-form');
+  const formNodes=allNodes(app.form('application-details-form')),alert=formNodes.find(node=>node.props.id==='application-save-error');
+  assert.ok(alert);assert.ok(formNodes.indexOf(alert)>formNodes.findIndex(node=>node.type==='button'&&text(node)==='Save changes'));
+  assert.ok(!allNodes(formNodes.find(node=>node.type==='fieldset')).includes(alert));assert.equal(app.focusEvents.at(-1).id,'application-save-error');
+  assert.equal(app.input('application-phone').props.value,'9876543211');assert.equal(app.input('application-opening-amount').props.value,'7200.00');
+  assert.equal(app.mutationCalls()[0].args[2].expectedVersion,7);assert.equal(app.submissionLocks.at(-1),false);
+  await app.click('Discard changes');assert.equal(app.input('application-save-error'),undefined);assert.doesNotMatch(app.text(),/phone number is already registered/);app.dispose();
+});
+
+test('uncertain detail saves keep same-request recovery outside locked fields and preserve the original key and payload',async()=>{
+  let calls=0;
+  const app=harness({rows:[record({version:4})],handlers:{updateDetails:(_token,_id,body)=>{
+    assert.equal(app.submissionLocks.at(-1),true,'embedding is locked before dispatch');
+    if(++calls===1)throw new app.ApiRequestError(503,'Synthetic unavailable response');
+    return record({version:5,phoneNumber:body.phoneNumber,openingAmount:body.openingAmount});
+  }}});
+  await app.ready();await app.select();await app.click('Review and update');app.set('application-opening-amount','8500.00');
+  await app.submit('application-details-form');
+  const formNodes=allNodes(app.form('application-details-form')),alert=formNodes.find(node=>node.props.id==='application-save-error');
+  const fields=formNodes.find(node=>node.type==='fieldset'),retry=allNodes(alert).find(node=>node.type==='button'&&text(node)==='Retry the same request');
+  assert.equal(fields.props.disabled,true);assert.ok(retry);assert.equal(retry.props.disabled,false);assert.ok(!allNodes(fields).includes(retry));
+  assert.equal(app.submissionLocks.at(-1),true);assert.equal(app.navigation.confirmNavigation(),false);
+  assert.equal(app.focusEvents.at(-1).id,'application-save-error');
+  await app.click('Retry the same request');
+  assert.equal(app.mutationCalls().length,2);assert.deepEqual(app.mutationCalls()[0].args[2],app.mutationCalls()[1].args[2]);
+  assert.equal(app.input('application-save-error'),undefined);assert.equal(app.submissionLocks.at(-1),false);app.dispose();
+});
+
+test('submit and cancel errors remain in page feedback without reopening or focusing a save form',async()=>{
+  for(const operation of ['submit','cancel']){
+    const app=harness({rows:[record()],handlers:{[operation]:()=>{throw new app.ApiRequestError(409,'The application changed. Refresh its current status.');}}});
+    await app.ready();await app.select();
+    if(operation==='cancel'){
+      const checkbox=app.nodes().find(node=>node.type==='input'&&node.props.type==='checkbox');checkbox.props.onChange({currentTarget:{checked:true}});await app.ready();
+    }
+    await app.click(operation==='submit'?'Submit for review':'Cancel application');
+    assert.equal(app.input('application-save-error'),undefined);
+    const feedback=app.nodes().find(node=>node.props.class==='application-feedback');assert.match(text(feedback),/application changed/);
+    assert.ok(allNodes(feedback).some(node=>node.props.role==='alert'));assert.equal(app.focusEvents.some(event=>event.id==='application-save-error'),false);
+    assert.equal(app.submissionLocks.at(-1),false);app.dispose();
+  }
+});
+
+test('inline opening waits for eligibility, performs no automatic write and honors external disabled state',async()=>{
+  const app=harness({initiallyOpen:true,disabled:true});await app.ready();
+  assert.equal(app.form('application-create-form'),undefined);assert.equal(app.mutationCalls().length,0);
+  app.props.disabled=false;await app.ready();assert.ok(app.form('application-create-form'));assert.equal(app.mutationCalls().length,0);
+  app.set('application-birth','1990-01-01');app.set('application-consent',true);app.set('application-identity-number','1234');
+  app.props.disabled=true;await app.ready();assert.equal(app.button('Save application details').props.disabled,true);assert.equal(app.disabled('application-phone'),true);
+  await app.submit('application-create-form');assert.equal(app.mutationCalls().length,0);assert.equal(app.submissionLocks.at(-1),false);app.dispose();
+  for(const options of [{rows:[record()]},{accounts:[{id:'42',accountType:'SAVINGS',status:'ACTIVE'}]},{policy:{allowedAccountTypes:[]}}]){
+    const existing=harness({initiallyOpen:true,...options});await existing.ready();assert.equal(existing.form('application-create-form'),undefined);assert.equal(existing.mutationCalls().length,0);existing.dispose();
+  }
 });

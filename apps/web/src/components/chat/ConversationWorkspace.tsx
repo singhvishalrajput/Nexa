@@ -21,6 +21,7 @@ import { ConversationHistoryItem } from "./ConversationHistoryItem";
 
 type Props = { session: AuthSession; onClose: () => void; onLogout: () => void | Promise<void>; accounts?: AccountSnapshot[]; accountsLoading?: boolean; accountsError?: string; onRefreshAccounts?: () => void };
 const greeting = "Hi! How can I help with your banking today?";
+const isApplicationTurn = (turn: Turn) => turn.banking?.version === 1 && ["LOAN_APPLICATION", "ACCOUNT_APPLICATION", "MANDATE_APPLICATION"].includes(turn.banking.type);
 
 export function ConversationWorkspace({ session, onClose, onLogout, accounts = [], accountsLoading = false, accountsError = "", onRefreshAccounts = () => {} }: Props) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -37,8 +38,8 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   }, [turns]);
   const [input, setInput] = useState("");
   const [chatBusy, setBusy] = useState(true);
-  const [loanLocked, setLoanLocked] = useState(false);
-  const busy = chatBusy || loanLocked;
+  const [applicationLocked, setApplicationLocked] = useState(false);
+  const busy = chatBusy || applicationLocked;
   const [error, setError] = useState("");
   const [voiceError, setVoiceError] = useState("");
   const [guidance, setGuidance] = useState<"help" | null>(null);
@@ -61,7 +62,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   const page = useRef(0);
   const animatedTurn = useRef<string | null>(null);
   const locked = useRef(true);
-  const loanLock = useRef<string | null>(null);
+  const applicationLock = useRef<string | null>(null);
   const pending = useRef<{ conversationId: string | null; request: TurnRequest } | null>(null);
   const pendingDelete = useRef<string | null>(null);
   const alive = useRef(true);
@@ -80,11 +81,11 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   const reading = useReadAloud(readAloud, language, listening);
   const { speak } = reading;
   const token = session.accessToken;
-  useNavigationGuard(!!input.trim() || listening || !!pending.current || loanLocked, sending || loanLocked);
-  const lockLoan = (clientId: string, value: boolean) => {
-    if (value) loanLock.current = clientId;
-    else if (loanLock.current === clientId) loanLock.current = null;
-    setLoanLocked(!!loanLock.current);
+  useNavigationGuard(!!input.trim() || listening || !!pending.current || applicationLocked, sending || applicationLocked);
+  const lockApplication = (clientId: string, value: boolean) => {
+    if (value) applicationLock.current = clientId;
+    else if (applicationLock.current === clientId) applicationLock.current = null;
+    setApplicationLocked(!!applicationLock.current);
   };
   const discardDraft = () => !input.trim() || window.confirm(t("Discard your typed message and continue?"));
 
@@ -193,7 +194,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   }, [historyModal, menuOpen]);
 
   const select = async (conversation: Conversation) => {
-    if (locked.current || loanLock.current || listening || pending.current) return;
+    if (locked.current || applicationLock.current || listening || pending.current) return;
     if (!discardDraft()) return;
     startBusy();
     try {
@@ -208,7 +209,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   };
 
   const earlier = async () => {
-    if (locked.current || loanLock.current) return;
+    if (locked.current || applicationLock.current) return;
     if (!current || !older) { tell("You have reached the start of this conversation."); return; }
     startBusy();
     try {
@@ -220,7 +221,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   };
 
   const more = async () => {
-    if (locked.current || loanLock.current) return;
+    if (locked.current || applicationLock.current) return;
     startBusy();
     try {
       const items = await listConversations(token, page.current + 1);
@@ -231,7 +232,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   };
 
   const removeConversation = async (conversation: Conversation) => {
-    if (locked.current || loanLock.current || listening || pending.current) return;
+    if (locked.current || applicationLock.current || listening || pending.current) return;
     startBusy();
     try {
       try { await deleteConversation(token, conversation.id); }
@@ -259,7 +260,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
   };
 
   const submit = async (value = input, source: "TEXT" | "VOICE" = "TEXT", action?: ActionCommand) => {
-    if (locked.current || loanLock.current || !value.trim()) return;
+    if (locked.current || applicationLock.current || !value.trim()) return;
     const command = value.trim().toLowerCase().replace(/[.!?]+$/, "");
     if (command === "discard unsent message") { pending.current = null; setOutgoing(null); setError(""); setInput(""); tell("Removed from this device. If the message reached Nexa, it may still appear in your history."); return; }
     if (pending.current && command !== "retry") { tell("Your last message needs attention. Choose Try again or Remove message below before sending another."); return; }
@@ -364,7 +365,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
     {wideLayout && <aside ref={historyPanel} id="messenger-history" class="nexa-sidebar messenger-history messenger-history-sidebar" aria-label={t("Nexa workspace and conversation history")}>{historyContents}</aside>}
     <main class="messenger-main" aria-label={t("Nexa banking conversation")} inert={historyModal}>
       <header class="messenger-header">
-        <button type="button" class="messenger-icon" disabled={loanLocked} onClick={() => { if (!loanLock.current) onClose(); }} aria-label={t("Open banking overview")}><ChatIcon name="back" /><span>{t("Banking")}</span></button>
+        <button type="button" class="messenger-icon" disabled={applicationLocked} onClick={() => { if (!applicationLock.current) onClose(); }} aria-label={t("Open banking overview")}><ChatIcon name="back" /><span>{t("Banking")}</span></button>
         <div class="messenger-identity"><h1 class="messenger-conversation-title" title={conversationTitle}>{conversationTitle}</h1></div>
         <button type="button" class="messenger-icon conversation-context-toggle" aria-label={t("Account context")} aria-expanded={contextOpen} onClick={() => setContextOpen(true)}><BankingIcon name="accounts"/></button>
         <button ref={historyToggle} type="button" class="messenger-icon" onClick={() => { setMenuOpen(false); setHistoryOpen(true); }} aria-label={t("Conversation history")} aria-expanded={wideLayout || historyOpen} aria-controls="messenger-history"><ChatIcon name="history" /><span>{t("History")}</span></button>
@@ -402,7 +403,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
               {turns.map((turn, index) => <div class="messenger-exchange" key={turn.id}>
                 {(index === 0 || dayFor(turn.createdAt) !== dayFor(turns[index - 1].createdAt)) && <div class="messenger-date">{dayFor(turn.createdAt)}</div>}
                 <MessageBubble role="user" text={turn.userText} timestamp={turn.createdAt} voice={turn.source === "VOICE"} status="Saved" />
-                <div class={animatedTurn.current === turn.id ? "messenger-arrival" : undefined}><AssistantResponse turn={turn} accessToken={token} busy={busy} applicationBusy={chatBusy} onApplicationLocked={value => lockLoan(turn.clientId, value)} active={!!turn.workflow && !turns.slice(index + 1).some(t => !!t.workflow)} applicationActive={turn.banking?.type === "LOAN_APPLICATION" && !turns.slice(index + 1).some(t => t.banking?.version === 1 && t.banking.type === "LOAN_APPLICATION")} onAction={action => void submit(action.type === "CONFIRM" ? workflowConfirmationLabel(turn.workflow!.operation) : action.type === "CANCEL" ? "Cancel" : turn.workflow?.choices.find(c => c.id === action.value)?.label || "Choose account", "TEXT", action)} /></div>
+                <div class={animatedTurn.current === turn.id ? "messenger-arrival" : undefined}><AssistantResponse turn={turn} accessToken={token} profile={session.profile} onAccountsChanged={onRefreshAccounts} busy={busy} applicationBusy={chatBusy} onApplicationLocked={value => lockApplication(turn.clientId, value)} active={!!turn.workflow && !turns.slice(index + 1).some(t => !!t.workflow)} applicationActive={isApplicationTurn(turn) && !turns.slice(index + 1).some(isApplicationTurn)} onAction={action => void submit(action.type === "CONFIRM" ? workflowConfirmationLabel(turn.workflow!.operation) : action.type === "CANCEL" ? "Cancel" : turn.workflow?.choices.find(c => c.id === action.value)?.label || "Choose account", "TEXT", action)} /></div>
               </div>)}
               {!sending && turns.length > 0 && !turns[turns.length - 1].workflow && <div class="messenger-suggestions" role="group" aria-label={t("Follow-up suggestions")}>
                 {getFollowUpSuggestions(turns[turns.length - 1].banking?.type).map(suggestion => <button key={suggestion} type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(t(suggestion))}>{t(suggestion)} <span aria-hidden="true">↗</span></button>)}
@@ -411,7 +412,7 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
               {sending && <MessageBubble animate role="assistant"><span class="messenger-thinking" role="status"><i /><i /><i /><span>{t("Finding your answer…")}</span></span></MessageBubble>}
             </div>
             {chatBusy && !sending && <p class="messenger-loading" role="status">{t("Loading conversation…")}</p>}
-            {loanLocked && <p class="messenger-loading" role="status">Resolve the current loan application using its status check or retry before starting another request.</p>}
+            {applicationLocked && <p class="messenger-loading" role="status">Finish the current application or resolve its result using the available status check or retry before starting another request.</p>}
             {notice && notice !== greeting && <MessageBubble key={notice} animate role="assistant" text={t(notice)}>
               {pendingDelete.current && <div class="messenger-inline-actions"><button type="button" disabled={busy} onClick={() => void submit("cancel")}>{t("Keep conversation")}</button><button type="button" disabled={busy} onClick={() => void submit("confirm delete")}>{t("Confirm delete")}</button></div>}
             </MessageBubble>}
@@ -433,6 +434,8 @@ export function ConversationWorkspace({ session, onClose, onLogout, accounts = [
         <div class="messenger-quick-actions" role="group" aria-label={t("Banking quick actions")} lang={hindi ? "hi" : "en"}>
           <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(hindi ? "मेरा बैलेंस कितना है?" : "show my balance")}>{hindi ? "बैलेंस देखें" : t("Check Balance")}</button>
           <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(hindi ? "पैसे भेजें" : "send money")}>{hindi ? "पैसे भेजें" : t("Send Money")}</button>
+          <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit("open account")}>{hindi ? "खाता खोलें" : "Open account"}</button>
+          <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit("create mandate")}>{hindi ? "मैंडेट बनाएँ" : "Create mandate"}</button>
           <button type="button" disabled={busy || listening || !!pending.current} onClick={() => void submit(t("Show my latest transactions"))}>{hindi ? "लेन-देन देखें" : t("Recent Transactions")}</button>
           <button type="button" disabled={listening} onClick={() => showGuidance("help")}>{hindi ? "मदद लें" : t("Get Help")}</button>
         </div>

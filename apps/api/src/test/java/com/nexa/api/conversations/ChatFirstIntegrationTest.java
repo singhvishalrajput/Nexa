@@ -313,6 +313,57 @@ public class ChatFirstIntegrationTest {
   }
 
   @Test
+  void accountAndMandateEntriesOverrideOldReadsWithoutCreatingProducts() throws Exception {
+    assertThat(say("show loans").get("intent").asText()).isEqualTo("GET_LOANS");
+    int accountsBefore = db.queryForObject("SELECT COUNT(*) FROM accounts", Integer.class);
+    int transactionsBefore = db.queryForObject("SELECT COUNT(*) FROM transactions", Integer.class);
+    for (String text : List.of("open account", "create account", "create mandate", "set up a direct debit")) {
+      boolean account = text.contains("account");
+      var response = say(text);
+      assertThat(response.get("intent").asText()).as(text).isEqualTo(account ? "OPEN_ACCOUNT" : "CREATE_MANDATE");
+      assertThat(response.path("banking").path("type").asText()).isEqualTo(account ? "ACCOUNT_APPLICATION" : "MANDATE_APPLICATION");
+      assertThat(response.path("response").path("type").asText()).isEqualTo(account ? "ACCOUNT_APPLICATION" : "MANDATE_APPLICATION");
+      assertThat(response.get("workflow").isNull()).isTrue();
+    }
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM accounts", Integer.class)).isEqualTo(accountsBefore);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM transactions", Integer.class)).isEqualTo(transactionsBefore);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM conversation_workflows WHERE conversation_id=?", Integer.class, chat)).isZero();
+    assertThat(say("show accounts").get("intent").asText()).isEqualTo("GET_ACCOUNTS");
+    assertThat(say("show mandates").get("intent").asText()).isEqualTo("GET_MANDATES");
+  }
+
+  @Test
+  void accountAndMandateFormsPreservePendingPaymentAndNeverConfirmIt() throws Exception {
+    String action = proposal();
+    String before = db.queryForObject("SELECT state FROM conversation_workflows WHERE id=?", String.class, action);
+    for (String text : List.of("open account", "create mandate")) {
+      var response = say(text);
+      assertThat(response.get("workflow").isNull()).isTrue();
+      assertThat(db.queryForObject("SELECT state FROM conversation_workflows WHERE id=?", String.class, action)).isEqualTo(before);
+    }
+    var continued = say("yes").get("workflow");
+    assertThat(continued.get("id").asText()).isEqualTo(action);
+    assertThat(continued.get("status").asText()).isEqualTo("REVIEW");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM transactions WHERE record_kind='PAYMENT' AND source_account_id=?", Integer.class, source)).isZero();
+  }
+
+  @Test
+  void accountAndMandateQuestionsAndGuardedCommandsDoNotOpenForms() throws Exception {
+    int accountsBefore = db.queryForObject("SELECT COUNT(*) FROM accounts", Integer.class);
+    int mandatesBefore = db.queryForObject("SELECT COUNT(*) FROM transactions WHERE record_kind='MANDATE'", Integer.class);
+    for (String text : List.of("How do I open an account?", "Can I create a mandate?", "don't open account",
+        "do not create mandate", "create mandate tomorrow", "open account and transfer 500",
+        "show my account details", "show mandates")) {
+      var response = say(text);
+      assertThat(response.get("intent").asText()).as(text).isNotIn("OPEN_ACCOUNT", "CREATE_MANDATE");
+      assertThat(response.path("banking").path("type").asText()).isNotIn("ACCOUNT_APPLICATION", "MANDATE_APPLICATION");
+    }
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM accounts", Integer.class)).isEqualTo(accountsBefore);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM transactions WHERE record_kind='MANDATE'", Integer.class)).isEqualTo(mandatesBefore);
+  }
+
+  @Test
   void applyingForALoanReturnsTheApplicationFormWithoutCreatingOrDisbursingALoan() throws Exception {
     assertThat(say("show loans").get("intent").asText()).isEqualTo("GET_LOANS");
     int documentsBefore = db.queryForObject("SELECT COUNT(*) FROM loan_salary_slips", Integer.class);

@@ -45,6 +45,8 @@ export type BankingContent = { version: 1; responseType?: string; errorCode?: st
   { type: "CARDS"; cards: CardSnapshot[] } |
   { type: "LOANS"; loans: LoanSnapshot[] } |
   { type: "LOAN_APPLICATION" } |
+  { type: "ACCOUNT_APPLICATION" } |
+  { type: "MANDATE_APPLICATION" } |
   { type: "ACTION_REQUIRED"; action?: { operation: string; status: string; accountId: string; targetId: string; amount?: Money; currencyCode: string; confirmationRequired: boolean; executionAvailable: boolean } } |
   { type: "TRANSFER_STATUS"; transfer: { id: string; reference: string; amount: Money; currencyCode: string; status: string } } |
   { type: "TEXT"; meta?: { knowledgeTopic?: string; knowledgeId?: string; knowledgeVersion?: number; source?: string; category?: string; language?: string } } | { type: "ERROR" }
