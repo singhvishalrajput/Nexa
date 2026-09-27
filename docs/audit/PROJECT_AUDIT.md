@@ -1,5 +1,7 @@
 # Nexa project audit — 25 September 2026
 
+> Folder cleanup update: `apps/frontend` and `tools/demo` were removed from `purvak` on 27 September 2026. This audit retains its original baseline and findings; see the [current repository layout](../REPOSITORY_LAYOUT.md).
+
 Repository baseline: branch `rb-fe`, commit `2d5ce83`. Scope: tracked source, API routes and services, persistence/entities and migrations, configuration, both frontend applications, tests, CI, documentation and operational/demo scripts. The baseline contains **443 tracked files**: API 217, integrated web 129, prototype frontend 60, docs 24, scripts 6, demo tools 3, root/CI 4.
 
 This audit is a historical snapshot taken before the account-opening implementation. Its findings and line references describe the baseline above. Subsequent local changes add reviewed account opening, generated receipts, receipt-funded activation, demo retirement and teammate setup; see [the upgrade notes](../ACCOUNT_OPENING_UPGRADE.md). Other audit findings remain open unless explicitly addressed there. No running Oracle schema, live customer data, external deployment configuration, production traffic, or installed Ollama model was inspected during the audit.
@@ -191,4 +193,3 @@ Potential frontend changes to explain and approve before implementation: verific
 - Static entrypoint/import/reference tracing: all 48 integrated web TS/TSX modules reachable; all 16 CSS files and five image assets referenced. Unreachable branches and prototype orphans are listed separately.
 - All SQL migrations plus V17 Java, repository classes and setup/cutover/demo utilities reviewed. Tests and comments are evidence of intended behavior, not substitutes for the current source.
 - Not performed: live Oracle catalog/data verification, full Oracle migration rehearsal, deployed security/header inspection, browser visual QA, real payment-provider testing or dependency-vulnerability scanning.
-

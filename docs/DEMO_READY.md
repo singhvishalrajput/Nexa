@@ -1,4 +1,4 @@
-> Historical demo instructions, superseded by the account-opening upgrade. Do not run the old seed or customer-cleanup tools for the current submission. See docs/ACCOUNT_OPENING_UPGRADE.md and docs/DEMO_RETIREMENT.md in the repository root.
+> Historical snapshot from 17 September 2026, superseded by the account-opening upgrade. The identities, balances and credential-file locations below describe that date, not the current environment. The obsolete `tools/demo` seed and maintenance directory has been removed. For current setup, use [Account opening](ACCOUNT_OPENING_UPGRADE.md), [Bank funding](BANK_FUNDING.md) and [Demo retirement](DEMO_RETIREMENT.md).
 
 # Demo setup: 17 September 2026
 
@@ -22,4 +22,4 @@ Verification: the full backend suite passed (138 tests, one optional model test 
 
 The administrator password was updated on 2026-09-17 and verified through the normal login endpoint and the administrator loan queue. The current credential is stored in the ignored local `.tools/admin-access.json`.
 
-See [setup, recovery and accounting](../tools/demo/README.md), [V21 approval/funding migration](../apps/api/src/main/resources/db/migration/V21__admin_loan_approval_and_bank_funding.sql), [V22 payee repair](../apps/api/src/main/resources/db/migration/V22__linked_payee_destination_hash.sql) and the [current six-table schema](SIX_TABLE_SCHEMA.sql).
+For current setup and accounting, see [Account opening](ACCOUNT_OPENING_UPGRADE.md) and [Bank funding](BANK_FUNDING.md). Historical implementation references: [V21 approval/funding migration](../apps/api/src/main/resources/db/migration/V21__admin_loan_approval_and_bank_funding.sql), [V22 payee repair](../apps/api/src/main/resources/db/migration/V22__linked_payee_destination_hash.sql) and the [six-table schema snapshot](SIX_TABLE_SCHEMA.sql).

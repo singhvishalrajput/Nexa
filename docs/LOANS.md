@@ -77,6 +77,6 @@ cd apps/api
 ./mvnw.cmd verify
 ```
 
-## Curated demo and bank settlement
+## Bank settlement
 
-V21 adds persisted administrator review and the bank funding reserve/control accounts. Loan requests now wait for administrator approval, including the legacy creation endpoint. Pending or rejected loans cannot be disbursed. See [the demo setup and accounting guide](../tools/demo/README.md) for cleanup, recovery, funding, credentials and the three-customer demonstration.
+V21 adds persisted administrator review and the bank funding reserve/control accounts. Loan requests now wait for administrator approval, including the legacy creation endpoint. Pending or rejected loans cannot be disbursed. See [Bank funding](BANK_FUNDING.md) for reserve funding, receipt recovery and accounting, and [Account opening](ACCOUNT_OPENING_UPGRADE.md) for the current customer setup workflow.

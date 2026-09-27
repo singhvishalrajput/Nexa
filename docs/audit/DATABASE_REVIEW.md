@@ -1,5 +1,7 @@
 # Nexa database review — 25 September 2026
 
+> Historical schema audit. References to `tools/demo` below describe retired utilities removed from `purvak` on 27 September 2026. See the [current repository layout](../REPOSITORY_LAYOUT.md) and [bank funding workflow](../BANK_FUNDING.md).
+
 This reviews the schema defined in source through V23 and the application's persistence code. **The live Oracle catalog and data were not queried.** Counts below assume successful execution of the checked-in migration sequence and describe the optional retirement step separately.
 
 See [the main audit](C:/Users/Purva/Project/BANK_APP/Nexa/docs/audit/PROJECT_AUDIT.md) for service/API defects and priorities.
@@ -60,10 +62,10 @@ The [retirement utility](C:/Users/Purva/Project/BANK_APP/Nexa/scripts/java/SixTa
 [SixTableCutover.java](C:/Users/Purva/Project/BANK_APP/Nexa/scripts/java/SixTableCutover.java:97) checks balanced journals, selected ownership/password invariants, and successful TX-prefixed payments missing journals. It does not prove all account balances match entries plus opening balances, all funding/control totals are correct, or all historical transfer/session semantics survived. Old-table archive checksums validate the archive; they do not validate the new representation's completeness. Expand checks and perform restore rehearsal before retirement.
 
 **D07 — V23 invalidates the demo tool's backup/cleanup assumptions.**  
-[DemoDataMaintenance.java](C:/Users/Purva/Project/BANK_APP/Nexa/tools/demo/DemoDataMaintenance.java:13) excludes LOAN_SALARY_SLIPS from its hardcoded backup membership. Its restore script deletes accounts (line 96), but [V23__loan_salary_slips.sql](C:/Users/Purva/Project/BANK_APP/Nexa/apps/api/src/main/resources/db/migration/V23__loan_salary_slips.sql:4) has a non-cascading document→account FK. Restore/cleanup can fail after document-backed loans exist, and backups lack documents. Rollback exists at line 311: this audit observed no deletion or data loss. Include documents, restore/delete dependency order, binary data handling and verification together.
+[DemoDataMaintenance.java](https://github.com/singhvishalrajput/Nexa/blob/9ab8a6d91fbf3a6a2d42d9a8f5b732d1816b2c0a/tools/demo/DemoDataMaintenance.java#L13) excludes LOAN_SALARY_SLIPS from its hardcoded backup membership. Its restore script deletes accounts (line 96), but [V23__loan_salary_slips.sql](C:/Users/Purva/Project/BANK_APP/Nexa/apps/api/src/main/resources/db/migration/V23__loan_salary_slips.sql:4) has a non-cascading document→account FK. Restore/cleanup can fail after document-backed loans exist, and backups lack documents. Rollback exists at line 311: this audit observed no deletion or data loss. Include documents, restore/delete dependency order, binary data handling and verification together.
 
 **D08 — The demo client is behind the API contract.**  
-[seed-demo.cjs](C:/Users/Purva/Project/BANK_APP/Nexa/tools/demo/seed-demo.cjs:50) creates loans with JSON; [LoanController.java](C:/Users/Purva/Project/BANK_APP/Nexa/apps/api/src/main/java/com/nexa/api/controller/LoanController.java:48) now rejects JSON-only creation. Multipart documents and verified document IDs are required. Update fixture generation through the current documented flow, and never run it against real users.
+[seed-demo.cjs](https://github.com/singhvishalrajput/Nexa/blob/9ab8a6d91fbf3a6a2d42d9a8f5b732d1816b2c0a/tools/demo/seed-demo.cjs#L50) creates loans with JSON; [LoanController.java](C:/Users/Purva/Project/BANK_APP/Nexa/apps/api/src/main/java/com/nexa/api/controller/LoanController.java:48) now rejects JSON-only creation. Multipart documents and verified document IDs are required. Update fixture generation through the current documented flow, and never run it against real users.
 
 **D09 — Generated H2 schemas do not validate the full Oracle migration chain.**  
 [SixTableBankingIntegrationTest.java](C:/Users/Purva/Project/BANK_APP/Nexa/apps/api/src/test/java/com/nexa/api/banking/SixTableBankingIntegrationTest.java:26) disables Flyway and normally uses H2 create-drop. [MigrationVersionTest.java](C:/Users/Purva/Project/BANK_APP/Nexa/apps/api/src/test/java/com/nexa/api/banking/MigrationVersionTest.java:16) resolves migration metadata without applying Oracle SQL. Some loan migrations are executed in adapted H2 tests, which is useful but narrower. Add disposable Oracle fresh-install and upgrade tests; optional existing-schema tests are not a substitute and can create fixtures/temporary failure constraints.
@@ -96,4 +98,3 @@ Do not set a target table count. Keep the present frontend-facing DTOs while int
 Use expand → copy/backfill → reconcile → switch readers/writers → retire. Preserve stable external IDs and old references, enforce FKs/NOT NULL/status checks/typed dates, and create tested rollback/restore procedures. Keep the current UI contract through compatibility projections while migrating.
 
 Do not run setup, cutover, retirement, cleanup or seed scripts as part of merely reading this audit. No such operations were performed here.
-

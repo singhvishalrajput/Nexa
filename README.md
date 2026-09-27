@@ -20,6 +20,8 @@ See [the Knowledge Base](docs/KNOWLEDGE_BASE.md) for grounded banking explanatio
 - `apps/api`: authentication, customer-facing APIs, conversations, product views, migrations and backend tests in the same application.
 - `apps/web`: the integrated web client.
 
+See [repository layout and completed folder cleanup](docs/REPOSITORY_LAYOUT.md) for the retained directories and the retired prototype/demo tools.
+
 Start the API from `apps/api` with `./mvnw.cmd spring-boot:run` (or `mvn spring-boot:run`) after configuring Oracle. It listens on port **8088**. Start the frontend from `apps/web` with `npm ci` and `npm run dev`.
 
 Validate with `mvn verify` in `apps/api` and `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` in `apps/web`. Optional live API checks use `npm run test:live` with test credentials supplied through environment variables.

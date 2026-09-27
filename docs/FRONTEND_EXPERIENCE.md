@@ -1,6 +1,6 @@
 # Frontend experience migration
 
-`apps/frontend` is the visual reference. `apps/web` remains the deployable application and owns authentication, APIs, permissions and workflows. The reference's local banking simulation is not used for real banking.
+The standalone `apps/frontend` visual prototype has been removed from the working tree. Its source remains in Git history at commit `9ab8a6d91fbf3a6a2d42d9a8f5b732d1816b2c0a`. `apps/web` remains the deployable application and owns authentication, APIs, permissions and workflows. The reference's local banking simulation is not used for real banking.
 
 ## Capability map
 
@@ -35,7 +35,7 @@ OJET VComponent/Preact is the existing Oracle JET runtime, not React. New intera
 - Browser checks used the UI fixture server: desktop conversation/account navigation, account dialog, sign-out and authentication artwork, landing page, transfer review/edit and retained values, and phone navigation/chat.
 - A normal OJET build initially passed. Subsequent default staging builds encountered Windows `EBUSY` locks in generated JET theme images. Final verification used an isolated staging directory under ignored `.tools`, the Oracle JET build pipeline, and explicit TypeScript emission; browser checks ran against that output. No build configuration or dependency versions were changed.
 
-The source blueprint is retained in `apps/frontend`. Its illustrative landing assets are copied into `apps/web`; its simulated banking/session implementation is not imported. Existing native controls in retained business screens remain framework-free; the new shared actions, authentication fields, language selector, transfer controls, progress indicator and dialogs use Oracle JET.
+The illustrative landing assets remain in `apps/web`; the prototype's simulated banking/session implementation is not imported. Existing native controls in retained business screens remain framework-free; the new shared actions, authentication fields, language selector, transfer controls, progress indicator and dialogs use Oracle JET.
 
 ## Loading and contrast follow-up
 
