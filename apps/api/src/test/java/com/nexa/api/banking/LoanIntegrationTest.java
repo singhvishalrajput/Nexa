@@ -255,6 +255,86 @@ class LoanIntegrationTest {
   }
 
   @Test
+  void applicationLookupRequiresAuthenticationValidKeyAndExistingOwnedApplication() throws Exception {
+    String prefix = "/api/v1/loans/applications/by-request/";
+    String missing = "chat-loan-" + UUID.randomUUID();
+    int accountsBefore = db.queryForObject("SELECT COUNT(*) FROM accounts", Integer.class);
+    int documentsBefore = db.queryForObject("SELECT COUNT(*) FROM loan_salary_slips", Integer.class);
+    int transactionsBefore = db.queryForObject("SELECT COUNT(*) FROM transactions", Integer.class);
+
+    mvc.perform(get(prefix + missing)).andExpect(status().isUnauthorized());
+    mvc.perform(get(prefix + missing).header("Authorization", auth)).andExpect(status().isNotFound());
+    for (String invalid : List.of("bad.reference", "a".repeat(81)))
+      mvc.perform(get(prefix + invalid).header("Authorization", auth)).andExpect(status().isBadRequest());
+
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM accounts", Integer.class)).isEqualTo(accountsBefore);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM loan_salary_slips", Integer.class)).isEqualTo(documentsBefore);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM transactions", Integer.class)).isEqualTo(transactionsBefore);
+  }
+
+  @Test
+  void applicationLookupAndMultipartReplayReturnCurrentRecordWithoutDuplicateDocumentsOrMoney() throws Exception {
+    String key = "chat-loan-" + UUID.randomUUID();
+    String path = "/api/v1/loans/applications/by-request/" + key;
+    BigDecimal sourceBefore = balance(source), destinationBefore = balance(destination);
+    BigDecimal reserveBefore = db.queryForObject("SELECT balance FROM accounts WHERE account_number='NEXA-BANK-FUNDING'", BigDecimal.class);
+    int paymentsBefore = db.queryForObject("SELECT COUNT(*) FROM transactions WHERE record_kind='PAYMENT'", Integer.class);
+    int ledgerBefore = db.queryForObject("SELECT COUNT(*) FROM ledger_entries", Integer.class);
+    var submitted = postJson("/api/v1/loans", application(key, 3), auth, 201);
+    String id = submitted.path("id").asText();
+    var documents = documentIds(id);
+
+    for (int repeat = 0; repeat < 3; repeat++) {
+      var response = mvc.perform(get(path).header("Authorization", auth))
+          .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+          .andReturn().getResponse();
+      var found = json.readTree(response.getContentAsString());
+      assertThat(found.path("id").asText()).isEqualTo(id);
+      assertThat(found.path("status").asText()).isEqualTo("PENDING_APPROVAL");
+      assertThat(found.at("/terms/applicationKey").asText()).isEqualTo(key);
+      assertThat(found.path("accountId").asText()).isEqualTo(source);
+      assertThat(found.at("/terms/amount").decimalValue()).isEqualByComparingTo("12000");
+      assertThat(found.toString()).doesNotContain("fileContent", "%PDF");
+    }
+
+    approve(id);
+    assertThat(getJson(path, auth).path("status").asText()).isEqualTo("APPROVED");
+    var replay = postJson("/api/v1/loans", application(key, 3), auth, 201);
+    assertThat(replay.path("id").asText()).isEqualTo(id);
+    assertThat(replay.path("status").asText()).isEqualTo("APPROVED");
+    assertThat(replay.at("/terms/applicationKey").asText()).isEqualTo(key);
+    assertThat(documentIds(id)).containsExactlyElementsOf(documents).hasSize(3);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM accounts WHERE application_key=?", Integer.class, key)).isEqualTo(1);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM transactions WHERE record_kind='PAYMENT'", Integer.class)).isEqualTo(paymentsBefore);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM ledger_entries", Integer.class)).isEqualTo(ledgerBefore);
+    assertThat(balance(source)).isEqualByComparingTo(sourceBefore);
+    assertThat(balance(destination)).isEqualByComparingTo(destinationBefore);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE account_number='NEXA-BANK-FUNDING'", BigDecimal.class)).isEqualByComparingTo(reserveBefore);
+  }
+
+  @Test
+  void applicationLookupNeverLeaksAnotherCustomersRecordEvenWhenRequestKeysMatch() throws Exception {
+    String key = "chat-loan-" + UUID.randomUUID();
+    String path = "/api/v1/loans/applications/by-request/" + key;
+    String firstId = postJson("/api/v1/loans", application(key, 3), auth, 201).path("id").asText();
+    mvc.perform(get(path).header("Authorization", otherAuth)).andExpect(status().isNotFound());
+
+    var secondApplication = new HashMap<>(application(key, 3));
+    secondApplication.put("accountId", Long.valueOf(destination));
+    String secondId = postJson("/api/v1/loans", secondApplication, otherAuth, 201).path("id").asText();
+    assertThat(secondId).isNotEqualTo(firstId);
+    var first = getJson(path, auth);
+    var second = getJson(path, otherAuth);
+    assertThat(first.path("id").asText()).isEqualTo(firstId);
+    assertThat(first.path("accountId").asText()).isEqualTo(source);
+    assertThat(second.path("id").asText()).isEqualTo(secondId);
+    assertThat(second.path("accountId").asText()).isEqualTo(destination);
+    assertThat(first.at("/terms/applicationKey").asText()).isEqualTo(key);
+    assertThat(second.at("/terms/applicationKey").asText()).isEqualTo(key);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM accounts WHERE application_key=?", Integer.class, key)).isEqualTo(2);
+  }
+
+  @Test
   void salarySlipsAreMandatoryAndInvalidUploadsRollBackTheApplication() throws Exception {
     mvc.perform(post("/api/v1/loans").header("Authorization", auth)
         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(application("no-documents", 3))))
@@ -269,6 +349,9 @@ class LoanIntegrationTest {
     mvc.perform(bad.header("Authorization", auth)).andExpect(status().isBadRequest());
     assertThat(db.queryForObject("SELECT COUNT(*) FROM accounts WHERE application_key IN"
         + " ('no-documents','missing-documents','bad-documents')", Integer.class)).isZero();
+    for (String key : List.of("no-documents", "missing-documents", "bad-documents"))
+      mvc.perform(get("/api/v1/loans/applications/by-request/" + key).header("Authorization", auth))
+          .andExpect(status().isNotFound());
   }
 
   @Test

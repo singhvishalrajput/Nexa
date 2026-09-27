@@ -34,4 +34,9 @@ public class TransactionsController {
   public TransactionResponse detail(@PathVariable String id) {
     return service.detail(id);
   }
+
+  @GetMapping("/categories")
+  public java.util.List<String> categories(@RequestParam String accountId) {
+    return service.categories(accountId);
+  }
 }

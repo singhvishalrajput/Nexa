@@ -36,6 +36,12 @@ public class LoanController {
     return service.detail(id);
   }
 
+  @GetMapping("/applications/by-request/{applicationKey}")
+  public ResponseEntity<BankingModels.Loan> application(@PathVariable String applicationKey) {
+    return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore())
+        .body(service.detail(operations.loanApplicationId(applicationKey)));
+  }
+
   @GetMapping("/{id}/payments")
   public List<?> payments(@PathVariable String id) {
     var loan = service.detail(id);

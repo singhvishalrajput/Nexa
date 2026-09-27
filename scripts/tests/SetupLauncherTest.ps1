@@ -18,6 +18,34 @@ $schemaParameter = $ast.ParamBlock.Parameters | Where-Object { $_.Name.VariableP
 if ($schemaParameter.DefaultValue.SafeGetValue() -ne 'NEXA_BANK_APP') {
     throw 'The default would target the other Nexa checkout.'
 }
+foreach ($flag in @('InspectCardMigration', 'RecoverCardMigration')) {
+    if (-not ($ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq $flag })) {
+        throw "The $flag maintenance switch is missing."
+    }
+}
+
+# These invalid combinations must stop before Java, builds, password prompts or DB access.
+foreach ($case in @(
+    @{ Arguments = @('-InspectCardMigration'); Message = 'requires -ExistingSchema' },
+    @{ Arguments = @('-RecoverCardMigration'); Message = 'requires -ExistingSchema' },
+    @{ Arguments = @('-InspectCardMigration', '-RecoverCardMigration'); Message = 'requires -ExistingSchema' },
+    @{ Arguments = @('-ExistingSchema', '-InspectCardMigration', '-RecoverCardMigration'); Message = 'not both' }
+)) {
+    $info = [Diagnostics.ProcessStartInfo]::new()
+    $info.FileName = Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })
+    foreach ($argument in @('-NoProfile', '-NonInteractive', '-File', $setupPath) + $case.Arguments) {
+        $info.ArgumentList.Add($argument)
+    }
+    # Poison Java discovery so a misplaced guard cannot silently reach a normal setup.
+    $info.Environment['JAVA_HOME'] = Join-Path $PSScriptRoot 'missing-java-for-guard-test'
+    $result = Invoke-SetupProcess $info
+    $diagnostic = $result.StandardOutput + $result.StandardError
+    if ($result.ExitCode -eq 0 -or -not $diagnostic.Contains($case.Message) -or
+        $diagnostic.Contains('JDK 17') -or $diagnostic.Contains('Connecting setup') -or
+        $diagnostic.Contains('Password for')) {
+        throw 'Maintenance switches did not fail safely before setup side effects.'
+    }
+}
 
 function New-TestProcess([string]$Command) {
     $info = [Diagnostics.ProcessStartInfo]::new()
@@ -57,4 +85,4 @@ $silent = Invoke-SetupProcess (New-TestProcess 'exit 7')
 if ($silent.ExitCode -ne 7 -or $silent.StandardOutput -or $silent.StandardError) {
     throw 'Silent child failure was not retained.'
 }
-Write-Output 'Setup launcher checks passed: safe default schema, success/failure output, concurrent large streams, full secret redaction, and silent failure. No database connection made.'
+Write-Output 'Setup launcher checks passed: safe default schema, maintenance switch guards, success/failure output, concurrent large streams, full secret redaction, and silent failure. No database connection made.'

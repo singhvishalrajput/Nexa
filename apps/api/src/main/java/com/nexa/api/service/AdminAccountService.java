@@ -185,11 +185,18 @@ public class AdminAccountService {
         && a.getStatus() == AccountStatus.CLOSED
         && r.status() != AccountStatus.CLOSED)
       throw new InvalidRequestException("A repaid loan cannot be reopened.");
+    if (a.getAccountType() == AccountType.CARD
+        && a.getStatus() == AccountStatus.CLOSED
+        && r.status() != AccountStatus.CLOSED)
+      throw new InvalidRequestException("A closed card cannot be reopened. Submit a new card application.");
     var beforeName = a.getAccountName();
     var beforeStatus = a.getStatus().name();
     a.setAccountName(r.name().trim());
     a.setStatus(r.status());
     em.flush();
+    if (a.getAccountType() == AccountType.CARD && a.getStatus() == AccountStatus.CLOSED)
+      db.update("UPDATE accounts SET product_status=CASE WHEN product_status='REJECTED' THEN 'REJECTED' ELSE 'CLOSED' END,"
+          + "card_slot_key=NULL,card_customer_block=0,closed_at=COALESCE(closed_at,CURRENT_TIMESTAMP) WHERE id=?", id);
     db.update(
         "INSERT INTO"
             + " transactions(id,record_kind,user_id,source_account_id,operation,status,audit_reason,before_name,after_name,before_status,after_status,created_at)"

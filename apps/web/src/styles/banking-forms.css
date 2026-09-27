@@ -1,3 +1,19 @@
+/* The same loan form can be completed within a conversation. */
+.conversation-loan-application .bank-create-description { padding: 0 20px 18px; margin: 0; color: var(--nexa-text-muted); }
+.conversation-loan-application .bank-editor-form { border-top: 1px solid var(--nexa-border); }
+.conversation-loan-application fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+.conversation-loan-application .bank-fields-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 20px; align-items: start; }
+.conversation-loan-application .bank-field-wide { grid-column: 1 / -1; }
+.conversation-loan-application :is(input,select) { width: 100%; min-width: 0; min-height: 40px; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--nexa-border); border-radius: 8px; background: var(--nexa-surface); color: var(--nexa-text); font: inherit; }
+.conversation-loan-application :is(input,select):focus-visible { outline: 2px solid var(--nexa-focus); outline-offset: 2px; }
+.conversation-loan-application .loan-slip-fields { padding: 16px; border: 1px solid var(--nexa-border); border-radius: 10px; }
+.conversation-loan-application .loan-slip-fields legend { padding: 0 6px; font-size: 13px; font-weight: 600; }
+.conversation-loan-application .loan-slip-inputs { display: grid; gap: 14px; margin: 14px 0 10px; }
+.conversation-loan-application .bank-editor-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.conversation-loan-application > .bank-button { margin-top: 12px; }
+.conversation-loan-application [role=alert] { color: var(--nexa-error); }
+@media (max-width: 600px) { .conversation-loan-application .bank-fields-grid { grid-template-columns: minmax(0,1fr); } }
+
 /* Customer product pages: one control scale, with labels outside the field. */
 .experience-workspace .bank-service-page {
   --oj-text-field-height: 40px;
@@ -109,6 +125,38 @@
 .experience-workspace .bank-service-page .loan-timeline strong { font-size: 13px; }
 .experience-workspace .bank-service-page .loan-timeline span { font-size: 12px; }
 
+/* External test transfers reuse the existing payment forms and panels. */
+.experience-workspace .external-transfer-page .external-transfer-layout { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(260px,1fr); align-items: start; gap: 20px; }
+.experience-workspace .external-transfer-page .external-test-notice { margin: 0 0 20px; padding: 14px 16px; border: 1px solid var(--nexa-border); border-radius: 8px; }
+.experience-workspace .external-transfer-page .bank-form { display: grid; gap: 16px; }
+.experience-workspace .external-transfer-page .bank-form :is(form,fieldset) { display: grid; gap: 16px; }
+.experience-workspace .external-transfer-page .bank-form > dl { padding: 0; }
+.experience-workspace .external-transfer-page .bank-form :is(p,h3) { margin: 0; }
+.experience-workspace .external-transfer-page .bank-form > button { justify-self: start; }
+.experience-workspace .external-transfer-page .bank-form-actions { flex-wrap: wrap; justify-content: flex-start; }
+.experience-workspace .external-transfer-page .external-readiness { display: grid; gap: 12px; }
+.experience-workspace .external-transfer-page .external-readiness > button { justify-self: start; }
+.experience-workspace .external-transfer-page .bank-record { gap: 12px; flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .experience-workspace .external-transfer-page .external-transfer-layout { grid-template-columns: minmax(0,1fr); }
+}
+
+/* Bill review and recovery remain within the existing product-detail panels. */
+.experience-workspace .bank-service-bills .bill-payment-panel { grid-column: 1 / -1; }
+.experience-workspace .bank-service-bills .bill-payment-body { display: grid; gap: 18px; }
+.experience-workspace .bank-service-bills .bill-payment-body > .bank-button { justify-self: start; }
+.experience-workspace .bank-service-bills .bill-payment-body :is(form,section) { display: grid; gap: 14px; }
+.experience-workspace .bank-service-bills .bill-payment-body :is(h3,p) { margin: 0; }
+.experience-workspace .bank-service-bills .bill-payment-body h3 { font-size: 15px; }
+.experience-workspace .bank-service-bills .bill-payment-body dl { padding: 0; }
+.experience-workspace .bank-service-bills .bill-payment-body .bank-form-actions { flex-wrap: wrap; justify-content: flex-start; }
+.experience-workspace .bank-service-bills .bill-payment-recipient { display: grid; align-content: start; gap: 7px; font-size: 13px; }
+.experience-workspace .bank-service-bills .bill-payment-recipient > strong { font-size: 12px; }
+.experience-workspace .bank-service-bills .bill-payment-attempts { padding-top: 18px; border-top: 1px solid var(--nexa-border); }
+.experience-workspace .bank-service-bills .bill-payment-attempts > summary { cursor: pointer; font-size: 15px; font-weight: 600; }
+.experience-workspace .bank-service-bills .bill-payment-attempts[open] > summary { margin-bottom: 14px; }
+.experience-workspace .bank-service-bills .bill-payment-attempts .bank-record { gap: 12px; flex-wrap: wrap; }
+
 /* JET still owns validation and events; external labels keep inputs on one line. */
 .experience-workspace .bank-service-page .transfer-workflow { width: 100%; max-width: 560px; }
 .experience-workspace .bank-service-page .transfer-entry { max-width: 960px; container: transfer-entry / inline-size; }
@@ -138,22 +186,19 @@
 .experience-workspace .bank-service-page .bank-operation-body label { display: grid; gap: 7px; font-size: 12px; font-weight: 550; }
 .experience-workspace .bank-service-page .bank-operation-body .bank-button { justify-self: start; }
 
-/* Payment review pairs a compact two-column form with equally aligned shortcuts. */
+/* One transfer workspace with a destination selector and related payment links. */
 .experience-workspace .bank-payments-page { container: payments-page / inline-size; }
-.experience-workspace .bank-payments-page .bank-payments-layout { display: grid; grid-template-columns: minmax(0,1.8fr) minmax(260px,1fr); gap: 20px; align-items: stretch; }
-.experience-workspace .bank-payments-page .bank-payment-review { min-width: 0; container: payment-review / inline-size; }
-.experience-workspace .bank-payments-page .bank-payment-fields { gap: 18px 20px; }
-.experience-workspace .bank-payments-page .bank-payment-target { display: grid; min-width: 0; gap: 8px; }
-.experience-workspace .bank-payments-page .bank-payment-target .bank-state { padding: 16px 12px; min-height: 0; font-size: 12px; }
-.experience-workspace .bank-payments-page .bank-pagination { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; margin: 0; padding: 0; border: 0; }
-.experience-workspace .bank-payments-page .bank-pagination span { flex-basis: 100%; }
-.experience-workspace .bank-payments-page .bank-pagination button { min-height: 32px; padding: 5px 8px; font-size: 11px !important; }
-.experience-workspace .bank-payments-page .bank-confirm-summary { margin: 0; padding: 14px 16px; border: 1px solid var(--nexa-border); border-radius: 8px; background: var(--nexa-background); }
-.experience-workspace .bank-payments-page .bank-confirm-summary h3 { font-size: 13px; line-height: 1.5; }
-.experience-workspace .bank-payments-page .bank-confirm-summary dl { padding: 0; }
-.experience-workspace .bank-payments-page .bank-confirm-summary .bank-detail:last-child { border-bottom: 0; padding-bottom: 0; }
+.experience-workspace .bank-payments-page .bank-payments-layout { display: grid; grid-template-columns: minmax(0,1.8fr) minmax(260px,1fr); gap: 20px; align-items: start; }
+.experience-workspace .bank-payments-page .bank-payment-destination { display: flex; align-items: end; flex-wrap: wrap; gap: 16px 24px; padding: 0 0 24px; }
+.experience-workspace .bank-payments-page .bank-payment-destination label { display: grid; gap: 8px; min-width: 220px; color: var(--nexa-text-secondary); font-size: 13px; font-weight: 550; }
+.experience-workspace .bank-payments-page .bank-payment-destination select { min-height: 40px; padding: 8px 34px 8px 12px; border: 1px solid var(--nexa-border-control); border-radius: 8px; background: var(--nexa-surface); color: var(--nexa-text); }
+.experience-workspace .bank-payments-page .bank-payment-destination p { flex: 1; min-width: min(240px,100%); margin: 0 0 5px; color: var(--nexa-text-muted); font-size: 13px; line-height: 1.6; }
+.experience-workspace .bank-payments-page .bank-payment-destination select:focus-visible { outline: 2px solid var(--nexa-focus); outline-offset: 2px; }
+.experience-workspace .bank-payments-page .bank-payment-transfer { min-width: 0; }
+.experience-workspace .bank-payments-page .external-transfer-embedded .external-transfer-layout { grid-template-columns: minmax(0,1fr); }
+.experience-workspace .bank-payments-page .bank-payment-transfer .bank-narrow { max-width: none; }
 .experience-workspace .bank-payments-page .bank-payment-shortcuts { display: flex; flex-direction: column; min-width: 0; }
-.experience-workspace .bank-payments-page .bank-payment-links { display: grid; grid-template-rows: repeat(2,minmax(0,1fr)); gap: 12px; flex: 1; padding: 16px; }
+.experience-workspace .bank-payments-page .bank-payment-links { display: grid; gap: 12px; padding: 0 16px 16px; }
 .experience-workspace .bank-payments-page .bank-payment-links a { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 16px 12px; border: 1px solid var(--nexa-border); border-radius: 9px; background: var(--nexa-background); color: var(--nexa-text); text-decoration: none; }
 .experience-workspace .bank-payments-page .bank-payment-links a:hover { border-color: var(--nexa-reference-f8c6b8); background: var(--nexa-soft); color: var(--nexa-text); }
 .experience-workspace .bank-payments-page .bank-payment-links a:focus-visible { outline: 2px solid var(--nexa-focus); outline-offset: 2px; }
@@ -163,15 +208,13 @@
 .experience-workspace .bank-payments-page .bank-payment-link-copy { display: grid; gap: 4px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .experience-workspace .bank-payments-page .bank-payment-link-copy strong { font-size: 13px; font-weight: 600; line-height: 1.5; }
 .experience-workspace .bank-payments-page .bank-payment-link-copy small { color: var(--nexa-text-muted); }
-.experience-workspace .bank-payments-page .bank-request-history { margin-top: 24px; }
-@container payment-review (max-width: 520px) {
-  .experience-workspace .bank-payments-page .bank-payment-fields { grid-template-columns: minmax(0,1fr); }
-}
 @container payments-page (max-width: 900px) {
   .experience-workspace .bank-payments-page .bank-payments-layout { grid-template-columns: minmax(0,1fr); }
   .experience-workspace .bank-payments-page .bank-payment-links { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: auto; }
 }
 @media (max-width: 600px) {
+  .experience-workspace .bank-payments-page .bank-payment-destination label { width: 100%; min-width: 0; }
+  .experience-workspace .bank-payments-page .bank-payment-destination select { font-size: 16px; }
   .experience-workspace .bank-payments-page .bank-payment-links { grid-template-columns: minmax(0,1fr); }
   .experience-workspace .bank-payments-page .bank-editor-actions .bank-button { width: 100%; }
 }

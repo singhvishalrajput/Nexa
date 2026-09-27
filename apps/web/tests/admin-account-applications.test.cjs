@@ -241,7 +241,7 @@ test('admin readiness is an independent admin-only queue read, not a customer el
   assert.ok(checks.length);assert.ok(queues.length);
   await checks.at(-1).load();await queues.at(-1).load();
   assert.deepEqual(h.calls.map(call=>call.name),['adminReadiness','listAdmin']);
-  assert.equal(h.calls[0].args[0],'synthetic-admin-token');assert.ok(h.button('Check service readiness'));
+  assert.equal(h.calls[0].args[0],'synthetic-admin-token');assert.ok(h.button('Refresh applications'));
 });
 
 test('unknown admin readiness fails closed for every mutation even when the obsolete browser flag is true',async()=>{
@@ -259,8 +259,8 @@ test('readiness loading/errors disable admin actions while read-only readiness r
     const h=harness(fixture('CASH_RECEIVED'),{detail:true,readinessState});
     assert.equal(h.button('Create account from received cash').props.disabled,true);
     h.press('Create account from received cash');await settle();assert.equal(h.calls.length,0);
-    assert.equal(h.button('Check service readiness').props.disabled,readinessState.loading);
-    if(readinessState.error)assert.match(content(h.tree),/Readiness could not be confirmed/);
+    assert.equal(h.button('Refresh application').props.disabled,readinessState.loading);
+    if(readinessState.error)assert.match(content(h.tree),/actions are temporarily unavailable/);
   }
 });
 
@@ -337,12 +337,12 @@ test('read-only admin readiness refresh stays usable during unknown cash outcome
   h.input('I physically received and counted this exact opening amount',true);
   h.press('Record actual cash receipt');await settle();h.render();
   const original=h.calls.find(call=>call.name==='receiveCash');
-  assert.ok(original);assert.equal(h.button('Refresh application').props.disabled,true);
-  assert.equal(h.button('Check service readiness').props.disabled,false);
+  assert.ok(original);assert.equal(h.button('Refresh application').props.disabled,false);
+  assert.equal(h.button('Refresh application').props.disabled,false);
   h.setServerReadiness({...ready,cashReceiptAvailable:false,blockers:['OPENING_HOLD_UNAVAILABLE']});
-  await h.press('Check service readiness');h.render();assert.equal(h.button('Retry the same request').props.disabled,true);
+  await h.press('Refresh application');h.render();assert.equal(h.button('Retry the same request').props.disabled,true);
   h.press('Retry the same request');await settle();assert.equal(h.calls.filter(call=>call.name==='receiveCash').length,1);
-  h.setServerReadiness({...ready});await h.press('Check service readiness');h.render();
+  h.setServerReadiness({...ready});await h.press('Refresh application');h.render();
   assert.equal(h.button('Retry the same request').props.disabled,false);
   h.press('Retry the same request');await settle();h.render();
   const attemptsSent=h.calls.filter(call=>call.name==='receiveCash');assert.equal(attemptsSent.length,2);
@@ -353,7 +353,7 @@ test('read-only admin readiness refresh stays usable during unknown cash outcome
 test('approval requires an explicit unchecked original-document acknowledgement, not mere syntax or reveal',async()=>{
   const h=harness(fixture('PENDING_REVIEW'));assert.equal(h.field('I checked the original identity document in person').props.checked,false);
   h.input('Application review reason','Original details match this applicant');h.press('Save application decision');await settle();assert.equal(h.calls.length,0);
-  h.press('Reveal identifier for in-person check');await settle();h.render();assert.match(content(h.tree),/ABCPD1234F/);
+  assert.equal(h.button('Reveal identifier for in-person check'),undefined);
   assert.equal(h.button('Save application decision').props.disabled,true);
   h.input('I checked the original identity document in person',true);h.press('Save application decision');await settle();h.render();
   assert.equal(h.calls.at(-1).name,'review');assert.equal(h.calls.at(-1).args[2].inPersonChecked,true);assert.doesNotMatch(content(h.tree),/ABCPD1234F/);
@@ -366,42 +366,21 @@ for(const decision of ['REJECTED','CHANGES_REQUESTED'])test('non-approval '+deci
 test('identity outage blocks reveal and approval but still permits correction decisions',async()=>{
   const h=harness(fixture('PENDING_REVIEW'),{readiness:{...ready,identityDetailsAvailable:false,reviewsAvailable:false}});
   h.input('Application review reason','Applicant details need correction');h.input('I checked the original identity document in person',true);
-  h.press('Reveal identifier for in-person check');h.press('Save application decision');await settle();assert.equal(h.calls.length,0);
+  h.press('Save application decision');await settle();assert.equal(h.calls.length,0);
   h.input('Application decision','CHANGES_REQUESTED');h.press('Save application decision');await settle();assert.equal(h.calls[0].name,'review');
 });
 test('admin readiness uses identity prerequisites without file or scanning instructions',()=>{
   const h=harness(fixture('PENDING_REVIEW'),{queue:true,readiness:{...ready,identityDetailsAvailable:false,blockers:['IDENTITY_CONFIGURATION_UNAVAILABLE']}});
-  assert.match(content(h.tree),/Private identity details: Unavailable/);assert.match(content(h.tree),/encryption configuration/);
-  assert.match(content(h.tree),/Last server check/);assert.doesNotMatch(content(h.tree),/scanner|scanning|upload/i);
+  assert.match(content(h.tree),/Some account application actions are temporarily unavailable/);
+  assert.doesNotMatch(content(h.tree),/Service readiness|Last server check|encryption configuration|scanner|scanning|upload/i);
 });
-test('reveal is explicit, can be hidden, and never renders identifiers in links or hidden fields',async()=>{
-  const h=harness(fixture('PENDING_REVIEW'));assert.equal(h.calls.length,0);assert.doesNotMatch(content(h.tree),/ABCPD1234F/);
-  h.press('Reveal identifier for in-person check');await settle();h.render();assert.match(content(h.tree),/ABCPD1234F/);
-  assert.deepEqual(h.calls.map(c=>c.name),['revealIdentity']);
-  for(const node of nodes(h.tree))for(const prop of ['href','src','value','title'])assert.ok(!String(node.props?.[prop]||'').includes('ABCPD1234F'));
-  h.press('Hide identifier');h.render();assert.doesNotMatch(content(h.tree),/ABCPD1234F/);
+test('the admin reveal panel and controls are absent while approval still needs explicit identity acknowledgement',()=>{
+  const h=harness(fixture('PENDING_REVIEW'));
+  assert.doesNotMatch(content(h.tree),/In-person original identity check|Reveal identifier|Hide identifier|Service readiness/);
+  assert.equal(h.field('I checked the original identity document in person').props.checked,false);
+  assert.equal(h.calls.length,0);
 });
-for(const change of ['application','status','version','token','readiness','unmount'])test('late identifier reveal is discarded after '+change,async()=>{
-  let finish;const h=harness(fixture('PENDING_REVIEW'),{respond:()=>new Promise(resolve=>finish=resolve)});
-  const handler=h.button('Reveal identifier for in-person check').props.onClick;handler();handler();h.render();assert.equal(h.calls.length,1);
-  if(change==='application')h.setApplication(fixture('PENDING_REVIEW',{id:'13f9a6e1-b9d1-4ef8-a3af-c2be729cb800'}));
-  if(change==='status')h.setApplication(fixture('REJECTED'));
-  if(change==='version')h.setApplication(fixture('PENDING_REVIEW',{version:8}));
-  if(change==='token')h.setToken('different-admin-session');
-  if(change==='readiness')h.setReadiness({...ready,identityDetailsAvailable:false});
-  if(change==='unmount')h.dispose();
-  finish({identityType:'PAN',identityNumber:'ABCPD1234F',verificationMethod:'IN_PERSON_ORIGINAL'});await settle();
-  if(change!=='unmount')h.render();assert.doesNotMatch(content(h.tree),/ABCPD1234F/);
-});
-test('cancelled reveal and mismatched response never expose raw identifier or raw failure text',async()=>{
-  let finish;const h=harness(fixture('PENDING_REVIEW'),{respond:()=>new Promise(resolve=>finish=resolve)});
-  h.press('Reveal identifier for in-person check');h.render();h.press('Cancel reveal');h.render();
-  finish({identityType:'PAN',identityNumber:'ABCPD1234F',verificationMethod:'IN_PERSON_ORIGINAL'});await settle();h.render();assert.doesNotMatch(content(h.tree),/ABCPD1234F/);
-  const mismatch=harness(fixture('PENDING_REVIEW'),{respond:async()=>({identityType:'PAN',identityNumber:'ABCPD9999F',verificationMethod:'IN_PERSON_ORIGINAL'})});
-  mismatch.press('Reveal identifier for in-person check');await settle();mismatch.render();assert.doesNotMatch(content(mismatch.tree),/ABCPD9999F/);assert.match(content(mismatch.tree),/could not be revealed/);
-  const fail=harness(fixture('PENDING_REVIEW'),{respond:async()=>{throw Error('Do not display ABCPD1234F');}});
-  fail.press('Reveal identifier for in-person check');await settle();fail.render();assert.doesNotMatch(content(fail.tree),/ABCPD1234F/);
-});
+
 test('uncertain approval preserves the exact original-check attestation, reason, version and retry key',async()=>{
   let count=0;const h=harness(fixture('PENDING_REVIEW'),{respond:async()=>{if(++count===1)throw Error('Synthetic lost result');return fixture('APPROVED_AWAITING_CASH',{version:8});}});
   h.input('Application review reason','Original checked in person against applicant');h.input('I checked the original identity document in person',true);
@@ -413,4 +392,16 @@ test('no document mutation or download control remains in the review workflow',(
   const source=fs.readFileSync('src/features/banking/AdminAccountApplications.tsx','utf8');
   const shared=fs.readFileSync('src/features/banking/AccountApplicationShared.tsx','utf8');
   assert.doesNotMatch(source+shared,/applicationApi\.(upload|download|reviewDocument)|type="file"|Download private copy|Save document decision/);
+});
+
+
+test('clicking a queue row activates its native link once, while nested links and modified clicks remain native',()=>{
+  const app=fixture('PENDING_REVIEW');const h=harness(app,{queue:true,loadState:{loading:false,error:'',data:{items:[app],total:1,page:0,size:20},reload(){}}});
+  const row=nodes(h.tree).find(node=>node.type==='tr'&&node.props.class==='application-queue-row');
+  const link=nodes(row).find(node=>node.type==='a');assert.equal(link.props.href,'#/admin/applications/'+appId);
+  assert.equal(link.props.onKeyDown,undefined);let clicks=0;
+  const target={closest:()=>null},currentTarget={querySelector:()=>({click(){clicks++;}})};
+  row.props.onClick({button:0,target,currentTarget});assert.equal(clicks,1);
+  row.props.onClick({button:0,target:{closest:()=>({tagName:'A'})},currentTarget});assert.equal(clicks,1);
+  row.props.onClick({button:0,ctrlKey:true,target,currentTarget});assert.equal(clicks,1);
 });

@@ -5,6 +5,7 @@ import static com.nexa.api.onboarding.AccountApplicationDtos.parseUuid;
 import com.nexa.api.onboarding.AccountApplicationDtos.ActionRequest;
 import com.nexa.api.onboarding.AccountApplicationDtos.CreateRequest;
 import com.nexa.api.onboarding.AccountApplicationDtos.IdentityRequest;
+import com.nexa.api.onboarding.AccountApplicationDtos.DetailsRequest;
 import com.nexa.api.onboarding.AccountApplicationService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -53,6 +54,12 @@ public class AccountApplicationsController {
   public ResponseEntity<Map<String, Object>> submit(
       @PathVariable String id, @Valid @RequestBody ActionRequest request) {
     return OnboardingHttpResponses.privateResponse(service.submit(parseUuid(id), request));
+  }
+
+  @PostMapping("/{id}/details")
+  public ResponseEntity<Map<String, Object>> updateDetails(
+      @PathVariable String id, @Valid @RequestBody DetailsRequest request) {
+    return OnboardingHttpResponses.privateResponse(service.updateDetails(parseUuid(id), request));
   }
 
   @PostMapping("/{id}/identity")

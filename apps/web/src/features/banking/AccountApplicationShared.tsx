@@ -1,30 +1,7 @@
-import { AccountApplication, ApplicationRequirements, applicationStatusLabel, identityLabel } from "../../services/account-applications";
+import { AccountApplication, applicationStatusLabel, identityLabel } from "../../services/account-applications";
 import { formatDate, formatMoney } from "../../services/banking-content";
 import { t } from "../../services/locale";
 import { Detail, Panel } from "./ui";
-
-export function AvailabilityNotice({requirements, onRefresh, refreshing = false}: {
-  requirements?: ApplicationRequirements | null;
-  onRefresh?: () => void;
-  refreshing?: boolean;
-}) {
-  if (requirements?.applicationsAvailable && requirements.identityDetailsAvailable && requirements.cashReceiptAvailable) return <div class="application-toolbar">
-    <span>{t("The last check reported account-opening services available. Review and an actual cash receipt are still required. Check again after a service interruption; availability does not update automatically.")}</span>
-    {onRefresh && <button class="bank-button secondary" type="button" disabled={refreshing} onClick={onRefresh}>{t("Check service readiness")}</button>}
-  </div>;
-  return <aside class="application-notice" role="status">
-    <strong>{t("Account-opening setup is not complete")}</strong>
-    <p>{t("The bank has not confirmed all account-opening services as ready. Do not enter identity details or hand over cash while the relevant service is unavailable.")}</p>
-    {requirements && <ul class="application-readiness">
-      <li>{t("Applications")}: {t(requirements.applicationsAvailable ? "Available" : "Unavailable")}</li>
-      <li>{t("Private identity details")}: {t(requirements.identityDetailsAvailable ? "Available" : "Unavailable")}</li>
-      <li>{t("Opening cash collection")}: {t(requirements.cashReceiptAvailable ? "Available" : "Unavailable")}</li>
-    </ul>}
-    <p class="application-muted">{t("In-person admin review is not government identity verification. No opening money is credited automatically.")}</p>
-    <p class="application-muted">{t("Availability is a snapshot, not a live guarantee. After the bank updates setup, check service readiness again. Use Refresh status to retrieve recorded application changes.")}</p>
-    {onRefresh && <button class="bank-button secondary" type="button" disabled={refreshing} onClick={onRefresh}>{t("Check service readiness")}</button>}
-  </aside>;
-}
 
 export function ApplicationStatus({status}: {status: string}) {
   const tone = ["OPENED", "REFUNDED"].includes(status) ? "positive"
@@ -32,15 +9,15 @@ export function ApplicationStatus({status}: {status: string}) {
   return <span class={"application-status " + tone}>{t(applicationStatusLabel(status))}</span>;
 }
 
-const receiptLabels: Record<string, string> = {RECEIVED: "Cash received — not yet allocated", APPLIED: "Allocated to the opened account", REFUND_PENDING: "Return of cash pending", REFUNDED: "Cash returned"};
+const receiptLabels: Record<string, string> = {RECEIVED: "Cash received", APPLIED: "Allocated to the opened account", REFUND_PENDING: "Return of cash pending", REFUNDED: "Cash returned"};
 const eventLabels: Record<string, string> = {
-  APPLICATION_CREATED: "Application created", IDENTITY_UPDATED: "Identity details updated", DOCUMENT_ADDED: "Document uploaded", SUBMITTED: "Submitted for review",
+  APPLICATION_CREATED: "Application created", APPLICATION_UPDATED: "Application details updated", IDENTITY_UPDATED: "Identity details updated", DOCUMENT_ADDED: "Document uploaded", SUBMITTED: "Submitted for review",
   DOCUMENT_REVIEWED: "Document reviewed", APPROVED: "Review approved", REJECTED: "Application rejected",
   CHANGES_REQUESTED: "Changes requested", CANCELLED: "Application cancelled", CASH_RECEIVED: "Cash receipt recorded",
   ACCOUNT_OPENED: "Account opened", REFUND_REQUESTED: "Refund requested", CASH_REFUNDED: "Cash return recorded"
 };
 
-/** Masked application metadata only. Full identity is revealed separately to a reviewing admin. */
+/** Display only the saved application metadata and masked identity. */
 export function ApplicationRecord({application, admin = false}: {
   application: AccountApplication; token: string; admin?: boolean; downloadsEnabled?: boolean;
 }) {
@@ -58,7 +35,7 @@ export function ApplicationRecord({application, admin = false}: {
         <Detail label={t("Last updated")}>{formatDate(application.updatedAt, true)}</Detail>
       </dl>
       {application.reviewReason && <div class="application-review-note"><strong>{t("Review feedback")}</strong><p>{application.reviewReason}</p></div>}
-      <p class="application-muted">{t("Details are saved with this application. Changing your profile does not change this saved record; contact the bank if a correction is needed.")}</p>
+      <p class="application-muted">{t("Details are saved with this application. You can update these details before submitting or when the bank requests corrections.")}</p>
       {application.status === "OPENED" && application.accountId != null && <a class="bank-button secondary" href={admin ? `#/admin/accounts/${application.accountId}/overview` : `#/accounts/${application.accountId}`}>{t("View opened account")}</a>}
     </Panel>
     <Panel title={t("Identity for in-person review")}>

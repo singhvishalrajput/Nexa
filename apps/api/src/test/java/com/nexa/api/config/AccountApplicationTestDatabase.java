@@ -25,6 +25,30 @@ public final class AccountApplicationTestDatabase {
     }
   }
 
+  /** Real additive bill migration on the same isolated core/onboarding fixture. */
+  public static Connection initializedBillPaymentDatabase() throws Exception {
+    Connection connection = initializedDatabase();
+    try {
+      execute(connection, resource("db/migration/V27__bill_payment_attempts.sql"));
+      return connection;
+    } catch (Exception | Error error) {
+      connection.close();
+      throw error;
+    }
+  }
+
+  public static Connection initializedExternalTransferDatabase() throws Exception {
+    Connection connection = initializedBillPaymentDatabase();
+    try {
+      execute(connection, resource("db/migration/V28__external_bank_payees.sql"));
+      execute(connection, resource("db/migration/V29__external_transfer_reviews.sql"));
+      return connection;
+    } catch (Exception | Error error) {
+      connection.close();
+      throw error;
+    }
+  }
+
   static Connection coreDatabase() throws Exception {
     String sql = resource("onboarding-core.sql");
     sql = index(sql, "uk_customer_email_ci", "customers",
@@ -62,6 +86,7 @@ public final class AccountApplicationTestDatabase {
         "h2_live_owner BIGINT GENERATED ALWAYS AS (CASE WHEN status NOT IN ('REJECTED','CANCELLED','REFUNDED') THEN customer_id END)",
         "h2_live_owner");
     execute(connection, sql);
+    execute(connection, resource("db/migration/V26__editable_account_applications.sql"));
   }
 
   private static String resource(String path) throws Exception {

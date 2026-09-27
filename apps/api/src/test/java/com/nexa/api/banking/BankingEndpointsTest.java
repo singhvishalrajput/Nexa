@@ -18,7 +18,7 @@ import com.nexa.api.service.CardQueryService;
 import com.nexa.api.service.CurrentUserProvider;
 import com.nexa.api.service.LoanQueryService;
 import com.nexa.api.service.MandateQueryService;
-import com.nexa.api.service.ScheduledPaymentQueryService;
+import com.nexa.api.service.ScheduledPaymentService;
 import com.nexa.api.service.TransactionQueryService;
 import com.nexa.api.service.TransferQueryService;
 
@@ -39,6 +39,7 @@ class BankingEndpointsTest {
   final BeneficiaryQueryService beneficiaries = mock(BeneficiaryQueryService.class);
   final TransferQueryService transfers = mock(TransferQueryService.class);
   final TransactionQueryService transactions = mock(TransactionQueryService.class);
+  final ScheduledPaymentService scheduled = mock(ScheduledPaymentService.class);
   final ActionPreparationService actions = mock(ActionPreparationService.class);
   final MockMvc mvc =
       MockMvcBuilders.standaloneSetup(
@@ -47,7 +48,7 @@ class BankingEndpointsTest {
               new CardController(new CardQueryService(repo, user)),
               new CreditCardsController(new CardQueryService(repo, user)),
               new LoanController(new LoanQueryService(repo, user)),
-              new ScheduledPaymentController(new ScheduledPaymentQueryService(repo, user)),
+              new ScheduledPaymentController(scheduled),
               new BeneficiariesController(beneficiaries),
               new ActionsController(actions, transfers),
               new TransactionsController(transactions))
@@ -56,6 +57,7 @@ class BankingEndpointsTest {
 
   @Test
   void newListsAndDetailsHavePredictableContracts() throws Exception {
+    when(scheduled.detail("missing")).thenThrow(new com.nexa.api.exep.ResourceNotFoundException("Scheduled payment not found."));
     for (String route :
         List.of(
             "mandates",

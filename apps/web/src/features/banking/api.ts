@@ -12,6 +12,13 @@ export type Product = Partial<BillSnapshot & CardSnapshot & LoanSnapshot & Manda
     nextDebit?: string;
     interestRate?: string;
     minimumAmount?: string;
+    paidAmount?: string;
+    outstandingAmount?: string;
+    payeeId?: string | null;
+    recipientName?: string | null;
+    recipientAccountMasked?: string | null;
+    transferType?: "INTERNAL" | "EXTERNAL_BANK";
+    ifsc?: string | null;
     paymentHistory?: UpcomingSnapshot[];
     transactions?: TransactionSnapshot[];
 };
@@ -33,6 +40,31 @@ export type Filters = {
     direction?: string;
     page?: number;
 };
+export type BillPaymentRequest = {
+    requestKey: string;
+    billId: string;
+    sourceAccountId: string;
+    payeeId?: string;
+    amount?: string;
+};
+export type BillPaymentReceipt = {
+    id: string;
+    billId: string;
+    billerName: string;
+    sourceAccountId: string;
+    sourceName: string;
+    sourceMasked: string;
+    payeeId: string | null;
+    recipientName: string;
+    destinationMasked: string;
+    amount: string;
+    currencyCode: string;
+    status: "READY" | "COMPLETED" | "FAILED" | "CANCELLED" | "EXPIRED";
+    reference: string | null;
+    expiresAt: string;
+    completedAt: string | null;
+    failureReason: string | null;
+};
 export const bankApi = {
     accounts: getAccounts,
     account: (token: string, id: string) => authenticatedRequest<BankAccount>("/accounts/" + encodeURIComponent(id), token),
@@ -43,16 +75,24 @@ export const bankApi = {
         return authenticatedRequest<TransactionPage>("/transactions?" + params, token);
     },
     transaction: (token: string, id: string) => authenticatedRequest<BankTransaction>("/transactions/" + encodeURIComponent(id), token),
-    products: (token: string, kind: ProductKind, page = 0, status = "") => authenticatedRequest<Product[]>("/" + kind + "?" + new URLSearchParams({ page: String(page), size: "12", ...(status ? { status } : {}) }), token),
-    product: (token: string, kind: ProductKind, id: string) => authenticatedRequest<Product>("/" + kind + "/" + encodeURIComponent(id), token),
+    transactionCategories: (token: string, accountId: string) => authenticatedRequest<string[]>("/transactions/categories?" + new URLSearchParams({ accountId }), token),
+    products: (token: string, kind: ProductKind, page = 0, status = "") => kind === "beneficiaries"
+        ? Promise.all([authenticatedRequest<Product[]>("/beneficiaries", token), authenticatedRequest<Product[]>("/external-payees", token)]).then(groups => groups.flat())
+        : authenticatedRequest<Product[]>("/" + kind + "?" + new URLSearchParams({ page: String(page), size: "12", ...(status ? { status } : {}) }), token),
+    product: (token: string, kind: ProductKind, id: string) => authenticatedRequest<Product>("/" + (kind === "beneficiaries" && id.startsWith("EP-") ? "external-payees" : kind) + "/" + encodeURIComponent(id), token),
     prepare: (token: string, request: {
         operation: string;
         accountId: string;
         targetId: string;
         amount?: string;
     }) => authenticatedRequest<PreparedAction>("/actions/prepare", token, { method: "POST", body: JSON.stringify(request) }),
-    createBill: (token: string, request: { billerName: string; amount: string; minimumAmount?: string; dueAt: string; category: string; customerNumber: string }) => authenticatedRequest<Product>("/bills", token, { method: "POST", body: JSON.stringify(request) }),
-    setProductStatus: (token: string, kind: "bills" | "mandates", id: string, status: string) => authenticatedRequest<Product>("/" + kind + "/" + encodeURIComponent(id) + "/status", token, { method: "POST", body: JSON.stringify({ status }) }),
+    createBill: (token: string, request: { billerName: string; amount: string; minimumAmount?: string; dueAt: string; category: string; customerNumber: string; payeeId?: string }) => authenticatedRequest<Product>("/bills", token, { method: "POST", body: JSON.stringify(request) }),
+    setProductStatus: (token: string, kind: "mandates", id: string, status: string) => authenticatedRequest<Product>("/" + kind + "/" + encodeURIComponent(id) + "/status", token, { method: "POST", body: JSON.stringify({ status }) }),
+    prepareBillPayment: (token: string, request: BillPaymentRequest) => authenticatedRequest<BillPaymentReceipt>("/bill-payments/prepare", token, { method: "POST", body: JSON.stringify(request) }),
+    billPayment: (token: string, id: string) => authenticatedRequest<BillPaymentReceipt>("/bill-payments/" + encodeURIComponent(id), token),
+    billPaymentHistory: (token: string, billId: string) => authenticatedRequest<BillPaymentReceipt[]>("/bill-payments?" + new URLSearchParams({ billId }), token),
+    confirmBillPayment: (token: string, id: string) => authenticatedRequest<BillPaymentReceipt>("/bill-payments/" + encodeURIComponent(id) + "/confirm", token, { method: "POST" }),
+    cancelBillPayment: (token: string, id: string) => authenticatedRequest<BillPaymentReceipt>("/bill-payments/" + encodeURIComponent(id) + "/cancel", token, { method: "POST" }),
     coreAccounts: (token: string) => authenticatedCoreRequest<CoreAccount[]>("/accounts", token),
     postTransaction: (token: string, operation: "deposit" | "withdraw" | "transfer", payload: {
         sourceAccountId?: number;

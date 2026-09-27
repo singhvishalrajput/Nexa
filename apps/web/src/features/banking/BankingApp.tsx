@@ -4,7 +4,6 @@ import { SidebarBrand, SidebarNavigation, SidebarFooter, primaryNavigation, seco
 import { BankingIcon } from "../../components/BankingIcon";
 import { LanguageSelect } from "../../components/LanguageSelect";
 import { getLocale, t } from "../../services/locale";
-import { MoneyTransfer } from "./MoneyTransfer";
 import { ConnectionNotice } from "../../components/ConnectionNotice";
 import { confirmNavigation, hasUnsavedWork } from "../../hooks/useNavigationGuard";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -77,14 +76,14 @@ function Workspace({ session, setSession, signOut, route }: {
     const heading = useRef<HTMLElement>(null);
     const data = useLoad(() => bankApi.accounts(session.accessToken), [session.user.id, route.page]);
     const accounts = data.data || [];
-    const page = route.page === "login" || route.page === "register" ? "assistant" : route.page;
-    const pageTitle = [...primaryNavigation, ...secondaryNavigation].find(n => n.page === page)?.label || ({settings: "Profile & settings", security: "Security & session", assistant: "Chat", operations: "Banking operations"} as Record<string, string>)[page] || "Page not found";
+    const page = route.page === "login" || route.page === "register" ? "assistant" : ["send-money", "external-transfers"].includes(route.page) ? "payments" : route.page;
+    const pageTitle = [...primaryNavigation, ...secondaryNavigation].find(n => n.page === page)?.label || ({settings: "Profile & settings", security: "Security & session", assistant: "Chat", operations: "Banking operations", "external-transfers": "Other-bank transfers"} as Record<string, string>)[page] || "Page not found";
     useEffect(() => { setMenu(false); window.scrollTo(0, 0); document.title = pageTitle + " · Nexa"; heading.current?.querySelector<HTMLElement>("h1")?.focus(); }, [page, route.id]);
     const endSession = async () => { if (signingOut)
         return; setSigningOut(true); try { await signOut(); } finally { setSigningOut(false); } };
     if (page === "assistant")
         return <ConversationWorkspace session={session} onClose={() => go("overview")} onLogout={endSession} accounts={accounts} accountsLoading={data.loading} accountsError={data.error} onRefreshAccounts={data.reload}/>;
-    const accountPage = ["overview", "accounts", "transactions", "payments"].includes(page);
+    const accountPage = ["overview", "accounts", "transactions"].includes(page);
     function content() {
         if (accountPage && (data.loading || data.error))
             return <State loading={data.loading} error={data.error} retry={data.reload}/>;
@@ -94,16 +93,14 @@ function Workspace({ session, setSession, signOut, route }: {
             return <AccountsPage token={session.accessToken} profile={session.profile} id={route.id} accounts={accounts} reload={data.reload}/>;
         if (page === "transactions")
             return <TransactionsPage key={route.id || route.account || "history"} token={session.accessToken} id={route.id} accounts={accounts} initialAccount={route.account}/>;
-        if (page === "send-money")
-            return <MoneyTransfer token={session.accessToken} userId={session.user.id}/>;
         if (page === "payments")
-            return <PaymentsPage token={session.accessToken} accounts={accounts}/>;
+            return <PaymentsPage key={`${route.page}-${route.destination || "nexa"}-${route.payee || "all"}`} token={session.accessToken} userId={session.user.id} initialDestination={route.page === "external-transfers" ? "other-bank" : route.destination} initialPayee={route.payee}/>;
         if (page === "loans" && route.id === "calculator")
             return <LoanCalculatorPage token={session.accessToken} draft={loanCalculatorDraft} onDraftChange={setLoanCalculatorDraft}/>;
         if (page === "loans" && route.id === "applications")
             return <LoanApplicationsPage token={session.accessToken}/>;
         if (page in productNames)
-            return <ProductsPage key={page} token={session.accessToken} kind={page as ProductKind} id={["new", "create", "add", "request"].includes(route.id || "") ? undefined : route.id} initiallyOpen={["new", "create", "add", "request"].includes(route.id || "")}/>;
+            return <ProductsPage key={page} token={session.accessToken} kind={page as ProductKind} id={["new", "create", "add", "request"].includes(route.id || "") ? undefined : route.id} initiallyOpen={["new", "create", "add", "request"].includes(route.id || "")} onAccountsChanged={data.reload}/>;
         if (page === "settings")
             return <><PageHeading title={t("Profile & settings")} description={t("Keep your personal banking details up to date.")}/><AccountSettings session={session} account={accounts[0]} onBack={() => go("accounts")} onLogout={endSession} onProfileUpdated={profile => setSession({ ...session, profile })}/></>;
         if (page === "security")

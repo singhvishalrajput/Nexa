@@ -1,6 +1,9 @@
 import { WorkspaceRail } from "../../components/design/WorkspaceRail";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { AdminAccountApplications } from "./AdminAccountApplications";
+import { AdminAnalytics } from "./AdminAnalytics";
+import { AdminCardQueue } from "./AdminCardQueue";
+import { AdminBankFunding } from "./AdminBankFunding";
 import { AdminLoanQueue, LoanRequest } from "./AdminLoanQueue";
 import { AuthSession, authenticatedRequest } from "../../services/auth";
 import { formatMoney, formatDate } from "../../services/banking-content";
@@ -32,6 +35,9 @@ type Workspace = {
 };
 const accountHref = (id: number | string, section = "overview") => `#/admin/accounts/${id}/${section}`;
 const sections = [["overview", "Overview"], ["transactions", "Transactions"], ["related", "Related accounts & mandates"], ["audit", "Audit history"]];
+export function isWorkflowManagedAccount(account: {number: string; type: string}) {
+    return account.type === "CASH" || ["SYSTEM-CASH", "NEXA-OPENING-HOLD", "NEXA-BANK-FUNDING", "NEXA-LOAN-CONTROL"].includes(account.number.trim().toUpperCase());
+}
 export function filterAccounts(accounts: Account[], search: string, status: string, type: string) {
     const words = search.trim().toLowerCase().split(/\s+/);
     return accounts.filter(a => (!status || a.status === status) && (!type || a.type === type) && words.every(word => [a.name, a.number, a.customerName, a.customerEmail, a.type].join(" ").toLowerCase().includes(word)));
@@ -42,10 +48,18 @@ export function AdminApp({ session, signOut, route }: {
     route: ReturnType<typeof parseRoute>;
 }) {
     const token = session.accessToken;
-    const data = useLoad(() => authenticatedRequest<Account[]>(path, token), [token]);
+    const directory = route.page === "admin" && route.section === "accounts" && !route.id;
+    const loanQueue = route.page === "admin" && route.section === "loans";
+    const cardQueue = route.page === "admin" && route.section === "cards";
+    const fundingPage = route.page === "admin" && route.section === "bank-funding";
+    const applicationQueue = route.page === "admin" && route.section === "applications";
+    const accountDetails = route.page === "admin" && !!route.id && !applicationQueue;
+    const currentPage = directory || accountDetails ? "admin/accounts" : applicationQueue ? "admin/applications" : loanQueue ? "admin/loans" : cardQueue ? "admin/cards" : fundingPage ? "admin/bank-funding" : "admin";
+    const data = useLoad(() => directory ? authenticatedRequest<Account[]>(path, token) : Promise.resolve([]), [token, directory]);
     const [queueRevision,setQueueRevision]=useState(0);
-    useEffect(()=>{const timer=window.setInterval(()=>setQueueRevision(n=>n+1),30000);return()=>window.clearInterval(timer);},[]);
-    const loans=useLoad(()=>authenticatedRequest<LoanRequest[]>("/admin/loans",token),[token,queueRevision]);
+    useEffect(()=>{if (!loanQueue) return; const timer=window.setInterval(()=>setQueueRevision(n=>n+1),30000);return()=>window.clearInterval(timer);},[loanQueue]);
+    useEffect(() => { document.title = ({"admin": "Admin dashboard", "admin/accounts": "Accounts", "admin/applications": "Account applications", "admin/loans": "Loan requests", "admin/cards": "Card requests", "admin/bank-funding": "Bank funding"}[currentPage]) + " · Nexa"; }, [currentPage]);
+    const loans=useLoad(()=>loanQueue ? authenticatedRequest<LoanRequest[]>("/admin/loans",token) : Promise.resolve([]),[token,queueRevision,loanQueue]);
     function refreshLoans(){loans.reload();data.reload();}
     const [search, setSearch] = useState(""), [status, setStatus] = useState(""), [type, setType] = useState(""), [page, setPage] = useState(0);
     const [signingOut, setSigningOut] = useState(false);
@@ -57,8 +71,8 @@ export function AdminApp({ session, signOut, route }: {
     finally {
         setSigningOut(false);
     } }
-    return <div class="bank-app admin-app experience-admin"><WorkspaceRail page={route.section === "applications" ? "admin/applications" : route.section === "loans" ? "admin/loans" : "admin"} name={session.profile.fullName} email={session.user.email} admin onLogout={exit}/><div class="experience-admin-body"><header class="admin-topbar"><a class="admin-brand" href="#home" aria-label="Nexa home"><strong>Nexa</strong><span>Administration</span></a></header><main class="bank-main">
- {route.section==="applications"?<AdminAccountApplications key={route.id || "application-queue"} token={token} applicationId={route.id}/>:route.section==="loans"?<AdminLoanQueue token={token} requests={loans.data||[]} loading={loans.loading} error={loans.error} reload={refreshLoans}/>:route.page === "admin" && route.id ? <AccountWorkspace key={route.id} id={route.id} section={route.section || "overview"} token={token} onChanged={data.reload}/> : <>
+    return <div class="bank-app admin-app experience-admin"><WorkspaceRail page={currentPage} name={session.profile.fullName} email={session.user.email} admin onLogout={exit}/><div class="experience-admin-body"><header class="admin-topbar"><a class="admin-brand" href="#home" aria-label="Nexa home"><strong>Nexa</strong><span>Administration</span></a></header><main class="bank-main">
+ {applicationQueue?<AdminAccountApplications key={route.id || "application-queue"} token={token} applicationId={route.id}/>:loanQueue?<AdminLoanQueue token={token} requests={loans.data||[]} loading={loans.loading} error={loans.error} reload={refreshLoans}/>:cardQueue?<AdminCardQueue token={token}/>:fundingPage?<AdminBankFunding token={token} userId={session.user.id}/>:accountDetails ? <AccountWorkspace key={route.id} id={route.id!} section={route.section || "overview"} token={token} onChanged={data.reload}/> : !directory ? <AdminAnalytics token={token}/> : <>
  <PageHeading eyebrow="" title="Find an account" description="Search by account number, customer name or email. Open an account to see everything connected to it." action={<button class="bank-button secondary" onClick={data.reload}>Refresh accounts</button>}/>
  <Panel title="Account directory"><div class="admin-filters"><label class="bank-search-label">Search accounts<input type="search" value={search} onInput={e => { setSearch(e.currentTarget.value); setPage(0); }} placeholder="Account number, name or email"/></label>
  <label>Status<select value={status} onChange={e => { setStatus(e.currentTarget.value); setPage(0); }}><option value="">All statuses</option>{["ACTIVE", "BLOCKED", "CLOSED"].map(s => <option value={s}>{s}</option>)}</select></label>
@@ -92,9 +106,10 @@ function AccountWorkspace({ id, section, token, onChanged }: {
     const [editing, setEditing] = useState(false), [receipt, setReceipt] = useState(""), [revision, setRevision] = useState(0);
     function refresh() { data.reload(); setRevision(n => n + 1); onChanged(); }
     const w = data.data, a = w?.account;
-    return <><nav class="admin-breadcrumb" aria-label="Breadcrumb"><a href="#/admin">← Account search</a><span aria-hidden="true">/</span><span>{a?.name || "Account details"}</span></nav>
+    return <><nav class="admin-breadcrumb" aria-label="Breadcrumb"><a href="#/admin/accounts">← Account search</a><span aria-hidden="true">/</span><span>{a?.name || "Account details"}</span></nav>
  <State loading={data.loading} error={data.error} retry={data.reload}>{w && a && <>
- <PageHeading eyebrow={`${a.type} · ${a.number}`} title={a.name} description={a.customerName ? `${a.customerName} · ${a.customerEmail}` : "System account"} action={<div class="admin-actions"><button class="bank-button secondary" onClick={refresh}>Refresh</button><button class="bank-button" onClick={() => setEditing(true)}>Manage account</button></div>}/>
+ <PageHeading eyebrow={`${a.type} · ${a.number}`} title={a.name} description={a.customerName ? `${a.customerName} · ${a.customerEmail}` : "System account"} action={<div class="admin-actions"><button class="bank-button secondary" onClick={refresh}>Refresh</button>{!isWorkflowManagedAccount(a) && <button class="bank-button" onClick={() => setEditing(true)}>Manage account</button>}</div>}/>
+ {isWorkflowManagedAccount(a) && <p class="bank-notice">This account is managed through the bank’s recorded cash, funding and lending workflows.{a.number.trim().toUpperCase() === "NEXA-BANK-FUNDING" && <> <a href="#/admin/bank-funding">Open bank funding →</a></>}</p>}
  <div class="admin-account-summary"><div><span>{["LOAN", "CARD"].includes(a.type) ? "Outstanding balance" : "Current balance"}</span><strong>{formatMoney(a.balance, a.currency)}</strong></div><Status value={a.status}/><span>{a.category === "CUSTOMER" ? "Customer account" : "System account"}</span></div>
  {receipt && <p role="status" class="bank-notice">{receipt}</p>}
  <nav class="admin-sections" aria-label="Account sections">{sections.map(([key, label]) => <a key={key} href={accountHref(id, key)} aria-current={section === key ? "page" : undefined}>{label}</a>)}</nav>

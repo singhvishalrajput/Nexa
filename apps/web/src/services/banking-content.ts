@@ -44,6 +44,7 @@ export type BankingContent = { version: 1; responseType?: string; errorCode?: st
   { type: "BENEFICIARIES"; beneficiaries: BeneficiarySnapshot[] } |
   { type: "CARDS"; cards: CardSnapshot[] } |
   { type: "LOANS"; loans: LoanSnapshot[] } |
+  { type: "LOAN_APPLICATION" } |
   { type: "ACTION_REQUIRED"; action?: { operation: string; status: string; accountId: string; targetId: string; amount?: Money; currencyCode: string; confirmationRequired: boolean; executionAvailable: boolean } } |
   { type: "TRANSFER_STATUS"; transfer: { id: string; reference: string; amount: Money; currencyCode: string; status: string } } |
   { type: "TEXT"; meta?: { knowledgeTopic?: string; knowledgeId?: string; knowledgeVersion?: number; source?: string; category?: string; language?: string } } | { type: "ERROR" }
@@ -74,6 +75,19 @@ export const safeMask = (value: string | null | undefined) => {
   return tail ? `•••• ${tail}` : t("Number unavailable");
 };
 export const humanize = (value: string) => t(value.replace(/_/g, " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase()));
+/** Display utility categories without changing the stored keys used by history filters. */
+export function categoryLabel(value: string): string {
+  const key = value.trim().toLowerCase().replace(/_/g, " ").replace(/\s*\/\s*/g, "/").replace(/\s+/g, " ").replace(/ bill$/, "");
+  switch (key) {
+    case "electricity": return t("Electricity bill");
+    case "water": return t("Water bill");
+    case "gas": return t("Gas bill");
+    case "mobile": return t("Mobile bill");
+    case "internet": case "broadband": case "internet/broadband": case "internet broadband": return t("Internet / broadband bill");
+    case "tv": case "dth": case "tv/dth": case "tv dth": return t("TV / DTH bill");
+    default: return humanize(value);
+  }
+}
 export const completedStatuses = ["SUCCESS", "POSTED", "COMPLETED", "PAID"];
 export function statusPresentation(value: string) {
   const label = value === "PAID" ? "Paid" : completedStatuses.includes(value) ? "Completed" : value === "PREPARED" ? "Details checked" : value === "PENDING_VERIFICATION" ? "Awaiting verification" : humanize(value);

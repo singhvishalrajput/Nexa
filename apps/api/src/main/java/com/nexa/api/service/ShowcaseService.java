@@ -65,6 +65,10 @@ public class ShowcaseService {
 
   @Transactional(noRollbackFor = {InvalidRequestException.class, ResourceNotFoundException.class})
   public Receipt prepare(String operation, String account, String target, BigDecimal amount) {
+    rejectLegacyCardAction(operation);
+    if ("PAY_BILL".equals(operation))
+      throw new InvalidRequestException(
+          "Bill simulations are no longer available. Open the bill and use Pay now to review a real Nexa payment.");
     if ("START_TRANSFER".equals(operation)) {
       var receipt =
           transfers.prepare(
@@ -116,6 +120,10 @@ public class ShowcaseService {
     if ("START_TRANSFER".equals(receipt.operation()))
       throw new InvalidRequestException(
           "This old request was only a simulation. Review a new transfer to a linked Nexa payee.");
+    if ("PAY_BILL".equals(receipt.operation()))
+      throw new InvalidRequestException(
+          "This old bill request was only a simulation. Open the bill and review a new payment with Pay now.");
+    rejectLegacyCardAction(receipt.operation());
     if (receipt.status().equals("SIMULATED")) return receipt;
     if (!receipt.status().equals("REVIEW"))
       throw new InvalidRequestException("This request is closed. Start a new request.");
@@ -150,6 +158,12 @@ public class ShowcaseService {
         .stream()
         .map(id -> read(id, false))
         .toList();
+  }
+
+  private void rejectLegacyCardAction(String operation) {
+    if (Set.of("FREEZE_CARD", "UNFREEZE_CARD", "REPLACE_CARD").contains(operation))
+      throw new InvalidRequestException(
+          "Open Cards to manage your card. Old simulated card requests cannot change a card.");
   }
 
   private Receipt read(String id, boolean lock) {

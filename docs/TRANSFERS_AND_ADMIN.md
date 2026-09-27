@@ -2,7 +2,7 @@
 
 Saved-payee transfers in Chat and Payments previously confirmed through `ShowcaseService`, which only recorded simulations. They now prepare a `TRANSFER_REVIEW` and post through `MoneyTransferService`. Confirmation creates one business transaction, one journal and balanced ledger entries, and updates both accounts in the same database transaction. The durable review ID makes retries safe. Cancelling a review prevents subsequent confirmation. Historical simulations remain simulations and are never replayed as payments.
 
-Payees must be linked to an actual Nexa deposit account. Use **Payees → Add payee**, or open an imported payee and select **Link account**. Enter the full account number supplied by the recipient. Customers can reveal their own number under **Accounts → Account details → Show full account number**. Masked account numbers and external-bank hashes cannot be used to guess a destination. External-bank, bill-provider and card-network simulations explicitly state that no money moved.
+Payees must be linked to an actual Nexa deposit account. Use **Payees → Add payee**, or open an imported payee and select **Link account**. Enter the full account number supplied by the recipient. Customers can reveal their own number under **Accounts → Account details → Show full account number**. Masked account numbers and external-bank hashes cannot be used to guess a destination. Bills now use explicitly linked Nexa recipients and real ledger transfers; see [bill payments](BILL_PAYMENTS.md). No external bill-provider connection is configured.
 
 Loans can be repaid on the loan details page or in Chat, for example “repay 100 to Travel loan.” Both paths require confirmation and debit the linked deposit account while reducing loan outstanding. Active and overdue loans are eligible. Unknown historical principal does not prevent repayment of recorded outstanding. Repayment history includes the actual transaction reference and posting date. The product page retains its success receipt while balances refresh. Interest accrual remains outside this basic principal-repayment model.
 
@@ -19,6 +19,7 @@ The interface supports:
 - Block or reactivate accounts; close only zero-balance accounts. Repaid loans cannot be reopened through a status edit.
 - Credit/debit active customer deposit accounts through posted deposits/withdrawals, with a mandatory reason and idempotent request ID. Loan outstanding uses the loan workflow.
 - Read administrative audit history, actor, reason, before/after values and financial transaction reference.
+- Record received bank-owned cash capital through [Bank funding](BANK_FUNDING.md), with review, receipt/reference and duplicate protection. Funding and loan-control accounts are protected from ordinary account edits and transfers.
 
 There is no direct balance overwrite. Cash and customer accounts are locked in ascending ID order, including concurrent administrator deposits and withdrawals.
 
@@ -36,7 +37,7 @@ There is no direct balance overwrite. Cash and customer accounts are locked in a
 | `POST /api/v1/admin/accounts/{id}/adjustments` | `direction` (`CREDIT`/`DEBIT`), `amount`, `reason`, UUID `requestId`. |
 | `GET /api/v1/admin/accounts/{id}/audit` | Latest 100 administrative changes. |
 
-Existing `/api/v1/demo/actions` transfer URLs remain compatible but return `simulated:false` for real internal transfers. Other provider demonstrations return `simulated:true`. Existing direct-transfer and loan endpoints retain their contracts.
+Existing `/api/v1/demo/actions` transfer URLs remain compatible but return `simulated:false` for real internal transfers. Bill simulations are rejected and direct customers to the new `/api/v1/bill-payments` flow. Other provider demonstrations return `simulated:true`. Existing direct-transfer and loan endpoints retain their contracts.
 
 Tests cover payee confirmation/retry/cancellation, real chat transfer and loan repayment, unlinked recipient handling, administrator login and authorization, audited edits and adjustments, stale versions, imported/overdue loan repayment, ledger balance, and rollback on posting failures. Run the backend verification and frontend tests/typecheck/lint/build; `SixTableBankingIntegrationTest` also runs against the migrated existing Oracle schema using `NEXA_VERIFY_ORACLE=true` and the existing database environment variables.
 

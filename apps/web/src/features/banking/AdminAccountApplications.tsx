@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import {
   AccountApplication, AdminApplicationReadiness, ApplicationStatus, APPLICATION_STATUSES, applicationApi,
-  applicationStatusLabel, identityLabel, RevealedIdentity, normalizeOpeningAmount,
+  applicationStatusLabel, normalizeOpeningAmount,
   validateReviewReason
 } from "../../services/account-applications";
 import { formatDate, formatMoney } from "../../services/banking-content";
@@ -19,35 +19,14 @@ export function AdminAccountApplications({ token, applicationId }: { token: stri
     : <AdminApplicationQueue token={token}/>;
 }
 
-function ReadinessNotice({readiness, loading, error, refresh}: {
-  readiness?: AdminApplicationReadiness; loading: boolean; error: string; refresh: () => void;
+function ApplicationAvailability({readiness, loading, error}: {
+  readiness?: AdminApplicationReadiness; loading: boolean; error: string;
 }) {
-  return <aside class="application-notice" aria-label="Account-opening service readiness">
-    <strong>Service readiness</strong>
-    {loading ? <p role="status">Checking the bank's account-opening services…</p>
-      : error ? <p role="alert">Readiness could not be confirmed. All changes remain unavailable. {error}</p>
-      : readiness ? <ul class="application-readiness">
-        <li>Private identity details: {readiness.identityDetailsAvailable ? "Available" : "Unavailable"}</li>
-        <li>In-person identity review: {readiness.reviewsAvailable ? "Available" : "Unavailable"}</li>
-        <li>Cash receipt: {readiness.cashReceiptAvailable ? "Available" : "Unavailable"}</li>
-        <li>Funded opening: {readiness.accountOpeningAvailable ? "Available" : "Unavailable"}</li>
-        <li>Cash return: {readiness.cashRefundAvailable ? "Available" : "Unavailable"}</li>
-      </ul> : <p>No readiness result is available. Do not collect identity details or cash.</p>}
-    {readiness?.blockers.length ? <ul>{readiness.blockers.map(code => <li key={code}>{readinessExplanation(code)}</li>)}</ul> : null}
-    {readiness && <p class="application-muted">Last server check: <time dateTime={readiness.checkedAt}>{formatDate(readiness.checkedAt, true)}</time>. This snapshot does not update automatically. Check again after setup changes or a service interruption.</p>}
-    <p class="application-muted">In-person review is not government verification. Availability is a readiness check, not approval of an application or proof that cash changed hands. The server rechecks each action.</p>
-    <button class="bank-button secondary" type="button" disabled={loading} onClick={refresh}>Check service readiness</button>
-  </aside>;
-}
-
-function readinessExplanation(code: string): string {
-  const labels: Record<string, string> = {
-    WORKFLOW_DISABLED: "Account opening has not been activated by the bank.",
-    IDENTITY_CONFIGURATION_UNAVAILABLE: "Private identity processing or its encryption configuration is unavailable.",
-    CASH_ACCOUNT_UNAVAILABLE: "The bank's cash account is unavailable for dedicated cash operations.",
-    OPENING_HOLD_UNAVAILABLE: "The opening-deposit holding account has not been activated or is unavailable."
-  };
-  return labels[code] || "The bank must resolve this readiness check: " + code.replace(/_/g, " ").toLowerCase() + ".";
+  if (loading) return null;
+  if (error || !readiness?.applicationsAvailable) return <p class="bank-error" role="status">Account application actions are temporarily unavailable. Refresh to try again.</p>;
+  if (!readiness.identityDetailsAvailable || !readiness.reviewsAvailable || !readiness.cashReceiptAvailable || !readiness.accountOpeningAvailable || !readiness.cashRefundAvailable)
+    return <p class="bank-notice" role="status">Some account application actions are temporarily unavailable. Refresh before trying again.</p>;
+  return null;
 }
 
 function AdminApplicationQueue({ token }: { token: string }) {
@@ -56,9 +35,16 @@ function AdminApplicationQueue({ token }: { token: string }) {
   const [page, setPage] = useState(0);
   const result = useLoad(() => applicationApi.listAdmin(token, { status: status || undefined, page, size: pageSize }), [token, status, page]);
   const items = result.data?.items || [], total = result.data?.total || 0;
+  function refresh() { result.reload(); return readiness.reload(); }
+  function openRow(event: MouseEvent & {currentTarget: HTMLTableRowElement}) {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if ((event.target as Element).closest("a, button, input, select, textarea")) return;
+    // Use the same native link as keyboard users; the shared router preserves unsaved-work guards.
+    event.currentTarget.querySelector<HTMLAnchorElement>("a")?.click();
+  }
   return <div class="application-admin">
-    <PageHeading eyebrow="ADMINISTRATOR WORKSPACE" title="Account applications" description="Check original identity documents in person, acknowledge actual cash and open eligible savings accounts." action={<button class="bank-button secondary" disabled={result.loading} onClick={result.reload}>Refresh applications</button>}/>
-    <ReadinessNotice readiness={readiness.loading || readiness.error ? undefined : readiness.data} loading={readiness.loading} error={readiness.error} refresh={readiness.reload}/>
+    <PageHeading eyebrow="ADMINISTRATOR WORKSPACE" title="Account applications" description="Check original identity documents in person, acknowledge actual cash and open eligible savings accounts." action={<button class="bank-button secondary" disabled={result.loading || readiness.loading} onClick={refresh}>Refresh applications</button>}/>
+    <ApplicationAvailability readiness={readiness.loading || readiness.error ? undefined : readiness.data} loading={readiness.loading} error={readiness.error}/>
     <Panel title="Application queue">
       <div class="application-filters"><label>Application status<select value={status} onChange={event => { setStatus(event.currentTarget.value as ApplicationStatus | ""); setPage(0); }}>
         <option value="">All statuses</option>{APPLICATION_STATUSES.map(value => <option key={value} value={value}>{applicationStatusLabel(value)}</option>)}
@@ -67,7 +53,7 @@ function AdminApplicationQueue({ token }: { token: string }) {
         <p class="application-result-count" role="status">{total} {total === 1 ? "application" : "applications"} found</p>
         {!items.length ? <p class="bank-notice">No applications on this page. Choose another status or return to the previous page.</p> :
           <div class="admin-table-scroll application-table-scroll" tabIndex={0} role="region" aria-label="Scrollable application results"><table class="admin-table"><caption class="sr-only">Account applications matching the selected status</caption><thead><tr><th scope="col">Applicant</th><th scope="col">Opening amount</th><th scope="col">Status</th><th scope="col">Requested</th><th scope="col">Review</th></tr></thead><tbody>
-            {items.map(item => <tr key={item.id}><td><strong>{item.fullName}</strong><small>{item.email}</small></td><td>{formatMoney(item.openingAmount, item.currencyCode)}</td><td><ApplicationStatusBadge status={item.status}/></td><td>{formatDate(item.createdAt)}</td><td><a class="admin-account-link" href={applicationHref(item.id)}>Inspect application<span class="sr-only"> for {item.fullName}</span></a></td></tr>)}
+            {items.map(item => <tr key={item.id} class="application-queue-row" onClick={openRow}><td><strong>{item.fullName}</strong><small>{item.email}</small></td><td>{formatMoney(item.openingAmount, item.currencyCode)}</td><td><ApplicationStatusBadge status={item.status}/></td><td>{formatDate(item.createdAt)}</td><td><a class="admin-account-link" href={applicationHref(item.id)}>Inspect application<span class="sr-only"> for {item.fullName}</span></a></td></tr>)}
           </tbody></table></div>}
         <nav class="admin-pagination application-pagination" aria-label="Application pages"><span>Page {page + 1}{total ? ` of ${Math.ceil(total / pageSize)}` : ""}</span><button class="bank-button secondary" disabled={page === 0 || result.loading} onClick={() => setPage(value => Math.max(0, value - 1))}>Previous page</button><button class="bank-button secondary" disabled={result.loading || (page + 1) * pageSize >= total} onClick={() => setPage(value => value + 1)}>Next page</button></nav>
       </State>
@@ -82,15 +68,20 @@ function AdminApplicationDetail({ token, id }: { token: string; id: string }) {
   const [locked, setLocked] = useState(false);
   const [notice, setNotice] = useState("");
   const application = updated || loaded.data;
-  function refresh() { if (locked || !confirmNavigation()) return; setUpdated(undefined); setNotice(""); loaded.reload(); }
+  function refresh() {
+    const checking = readiness.reload();
+    if (locked || !confirmNavigation()) return checking;
+    setUpdated(undefined); setNotice(""); loaded.reload();
+    return checking;
+  }
   function saved(result: AccountApplication) {
     setUpdated(result);
     setNotice(`Server confirmed: ${applicationStatusLabel(result.status)}. The application record below is updated.`);
   }
   return <div class="application-admin">
     <nav class="admin-breadcrumb" aria-label="Breadcrumb"><a href="#/admin/applications" aria-disabled={locked || undefined} onClick={event => { if (locked) event.preventDefault(); }}>← Application queue</a></nav>
-    <PageHeading eyebrow="ADMINISTRATOR WORKSPACE" title="Review account application" description="A review decision does not create an account or credit money." action={<button class="bank-button secondary" disabled={locked || loaded.loading} onClick={refresh}>Refresh application</button>}/>
-    <ReadinessNotice readiness={readiness.loading || readiness.error ? undefined : readiness.data} loading={readiness.loading} error={readiness.error} refresh={readiness.reload}/>
+    <PageHeading eyebrow="ADMINISTRATOR WORKSPACE" title="Review account application" description="A review decision does not create an account or credit money." action={<button class="bank-button secondary" disabled={loaded.loading || readiness.loading} onClick={refresh}>Refresh application</button>}/>
+    <ApplicationAvailability readiness={readiness.loading || readiness.error ? undefined : readiness.data} loading={readiness.loading} error={readiness.error}/>
     {notice && <p class="bank-notice" role="status">{notice}</p>}
     <State loading={loaded.loading && !updated} error={updated ? "" : loaded.error} retry={refresh}>
       {application && <>
@@ -123,9 +114,6 @@ export function AdminApplicationActions({ token, application, onResult, onLocked
   const action = useApplicationAction(onResult, canPerform);
   const [validation, setValidation] = useState("");
   const [inPersonChecked, setInPersonChecked] = useState(false);
-  const [revealed, setRevealed] = useState<{scope: string; value: RevealedIdentity} | null>(null);
-  const [revealing, setRevealing] = useState(false), [revealError, setRevealError] = useState("");
-  const revealEpoch = useRef(0);
   const [decision, setDecision] = useState<"APPROVED" | "REJECTED" | "CHANGES_REQUESTED">("APPROVED");
   const [reviewReason, setReviewReason] = useState("");
   const [cashConfirmed, setCashConfirmed] = useState(false);
@@ -139,11 +127,6 @@ export function AdminApplicationActions({ token, application, onResult, onLocked
   const requestedAmount = normalizeOpeningAmount(application.openingAmount);
   const canApprove = inPersonChecked;
   const identityReady = enabled && readiness?.identityDetailsAvailable === true && readiness?.reviewsAvailable === true;
-  const identityScope = `${token}:${application.id}:${application.version}:${application.status}`;
-  const visibleIdentity = !locked && identityReady && application.status === "PENDING_REVIEW" && revealed?.scope === identityScope ? revealed.value : null;
-  const revealAccess = useRef({scope: identityScope, allowed: false, busy: false});
-  revealAccess.current.scope = identityScope;
-  revealAccess.current.allowed = !locked && identityReady && application.status === "PENDING_REVIEW";
   const heldReceipts = application.receipts.filter(receipt => receipt.status === "RECEIVED" && normalizeOpeningAmount(receipt.amount) === requestedAmount && requestedAmount !== null);
   const pendingRefunds = application.receipts.filter(receipt => receipt.status === "REFUND_PENDING" && normalizeOpeningAmount(receipt.amount) === requestedAmount && requestedAmount !== null);
   const dirty = !!(reviewReason || cashConfirmed || refundReason || refundConfirmed
@@ -154,30 +137,8 @@ export function AdminApplicationActions({ token, application, onResult, onLocked
     return () => onLockedChange?.(false);
   }, [action.busy, action.uncertain, onLockedChange]);
 
-  useEffect(() => {
-    revealEpoch.current++; revealAccess.current.busy = false; setRevealed(null); setRevealError(""); setRevealing(false);
-    return () => { revealEpoch.current++; };
-  }, [identityScope, identityReady, action.busy, action.uncertain]);
-  function hideIdentity() { revealEpoch.current++; revealAccess.current.busy = false; setRevealed(null); setRevealing(false); setRevealError(""); }
-  async function revealIdentity() {
-    if (!revealAccess.current.allowed || revealAccess.current.scope !== identityScope || revealAccess.current.busy) return;
-    revealAccess.current.busy = true;
-    const epoch = ++revealEpoch.current, scope = identityScope;
-    setRevealing(true); setRevealError("");
-    try {
-      const value = await applicationApi.revealIdentity(token, application.id);
-      if (epoch !== revealEpoch.current || !revealAccess.current.allowed || revealAccess.current.scope !== scope) return;
-      if (value.identityType !== application.identityType || "••••" + value.identityNumber.slice(-4) !== application.identityMasked)
-        throw new Error("The identifier response did not match this application.");
-      setRevealed({scope, value});
-    } catch {
-      if (epoch === revealEpoch.current) setRevealError("The identifier could not be revealed. Check your access and service readiness, then try again.");
-    } finally { if (epoch === revealEpoch.current) { revealAccess.current.busy = false; setRevealing(false); } }
-  }
-
   function send(label: string, request: (requestKey: string) => Promise<AccountApplication>) {
     if (locked || !canPerform(label)) return;
-    hideIdentity();
     setValidation("");
     action.clearError();
     void action.run(label, request);
@@ -221,26 +182,16 @@ export function AdminApplicationActions({ token, application, onResult, onLocked
   return <div class="application-review-actions" aria-busy={action.busy}>
     {action.busy && <p class="bank-notice" role="status">{action.label}… Keep this page open until the result is confirmed.</p>}
     {(validation || action.error) && <p class="bank-error application-action-error" role="alert">{validation || action.error}</p>}
-    {action.uncertain && <div class="bank-notice application-uncertain" role="status"><p>The outcome is unknown. Do not collect or return cash again, change these details or submit a new action. Recover the result of the original request. If a service is unavailable, use Check service readiness above without discarding this request.</p><button class="bank-button" disabled={!canPerform(action.label) || action.busy} onClick={() => void action.retry()}>Retry the same request</button></div>}
+    {action.uncertain && <div class="bank-notice application-uncertain" role="status"><p>The outcome is unknown. Do not collect or return cash again, change these details or submit a new action. Recover the result of the original request. Use Refresh application if needed; it will preserve the original request.</p><button class="bank-button" disabled={!canPerform(action.label) || action.busy} onClick={() => void action.retry()}>Retry the same request</button></div>}
 
     {application.status === "PENDING_REVIEW" && <>
-      <Panel title="In-person original identity check">
-        <p>Meet the applicant and compare the original selected identity document with the application details. No upload, automated document verification or government verification takes place here.</p>
-        <dl><dt>Document</dt><dd>{identityLabel(application.identityType)}</dd><dt>Saved identifier</dt><dd>{application.identityMasked}</dd></dl>
-        {application.identityType === "AADHAAR" && <p>Only the last four Aadhaar digits are retained. Do not request or enter the full number.</p>}
-        {visibleIdentity ? <div class="application-private-identity"><p role="status">For this in-person comparison only: <strong>{visibleIdentity.identityNumber}</strong></p><button class="bank-button secondary" type="button" onClick={hideIdentity}>Hide identifier</button></div>
-          : <button class="bank-button secondary" type="button" disabled={locked || !identityReady || revealing} onClick={() => void revealIdentity()}>{revealing ? "Revealing identifier…" : "Reveal identifier for in-person check"}</button>}
-        {revealing && <button class="bank-button secondary" type="button" onClick={hideIdentity}>Cancel reveal</button>}
-        {revealError && <p class="bank-error" role="alert">{revealError}</p>}
-        <p class="application-muted">Revealed details are temporary. Do not copy them into comments, messages or screenshots. They are hidden when this application changes or you leave the review.</p>
-      </Panel>
       <Panel title="Application decision"><p>Approval permits cash collection; it does not create an account or credit funds.</p>
         <form class="bank-form" onSubmit={event => { event.preventDefault(); saveDecision(); }}><fieldset disabled={locked}>
-          <label>Application decision<select value={decision} onChange={event => { setDecision(event.currentTarget.value as typeof decision); setInPersonChecked(false); }}><option value="APPROVED" disabled={!identityReady}>Approve after in-person check</option><option value="CHANGES_REQUESTED">Request identity corrections</option><option value="REJECTED">Reject application</option></select></label>
+          <label>Application decision<select value={decision} onChange={event => { setDecision(event.currentTarget.value as typeof decision); setInPersonChecked(false); }}><option value="APPROVED" disabled={!identityReady}>Approve after in-person check</option><option value="CHANGES_REQUESTED">Request corrections</option><option value="REJECTED">Reject application</option></select></label>
           {decision === "APPROVED" && <label class="application-check"><input type="checkbox" checked={inPersonChecked} disabled={!identityReady} onChange={event => setInPersonChecked(event.currentTarget.checked)}/>I checked the original identity document in person and matched it to this applicant.</label>}
           <label>Application review reason<textarea required maxLength={500} value={reviewReason} onInput={event => setReviewReason(event.currentTarget.value)} aria-describedby="application-review-reason"/></label>
           <small id="application-review-reason">Up to 500 UTF-8 bytes. Never include identity numbers.{reviewReason ? ` ${validateReviewReason(reviewReason.trim())}` : ""}</small>
-          {!identityReady && <p class="bank-notice">Approval needs private identity processing. A reasoned rejection or request for corrections does not create an account or move money.</p>}
+          {!identityReady && <p class="bank-notice">Approval is temporarily unavailable. You can still request corrections or reject the application.</p>}
           <button class="bank-button" type="submit" disabled={locked || !!validateReviewReason(reviewReason.trim()) || (decision === "APPROVED" && (!canApprove || !identityReady))}>Save application decision</button>
         </fieldset></form>
       </Panel>

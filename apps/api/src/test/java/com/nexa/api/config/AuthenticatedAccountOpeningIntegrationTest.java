@@ -345,6 +345,232 @@ class AuthenticatedAccountOpeningIntegrationTest {
     assertThat(balance("NEXA-OPENING-HOLD")).isZero();
   }
 
+  @Test
+  void registrationMayOmitPhoneButAccountApplicationsRequireAValidOne() throws Exception {
+    assertThat(db.queryForObject("SELECT phone_number FROM customers WHERE user_id=?", String.class,customer.userId())).isNull();
+    var request=createBody(read(CUSTOMER+"/requirements",customer)); request.remove("phoneNumber");
+    JsonNode missing=write(CUSTOMER,customer,request,400);
+    assertThat(missing.get("detail").asText()).contains("phone number");
+    for(String invalid:List.of("", "12", "abcdefghij", "12+34567890", "1234567890123456", "9000\n000001")) {
+      request.put("phoneNumber",invalid);write(CUSTOMER,customer,request,400);
+    }
+    assertThat(count("account_applications")).isZero();
+    request.put("phoneNumber","+91 (90000) 00001");
+    var application=write(CUSTOMER,customer,request,201);
+    assertThat(application.get("phoneNumber").asText()).isEqualTo("+919000000001");
+    assertThat(db.queryForObject("SELECT phone_number FROM customers WHERE user_id=?",String.class,customer.userId())).isNull();
+    assertNoMoneyOrAccount();
+  }
+
+  @Test
+  void aValidProfilePhoneIsUsedOnceWhenApplicationInputOmitsIt() throws Exception {
+    db.update("UPDATE customers SET phone_number=? WHERE user_id=?","90000 00001",customer.userId());
+    var request=createBody(read(CUSTOMER+"/requirements",customer));request.remove("phoneNumber");
+    var application=write(CUSTOMER,customer,request,201);
+    assertThat(application.get("phoneNumber").asText()).isEqualTo("9000000001");
+    db.update("UPDATE customers SET phone_number=NULL WHERE user_id=?",customer.userId());
+    assertThat(write(CUSTOMER,customer,request,201).get("id").asText()).isEqualTo(application.get("id").asText());
+    assertThat(count("account_applications")).isEqualTo(1);
+  }
+
+  @Test
+  void editableDetailsPreserveMaskedIdentityAndAreAtomicVersionedAndIdempotent() throws Exception {
+    var application=draft(customer);String id=application.get("id").asText();
+    String ciphertext=db.queryForObject("SELECT identity_ciphertext FROM account_applications WHERE id=?",String.class,id);
+    var details=details(application,"+91 (98765) 43210","1994-02-03","2500.37");
+    application=write(CUSTOMER+"/"+id+"/details",customer,details,200);
+    assertThat(application.get("phoneNumber").asText()).isEqualTo("+919876543210");
+    assertThat(application.get("dateOfBirth").asText()).isEqualTo("1994-02-03");
+    assertThat(application.get("openingAmount").asText()).isEqualTo("2500.37");
+    assertThat(application.get("identityMasked").asText()).isEqualTo("••••234E");
+    assertThat(db.queryForObject("SELECT identity_ciphertext FROM account_applications WHERE id=?",String.class,id)).isEqualTo(ciphertext);
+    assertThat(application.get("events").get(1).get("eventType").asText()).isEqualTo("APPLICATION_UPDATED");
+    assertThat(write(CUSTOMER+"/"+id+"/details",customer,details,200).get("version").asLong()).isEqualTo(1);
+    details.put("openingAmount","3000.00");write(CUSTOMER+"/"+id+"/details",customer,details,409);
+    details.put("requestKey",UUID.randomUUID().toString());write(CUSTOMER+"/"+id+"/details",customer,details,409);
+    assertThat(count("application_events")).isEqualTo(2);
+    var invalid=details(application,"9876543210","1994-02-03","3000.00");invalid.put("identityType","AADHAAR");
+    write(CUSTOMER+"/"+id+"/details",customer,invalid,400);
+    for (var invalidValue : List.of(Map.entry("dateOfBirth","2020-01-01"),Map.entry("openingAmount","999.99"),
+        Map.entry("openingAmount","1000.001"),Map.entry("phoneNumber","not-a-phone"))) {
+      var rejected=details(application,"9876543210","1994-02-03","3000.00");
+      rejected.put(invalidValue.getKey(),invalidValue.getValue());
+      write(CUSTOMER+"/"+id+"/details",customer,rejected,400);
+    }
+    assertThat(read(CUSTOMER+"/"+id,customer).get("openingAmount").asText()).isEqualTo("2500.37");
+    Session other=register("Other details owner");
+    write(CUSTOMER+"/"+id+"/details",other,details(application,"9876543210","1994-02-03","3000.00"),404);
+    write(CUSTOMER+"/"+id+"/details",administrator,details(application,"9876543210","1994-02-03","3000.00"),403);
+    assertNoMoneyOrAccount();
+  }
+
+  @Test
+  void requestedCorrectionsCanReplaceAllInputsThenFundOnlyTheReviewedAmount() throws Exception {
+    var application=draft(customer);String id=application.get("id").asText();
+    application=write(CUSTOMER+"/"+id+"/submit",customer,action(application),200);
+    write(CUSTOMER+"/"+id+"/details",customer,details(application,"9876543210","1994-02-03","3200.50"),409);
+    application=write(ADMIN+"/"+id+"/review",administrator,decision(application,"CHANGES_REQUESTED"),200);
+    var correction=details(application,"98765-43210","1994-02-03","3200.50");
+    correction.put("identityType","AADHAAR");correction.put("identityNumber","0123");
+    application=write(CUSTOMER+"/"+id+"/details",customer,correction,200);
+    assertThat(application.get("status").asText()).isEqualTo("CHANGES_REQUESTED");
+    assertThat(application.get("identityMasked").asText()).isEqualTo("••••0123");
+    assertThat(db.queryForObject("SELECT identity_ciphertext FROM account_applications WHERE id=?",String.class,id)).isNull();
+    application=write(CUSTOMER+"/"+id+"/submit",customer,action(application),200);
+    application=write(ADMIN+"/"+id+"/review",administrator,decision(application,"APPROVED"),200);
+    write(CUSTOMER+"/"+id+"/details",customer,details(application,"9876543210","1994-02-03","9000"),409);
+    var receipt=action(application);receipt.put("cashReceivedConfirmed",true);
+    application=write(ADMIN+"/"+id+"/cash-receipts",administrator,receipt,200);
+    assertThat(application.get("receipts").get(0).get("amount").asText()).isEqualTo("3200.50");
+    write(CUSTOMER+"/"+id+"/details",customer,details(application,"9876543210","1994-02-03","9000"),409);
+    application=write(ADMIN+"/"+id+"/open",administrator,action(application),200);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?",BigDecimal.class,application.get("accountId").asLong())).isEqualByComparingTo("3200.50");
+    assertThat(db.queryForObject("SELECT phone_number FROM customers WHERE user_id=?",String.class,customer.userId())).isEqualTo("9876543210");
+  }
+
+  @Test
+  void legacyMissingPhoneRequiresCorrectionAtSubmissionReviewAndOpening() throws Exception {
+    var application=draft(customer);String id=application.get("id").asText();
+    db.update("UPDATE account_applications SET phone_number=NULL WHERE id=?",id);
+    write(CUSTOMER+"/"+id+"/submit",customer,action(application),400);
+    application=write(CUSTOMER+"/"+id+"/details",customer,details(application,"9876543210","1994-02-03","1000"),200);
+    application=write(CUSTOMER+"/"+id+"/submit",customer,action(application),200);
+    db.update("UPDATE account_applications SET phone_number=NULL WHERE id=?",id);
+    write(ADMIN+"/"+id+"/review",administrator,decision(application,"APPROVED"),400);
+    application=write(ADMIN+"/"+id+"/review",administrator,decision(application,"CHANGES_REQUESTED"),200);
+    application=write(CUSTOMER+"/"+id+"/details",customer,details(application,"9876543210","1994-02-03","1000"),200);
+    application=write(CUSTOMER+"/"+id+"/submit",customer,action(application),200);
+    application=write(ADMIN+"/"+id+"/review",administrator,decision(application,"APPROVED"),200);
+    var receipt=action(application);receipt.put("cashReceivedConfirmed",true);
+    application=write(ADMIN+"/"+id+"/cash-receipts",administrator,receipt,200);
+    db.update("UPDATE account_applications SET phone_number=NULL WHERE id=?",id);
+    write(ADMIN+"/"+id+"/open",administrator,action(application),400);
+    assertThat(customerAccounts()).isZero();assertThat(count("transactions")).isEqualTo(1);
+  }
+
+  @Test
+  void correctingDobUsesTheCurrentEligibilityDateRatherThanAnOldDraftDate() throws Exception {
+    var application=draft(customer);String id=application.get("id").asText();
+    db.update("UPDATE account_applications SET business_date=DATE '2020-01-01' WHERE id=?",id);
+    String cutoff=read(CUSTOMER+"/requirements",customer).get("latestDateOfBirth").asText();
+    application=write(CUSTOMER+"/"+id+"/details",customer,details(application,"9876543210",cutoff,"1000"),200);
+    assertThat(application.get("dateOfBirth").asText()).isEqualTo(cutoff);
+    assertNoMoneyOrAccount();
+  }
+
+  @Test
+  void detailsAndReplacementIdentityRollbackTogetherIfTheirAuditCannotBeSaved() throws Exception {
+    var application=draft(customer);String id=application.get("id").asText();
+    String before=db.queryForObject("SELECT identity_ciphertext FROM account_applications WHERE id=?",String.class,id);
+    var correction=details(application,"9876543210","1994-02-03","3500.25");
+    correction.put("identityType","AADHAAR");correction.put("identityNumber","0123");
+    db.execute("ALTER TABLE application_events ADD CONSTRAINT h2_reject_details CHECK (event_type<>'APPLICATION_UPDATED')");
+    try {
+      write(CUSTOMER+"/"+id+"/details",customer,correction,409);
+      var unchanged=read(CUSTOMER+"/"+id,customer);
+      assertThat(unchanged.get("version").asLong()).isZero();
+      assertThat(unchanged.get("openingAmount").asText()).isEqualTo("1000.00");
+      assertThat(unchanged.get("dateOfBirth").asText()).isEqualTo("1990-01-01");
+      assertThat(unchanged.get("phoneNumber").asText()).isEqualTo("9000000001");
+      assertThat(db.queryForObject("SELECT identity_ciphertext FROM account_applications WHERE id=?",String.class,id)).isEqualTo(before);
+      assertThat(count("application_events")).isEqualTo(1);
+    } finally {
+      db.execute("ALTER TABLE application_events DROP CONSTRAINT h2_reject_details");
+    }
+    assertThat(write(CUSTOMER+"/"+id+"/details",customer,correction,200).get("openingAmount").asText()).isEqualTo("3500.25");
+    assertNoMoneyOrAccount();
+  }
+
+  @Test
+  void anotherCustomersFormattedPhoneIsRejectedBeforeApplicationCreation() throws Exception {
+    Session other=register("Existing phone owner");
+    db.update("UPDATE customers SET phone_number=? WHERE user_id=?","(98765) 43210",other.userId());
+    var create=createBody(read(CUSTOMER+"/requirements",customer));create.put("phoneNumber","9876543210");
+    var conflict=write(CUSTOMER,customer,create,409);
+    assertThat(conflict.get("detail").asText()).contains("phone number").contains("already in use");
+    assertThat(count("account_applications")).isZero();
+    db.update("UPDATE customers SET phone_number=? WHERE user_id=?","90000 00001",customer.userId());
+    create.remove("phoneNumber");
+    assertThat(write(CUSTOMER,customer,create,201).get("phoneNumber").asText()).isEqualTo("9000000001");
+    assertNoMoneyOrAccount();
+  }
+
+  @Test
+  void conflictingPhoneCorrectionLeavesTheOriginalDraftUnchanged() throws Exception {
+    var application=draft(customer);String id=application.get("id").asText();
+    Session other=register("Correction phone owner");
+    db.update("UPDATE customers SET phone_number=? WHERE user_id=?","+91 (98765) 43210",other.userId());
+    var correction=details(application,"+919876543210","1994-02-03","5000");
+    var conflict=write(CUSTOMER+"/"+id+"/details",customer,correction,409);
+    assertThat(conflict.get("detail").asText()).contains("phone number");
+    var unchanged=read(CUSTOMER+"/"+id,customer);
+    assertThat(unchanged.get("phoneNumber").asText()).isEqualTo("9000000001");
+    assertThat(unchanged.get("openingAmount").asText()).isEqualTo("1000.00");
+    assertThat(unchanged.get("version").asLong()).isZero();
+    assertThat(count("application_events")).isEqualTo(1);
+    assertNoMoneyOrAccount();
+  }
+
+  @Test
+  void newlyConflictingPhoneIsRecheckedAtSubmissionApprovalReceiptAndOpening() throws Exception {
+    var application=draft(customer);String id=application.get("id").asText();
+    Session other=register("Later phone owner");
+    db.update("UPDATE customers SET phone_number=? WHERE user_id=?","90000 00001",other.userId());
+    write(CUSTOMER+"/"+id+"/submit",customer,action(application),409);
+    db.update("UPDATE customers SET phone_number=NULL WHERE user_id=?",other.userId());
+    application=write(CUSTOMER+"/"+id+"/submit",customer,action(application),200);
+    db.update("UPDATE customers SET phone_number=? WHERE user_id=?","(90000) 00001",other.userId());
+    write(ADMIN+"/"+id+"/review",administrator,decision(application,"APPROVED"),409);
+    db.update("UPDATE customers SET phone_number=NULL WHERE user_id=?",other.userId());
+    application=write(ADMIN+"/"+id+"/review",administrator,decision(application,"APPROVED"),200);
+    var receipt=action(application);receipt.put("cashReceivedConfirmed",true);
+    db.update("UPDATE customers SET phone_number=? WHERE user_id=?","9000000001",other.userId());
+    write(ADMIN+"/"+id+"/cash-receipts",administrator,receipt,409);
+    assertNoMoneyOrAccount();assertThat(count("opening_cash_receipts")).isZero();
+    db.update("UPDATE customers SET phone_number=NULL WHERE user_id=?",other.userId());
+    application=write(ADMIN+"/"+id+"/cash-receipts",administrator,receipt,200);
+    db.update("UPDATE customers SET phone_number=? WHERE user_id=?","9000000001",other.userId());
+    var conflict=write(ADMIN+"/"+id+"/open",administrator,action(application),409);
+    assertThat(conflict.get("detail").asText()).contains("phone number");
+    assertThat(customerAccounts()).isZero();assertThat(count("transactions")).isEqualTo(1);
+    var requestRefund=action(application);requestRefund.put("reason","Return opening cash after contact conflict.");
+    application=write(ADMIN+"/"+id+"/refund-request",administrator,requestRefund,200);
+    var refund=action(application);refund.put("cashReturnedConfirmed",true);
+    application=write(ADMIN+"/"+id+"/refund",administrator,refund,200);
+    assertThat(application.get("status").asText()).isEqualTo("REFUNDED");
+    assertThat(balance("SYSTEM-CASH")).isZero();assertThat(balance("NEXA-OPENING-HOLD")).isZero();
+  }
+
+  @Test
+  void lateProfilePhoneConstraintFailureRollsBackTheWholeOpeningAndCanBeRetried() throws Exception {
+    var application=draft(customer);String id=application.get("id").asText();
+    application=write(CUSTOMER+"/"+id+"/submit",customer,action(application),200);
+    application=write(ADMIN+"/"+id+"/review",administrator,decision(application,"APPROVED"),200);
+    var receipt=action(application);receipt.put("cashReceivedConfirmed",true);
+    application=write(ADMIN+"/"+id+"/cash-receipts",administrator,receipt,200);
+    var opening=action(application);
+    // Fail only the final phone persistence, after the service availability check and allocation.
+    db.execute("ALTER TABLE customers ADD CONSTRAINT h2_reject_phone_write CHECK (phone_number IS NULL)");
+    try {
+      var conflict=write(ADMIN+"/"+id+"/open",administrator,opening,409);
+      assertThat(conflict.get("detail").asText()).contains("phone number").contains("refund");
+      assertThat(customerAccounts()).isZero();assertThat(count("transactions")).isEqualTo(1);
+      assertThat(count("journal_entries")).isEqualTo(1);assertThat(count("ledger_entries")).isEqualTo(2);
+      assertThat(balance("SYSTEM-CASH")).isEqualByComparingTo("1000");
+      assertThat(balance("NEXA-OPENING-HOLD")).isEqualByComparingTo("1000");
+      assertThat(read(ADMIN+"/"+id,administrator).get("status").asText()).isEqualTo("CASH_RECEIVED");
+      assertThat(db.queryForObject("SELECT status FROM opening_cash_receipts WHERE application_id=?",String.class,id)).isEqualTo("RECEIVED");
+    } finally {
+      db.execute("ALTER TABLE customers DROP CONSTRAINT h2_reject_phone_write");
+    }
+    assertThat(write(ADMIN+"/"+id+"/open",administrator,opening,200).get("status").asText()).isEqualTo("OPENED");
+    assertThat(customerAccounts()).isEqualTo(1);assertThat(count("transactions")).isEqualTo(2);
+  }
+
+  private Map<String,Object> details(JsonNode application,String phone,String birth,String amount) {
+    var result=action(application);result.put("phoneNumber",phone);result.put("dateOfBirth",birth);result.put("openingAmount",amount);return result;
+  }
+
   private Session register(String name) throws Exception {
     String email = "http-opening-" + UUID.randomUUID() + "@example.test";
     JsonNode response = json.readTree(mvc.perform(post("/api/v1/auth/register")
@@ -373,7 +599,7 @@ class AuthenticatedAccountOpeningIntegrationTest {
   private Map<String,Object> createBody(JsonNode requirements) {
     var body = new LinkedHashMap<String,Object>();
     body.put("requestKey", UUID.randomUUID().toString()); body.put("accountType", "SAVINGS");
-    body.put("currencyCode", "INR"); body.put("dateOfBirth", "1990-01-01"); body.put("openingAmount", "1000.00");
+    body.put("currencyCode", "INR"); body.put("phoneNumber", "9000000001"); body.put("dateOfBirth", "1990-01-01"); body.put("openingAmount", "1000.00");
     body.put("identityType","PAN"); body.put("identityNumber","ABCPD1234E");
     body.put("consentVersion", requirements.get("consentVersion").asText()); body.put("consentAccepted", true);
     return body;

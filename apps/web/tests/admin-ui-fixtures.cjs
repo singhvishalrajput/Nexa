@@ -14,11 +14,85 @@ const requests = [{
   PERIODIC_PAYMENT: '11768.37', LOAN_PURPOSE: 'Home improvements', CREATED_AT: '2026-09-23T10:00:00Z', FUNDING_ACCOUNT_ID: 1
 }];
 const requiredMonths = ['2026-06', '2026-07', '2026-08'];
+function analytics(days) {
+  const now = new Date();
+  const indiaOffset = 330 * 60 * 1000;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const endDate = new Date(now.getTime() + indiaOffset).toISOString().slice(0, 10);
+  const today = Date.parse(`${endDate}T00:00:00Z`);
+  const start = today - (days - 1) * dayMs;
+  const money = amount => [{currencyCode: 'INR', amount: amount.toFixed(2)}];
+  // Customer registrations and account openings are independent events. Eighteen customers
+  // include applicants without an account; the account directory represents 24 accounts.
+  const customerAges = Array.from({length: 18}, (_, i) => 2 + i * 5);
+  const accountAges = accounts.map((_, i) => 2 + i * 3);
+  const daily = Array.from({length: days === 1 ? 0 : days}, (_, i) => {
+    const age = days - 1 - i;
+    const postedPayments = age % 9 === 6 ? 0 : 4 + (age * 7 + 3) % 19;
+    const paymentAmount = postedPayments * (1475 + (age * 127) % 3600);
+    return {
+      date: new Date(start + i * dayMs).toISOString().slice(0, 10),
+      postedPayments, paymentAmounts: money(paymentAmount),
+      newCustomers: customerAges.filter(value => value === age).length,
+      newAccounts: accountAges.filter(value => value === age).length
+    };
+  });
+  const hourMs = 60 * 60 * 1000;
+  const from = days === 1 ? now.getTime() - dayMs : start - indiaOffset;
+  const hourly = [];
+  if (days === 1) {
+    const firstHour = Math.floor((from + indiaOffset) / hourMs) * hourMs - indiaOffset;
+    for (let hour = firstHour; hour < now.getTime(); hour += hourMs) {
+      const index = hourly.length;
+      const postedPayments = [0, 0, 0, 1, 0, 0, 2, 0, 3, 5, 2, 0, 1, 4, 3, 0, 7, 5, 2, 0, 3, 6, 2, 1, 1][index] || 0;
+      hourly.push({startAt: new Date(Math.max(hour, from)).toISOString(),
+        endAt: new Date(Math.min(hour + hourMs, now.getTime())).toISOString(),
+        postedPayments, paymentAmounts: money(postedPayments * (475 + index * 127)),
+        newCustomers: index === 8 ? 1 : 0, newAccounts: index === 9 ? 1 : 0});
+    }
+  }
+  const series = days === 1 ? hourly : daily;
+  const accountCounts = (keys, property) => keys.map(key => ({key, count: accounts.filter(a => a[property] === key).length}));
+  const applicationCounts = {
+    DRAFT: 1, PENDING_REVIEW: 2, CHANGES_REQUESTED: 1, APPROVED_AWAITING_CASH: 2,
+    CASH_RECEIVED: 1, OPENED: 3, REJECTED: 2, CANCELLED: 1, REFUND_PENDING: 2, REFUNDED: 1
+  };
+  const sum = property => series.reduce((total, bucket) => total + bucket[property], 0);
+  return {
+    generatedAt: now.toISOString(), timezone: 'Asia/Kolkata',
+    period: {
+      days, granularity: days === 1 ? 'HOUR' : 'DAY',
+      startDate: new Date(from + indiaOffset).toISOString().slice(0, 10), endDate,
+      startAt: new Date(from).toISOString(), endAt: now.toISOString()
+    },
+    snapshot: {
+      customers: 18, activeCustomers: 16, customerAccounts: accounts.length,
+      activeCustomerAccounts: accounts.filter(a => a.status === 'ACTIVE').length,
+      activeDepositBalances: money(accounts.filter(a => a.status === 'ACTIVE' && ['SAVINGS', 'CURRENT'].includes(a.type))
+        .reduce((total, account) => total + Number(account.balance), 0)),
+      accountTypes: accountCounts(['SAVINGS', 'CURRENT', 'LOAN', 'CARD', 'CASH', 'CLEARING'], 'type'),
+      accountStatuses: accountCounts(['ACTIVE', 'BLOCKED', 'CLOSED'], 'status'),
+      applicationStatuses: Object.entries(applicationCounts).map(([key, count]) => ({key, count})),
+      applicationBacklog: ['PENDING_REVIEW', 'APPROVED_AWAITING_CASH', 'CASH_RECEIVED', 'REFUND_PENDING']
+        .reduce((total, key) => total + applicationCounts[key], 0),
+      pendingLoans: requests.length
+    },
+    activity: {
+      newCustomers: sum('newCustomers'), newAccounts: sum('newAccounts'), postedPayments: sum('postedPayments'),
+      paymentAmounts: money(series.reduce((total, bucket) => total + Number(bucket.paymentAmounts[0].amount), 0)), daily, hourly
+    }
+  };
+}
 module.exports = (req, url, reply) => {
   const route = url.pathname.replace('/api/v1', '');
   if (!route.startsWith('/admin/') && !route.startsWith('/loans/fixture-loan/salary-slips')) return false;
   if (req.method !== 'GET') { reply({message: 'Visual fixture is read-only.'}, 405); return true; }
-  if (route === '/admin/accounts') reply(accounts);
+  if (route === '/admin/analytics') {
+    const days = Number(url.searchParams.get('days') || 30);
+    if (![1, 7, 30, 90].includes(days)) reply({message: 'Choose the last 24 hours, or 7, 30 or 90 days.'}, 400);
+    else reply(analytics(days));
+  }
+  else if (route === '/admin/accounts') reply(accounts);
   else if (route === '/admin/loans') reply(requests);
   else if (route === '/loans/fixture-loan/salary-slips') reply({requiredMonths, documents: requiredMonths.map((month, i) => ({
     id: `fixture-slip-${i}`, month, fileName: i === 0 ? 'sample_salary_statement_with_a_long_document_name_june_2026.pdf' : `sample_salary_${month}.pdf`,

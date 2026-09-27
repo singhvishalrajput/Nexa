@@ -4,14 +4,14 @@ const fs=require('node:fs');const vm=require('node:vm');const ts=require('typesc
 const accounts=[{id:'1',displayName:'Savings',accountNumberMasked:'•••• 1234',availableBalance:'1000.00',currencyCode:'INR',status:'ACTIVE'},{id:'2',displayName:'Reserve',accountNumberMasked:'•••• 5678',availableBalance:'0',currencyCode:'INR',status:'ACTIVE'}];
 const ready={id:'review-1',sourceAccountId:'1',sourceName:'Savings',sourceMasked:'•••• 1234',recipientName:'Recipient',destinationMasked:'•••• 5678',amount:'25.00',currencyCode:'INR',status:'READY',reference:null,expiresAt:new Date(Date.now()+300000).toISOString()};
 function nodes(n){if(!n||typeof n!=='object')return [];if(Array.isArray(n))return n.flatMap(nodes);return [n,...nodes(n.props?.children)];}
-function harness(overrides={}, saved=null){
+function harness(overrides={}, saved=null, props={}){
   const slots=[];let cursor=0,effects=[],tree;const storage=new Map(saved?[['nexa-transfer-review:user',saved]]:[]);const calls=[];
   class ApiRequestError extends Error {constructor(status,message){super(message);this.status=status;}}
   const api={prepare:async(t,d)=>{calls.push(['prepare',d]);return ready;},confirm:async(t,id)=>{calls.push(['confirm',id]);return {...ready,status:'COMPLETED',reference:'TX-1'};},status:async()=>ready,...overrides};
   const hooks={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return [slots[i],v=>slots[i]=typeof v==='function'?v(slots[i]):v];},useRef(initial){const i=cursor++;return slots[i]||(slots[i]={current:initial});},useEffect(fn,deps){const i=cursor++;const old=slots[i];if(!old||deps.some((d,j)=>d!==old[j])){effects.push(fn);slots[i]=deps;}}};
   const exports={};const jsx=(type,props)=>({type,props});
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/features/banking/MoneyTransfer.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2021,jsx:ts.JsxEmit.ReactJSX,jsxImportSource:'preact'}}).outputText,{exports,window:{sessionStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}},require:n=>n.endsWith('/locale')?require('./source-loader.cjs').loadSource('services/locale.ts'):n==='preact/hooks'?hooks:n==='preact/jsx-runtime'?{jsx,jsxs:jsx}:n==='./money-transfers'?{moneyTransfers:api}:n.endsWith('/auth')?{ApiRequestError}:n.endsWith('useNavigationGuard')?{useNavigationGuard:()=>{}}:n==='./utils'?{validAmount:v=>/^(0|[1-9]\d{0,12})(\.\d{1,2})?$/.test(v)&&Number(v)>0}:n.endsWith('banking-content')?{formatMoney:v=>'₹'+v,moneyInMinorUnits:v=>/^\d+(\.\d{1,2})?$/.test(v)?BigInt(Math.round(Number(v)*100)):null}:n==='./ui'?{useLoad:()=>({data:accounts,loading:false,error:'',reload:()=>{}}),PageHeading:'heading',Panel:'panel',State:'state',Detail:'detail'}:{}});
-  function render(){cursor=0;tree=exports.MoneyTransfer({token:'token',userId:'user'});const pending=effects;effects=[];pending.forEach(fn=>fn());return tree;}
+  function render(){cursor=0;tree=exports.MoneyTransfer({token:'token',userId:'user',...props});const pending=effects;effects=[];pending.forEach(fn=>fn());return tree;}
   function input(i,value){nodes(tree).filter(n=>n.type==='oj-input-text')[i].props.onrawValueChanged({detail:{value}});render();}
   function button(text){const node=nodes(tree).find(n=>n.type==='oj-button'&&n.props.children===text);return node && {...node,props:{...node.props,onClick:node.props.onojAction}};}
   render();render();return {render,input,button,calls,storage,ApiRequestError,api,nodes:()=>nodes(tree)};
@@ -88,4 +88,15 @@ test('JET programmatic select updates never clear a typed recipient',()=>{
  assert.equal(app.nodes().find(n=>n.type==='oj-input-text').props.value,'123456789012');
  recipientType().props.onvalueChanged({detail:{value:'own',updatedFrom:'internal'}});app.render();
  assert.equal(app.nodes().find(n=>n.type==='oj-select-one'&&n.props.labelHint==='To account').props.value,'');
+});
+
+test('embedded Nexa transfers omit the duplicate page heading and keep own-account transfers functional',async()=>{
+ const app=harness({},null,{embedded:true});
+ assert.equal(app.nodes().some(n=>n.type==='heading'),false);
+ assert.equal(app.nodes().some(n=>n.type==='a'&&['#/payments','#/external-transfers'].includes(n.props.href)),false);
+ app.nodes().find(n=>n.props?.id==='transfer-recipient-type').props.onvalueChanged({detail:{value:'own',updatedFrom:'internal'}});app.render();
+ app.nodes().find(n=>n.props?.id==='transfer-destination').props.onvalueChanged({detail:{value:'2',updatedFrom:'internal'}});app.render();
+ app.input(0,'25');await app.nodes().find(n=>n.type==='form').props.onSubmit({preventDefault(){}});app.render();
+ assert.deepEqual(JSON.parse(JSON.stringify(app.calls[0])),['prepare',{sourceAccountId:'1',amount:'25',destinationAccountId:'2'}]);
+ assert.equal(app.calls.filter(call=>call[0]==='confirm').length,0);
 });

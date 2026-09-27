@@ -50,6 +50,7 @@ public final class BankingLanguage {
     };
     for (var alias : aliases) text = text.replace(alias[0], alias[1]);
     return text.replaceAll("\\b(bijli|bijlee|power)\\b", "electricity")
+        .replaceAll("\\bpaybills?\\b", "pay bill")
         .replaceAll("\\b(paisa|paise|pese)\\b", "money")
         .replaceAll("\\b(bhejo|bhejdo|bhej|bhejiye)\\b", "send")
         .replaceAll("\\b(batao|bata|bataiye|dikhao|dikhaiye)\\b", "show")
@@ -105,7 +106,7 @@ public final class BankingLanguage {
       if (text.matches(".*\\breplace\\b.*")) return "REPLACE_CARD";
       if (text.matches(".*\\bpay\\b.*")) return "PAY_CARD";
     }
-    if (text.matches(".*\\bbill\\b.*") && text.matches(".*\\b(pay|payment|bhar|bharo)\\b.*"))
+    if (text.matches(".*\\bbills?\\b.*") && text.matches(".*\\b(pay|payment|bhar|bharo)\\b.*"))
       return "PAY_BILL";
     if (text.matches(".*\\b(send|transfer|move)\\b.*"))
       return text.matches(".*\\b(my accounts|own accounts|between accounts|apne accounts)\\b.*")

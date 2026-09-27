@@ -67,6 +67,8 @@ public class ConversationInterpreter {
   }
 
   public Interpretation interpret(String text, java.util.List<OllamaInterpreter.Message> history) {
+    var applicationEntry = LoanApplicationChatEntry.resolve(text);
+    if (applicationEntry != null) return applicationEntry;
     var fastIntent = FastBankingIntent.match(text);
     if (fastIntent != null)
       return routed(new IntentClassifier.Match(fastIntent, 1), extractor.extract(text, fastIntent));
@@ -78,7 +80,8 @@ public class ConversationInterpreter {
     var conversational = BankingLanguage.intent(text);
     if (conversational != null
         && !text.toLowerCase().matches(".*\\b(yesterday|above|below|more than|less than)\\b.*")
-        && (text.matches(".*[\\u0900-\\u097f].*")
+        && (BankingLanguage.operation(text) != null
+            || text.matches(".*[\\u0900-\\u097f].*")
             || text.matches("(?i).*\\b(karo|batao|bhejo|dikhao)\\b.*")))
       return routed(
           new IntentClassifier.Match(conversational, 1), extractor.extract(text, conversational));

@@ -60,6 +60,9 @@ public class SecurityConfiguration {
                         "/api/v1/accounts/**",
                         "/api/v1/conversations/**",
                         "/api/v1/demo/**",
+                        "/api/v1/bill-payments/**",
+                        "/api/v1/external-payees/**",
+                        "/api/v1/external-transfers/**",
                         "/api/v1/money-transfers/**")
                     .hasAnyRole("CUSTOMER", "ADMIN")
                     .anyRequest()

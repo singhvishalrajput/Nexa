@@ -173,3 +173,11 @@
   .bank-app.experience-admin .admin-topbar { padding-inline: 14px; }
   .bank-app.experience-admin .bank-main { padding: 18px 12px 28px; scrollbar-gutter: auto; }
 }
+.bank-app.experience-admin .admin-bank-funding .bank-check {
+  display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: 10px; cursor: pointer;
+}
+.bank-app.experience-admin .admin-bank-funding .bank-check input[type="checkbox"] {
+  appearance: auto; width: 18px; min-width: 18px; max-width: 18px; height: 18px; min-height: 18px;
+  margin: 3px 0 0; padding: 0; accent-color: var(--nexa-action);
+}
+.bank-app.experience-admin .admin-bank-funding .bank-detail dd { min-width: 0; overflow-wrap: anywhere; }

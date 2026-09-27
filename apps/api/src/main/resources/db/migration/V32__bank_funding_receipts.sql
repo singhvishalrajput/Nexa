@@ -1,0 +1,30 @@
+-- Manually acknowledged cash capital only. This creates no funds or opening balances.
+CREATE TABLE bank_funding_receipts (
+    id VARCHAR2(40) PRIMARY KEY,
+    request_id VARCHAR2(36) NOT NULL,
+    request_fingerprint VARCHAR2(64) NOT NULL,
+    receipt_number VARCHAR2(64) NOT NULL,
+    source VARCHAR2(160) NOT NULL,
+    reference_key VARCHAR2(80) NOT NULL,
+    reason VARCHAR2(500) NOT NULL,
+    amount NUMBER NOT NULL,
+    currency_code VARCHAR2(3) DEFAULT 'INR' NOT NULL,
+    transaction_id VARCHAR2(40) NOT NULL REFERENCES transactions(id),
+    cash_account_id NUMBER NOT NULL REFERENCES accounts(id),
+    reserve_account_id NUMBER NOT NULL REFERENCES accounts(id),
+    recorded_by VARCHAR2(26) NOT NULL REFERENCES customers(user_id),
+    recorded_by_name VARCHAR2(160) NOT NULL,
+    recorded_at TIMESTAMP NOT NULL,
+    confirmation_version VARCHAR2(32) NOT NULL,
+    reserve_balance_after NUMBER(19,2) NOT NULL,
+    cash_balance_after NUMBER(19,2) NOT NULL,
+    CONSTRAINT uk_bank_fund_request UNIQUE(request_id),
+    CONSTRAINT uk_bank_fund_reference UNIQUE(reference_key),
+    CONSTRAINT uk_bank_fund_number UNIQUE(receipt_number),
+    CONSTRAINT uk_bank_fund_payment UNIQUE(transaction_id),
+    CONSTRAINT ck_bank_fund_amount CHECK(currency_code='INR' AND amount BETWEEN 0.01 AND 10000000 AND amount=ROUND(amount,2)),
+    CONSTRAINT ck_bank_fund_accounts CHECK(cash_account_id<>reserve_account_id AND cash_balance_after>=0),
+    CONSTRAINT ck_bank_fund_confirm CHECK(confirmation_version='cash-capital-v1'),
+    CONSTRAINT ck_bank_fund_text CHECK(TRIM(source) IS NOT NULL AND TRIM(reference_key) IS NOT NULL AND TRIM(reason) IS NOT NULL)
+);
+CREATE INDEX ix_bank_fund_recent ON bank_funding_receipts(recorded_at,id);

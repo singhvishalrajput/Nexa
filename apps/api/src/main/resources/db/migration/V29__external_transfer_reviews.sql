@@ -1,0 +1,43 @@
+-- Sandbox provider requests are separate from Nexa ledger/payment records.
+-- No balance changes, automatic payouts, credentials or sample recipients.
+CREATE TABLE external_transfer_reviews (
+    id VARCHAR2(40) PRIMARY KEY,
+    request_key VARCHAR2(36) NOT NULL,
+    request_fingerprint VARCHAR2(64) NOT NULL,
+    provider_request_id VARCHAR2(40) NOT NULL,
+    user_id VARCHAR2(26) NOT NULL,
+    environment VARCHAR2(16) NOT NULL,
+    provider VARCHAR2(24) NOT NULL,
+    source_account_id NUMBER NOT NULL,
+    source_name VARCHAR2(120) NOT NULL,
+    source_masked VARCHAR2(40) NOT NULL,
+    payee_id VARCHAR2(40) NOT NULL,
+    payee_fingerprint VARCHAR2(64) NOT NULL,
+    recipient_name VARCHAR2(400) NOT NULL,
+    bank_name VARCHAR2(100) NOT NULL,
+    destination_masked VARCHAR2(40) NOT NULL,
+    ifsc VARCHAR2(11) NOT NULL,
+    amount NUMBER(19,2) NOT NULL,
+    currency_code VARCHAR2(3) NOT NULL,
+    status VARCHAR2(16) NOT NULL,
+    provider_transfer_id VARCHAR2(100),
+    provider_status VARCHAR2(64),
+    status_code VARCHAR2(64),
+    utr VARCHAR2(80),
+    failure_reason VARCHAR2(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP,
+    CONSTRAINT uk_external_review_key UNIQUE(user_id,request_key),
+    CONSTRAINT uk_external_provider_req UNIQUE(provider_request_id),
+    CONSTRAINT fk_external_review_owner FOREIGN KEY(user_id) REFERENCES customers(user_id),
+    CONSTRAINT fk_external_review_source FOREIGN KEY(source_account_id) REFERENCES accounts(id),
+    CONSTRAINT fk_external_review_payee FOREIGN KEY(payee_id) REFERENCES external_bank_payees(id),
+    CONSTRAINT ck_external_review_env CHECK(environment='SANDBOX' AND provider='CASHFREE' AND currency_code='INR'),
+    CONSTRAINT ck_external_review_amount CHECK(amount>=1 AND amount<=9999999999999.99),
+    CONSTRAINT ck_external_review_status CHECK(status IN ('READY','SUBMITTING','PENDING','COMPLETED','FAILED','CANCELLED','EXPIRED','REVERSED')),
+    CONSTRAINT ck_external_review_complete CHECK(status<>'COMPLETED' OR (completed_at IS NOT NULL AND failure_reason IS NULL))
+);
+CREATE INDEX idx_external_review_owner ON external_transfer_reviews(user_id,created_at);
+CREATE INDEX idx_external_review_payee ON external_transfer_reviews(payee_id,created_at);

@@ -151,8 +151,12 @@ public class ConversationService {
             && (text.matches(
                     "(?is).*\\b(password|passcode|pin|otp|cvv|bearer|secret|api.?key)\\b.*")
                 || text.matches("(?s).*(?:\\d[ -]?){13,19}.*"));
-    var knowledgeAnswer = sensitive || command != null || knowledge == null ? null
-        : knowledge.route(text, previousKnowledgeTopic(id)).answer();
+    // Open the existing application form before a pending payment can interpret these words
+    // as a recipient or amount. This entry neither changes that payment nor submits a loan.
+    var applicationEntry = sensitive || command != null ? null : LoanApplicationChatEntry.resolve(text);
+    var knowledgeAnswer = applicationEntry != null ? applicationEntry
+        : sensitive || command != null || knowledge == null ? null
+            : knowledge.route(text, previousKnowledgeTopic(id)).answer();
     var workflow =
         sensitive || knowledgeAnswer != null
             ? null
@@ -262,10 +266,11 @@ public class ConversationService {
         if (accountId != null) return interpreter.readForAccount(text, accountId);
       }
     }
-    if (BankingLanguage.continuation(text)
+    if (BankingLanguage.operation(text) == null
+        && (BankingLanguage.continuation(text)
         || normalized.matches(
             "(?s)^(only|just|what about|and for|for that|its|uska|last month|this month|from"
-                + " |first|the first|details|savings|current).*")) {
+                + " |first|the first|details|savings|current).*"))) {
       var latest =
           db.query(
               "SELECT * FROM conversation_turns WHERE conversation_id = ? ORDER BY sequence_id DESC"

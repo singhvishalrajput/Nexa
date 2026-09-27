@@ -8,6 +8,7 @@ import com.nexa.api.onboarding.AccountApplicationDtos.ActionRequest;
 import com.nexa.api.onboarding.AccountApplicationDtos.CashReceiptRequest;
 import com.nexa.api.onboarding.AccountApplicationDtos.CreateRequest;
 import com.nexa.api.onboarding.AccountApplicationDtos.IdentityRequest;
+import com.nexa.api.onboarding.AccountApplicationDtos.DetailsRequest;
 import com.nexa.api.onboarding.AccountApplicationDtos.DocumentUploadRequest;
 import com.nexa.api.onboarding.AccountApplicationDtos.ReasonRequest;
 import com.nexa.api.onboarding.AccountApplicationDtos.RefundRequest;
@@ -108,6 +109,23 @@ class AccountApplicationDtosTest {
     assertTrue(validator.validate(request).isEmpty());
     assertFalse(request.toString().contains("ABCPD1234E"));
     assertFalse(mapper.readValue(create("\"1000\""),CreateRequest.class).toString().contains("ABCPD1234E"));
+  }
+
+  @Test
+  void detailCorrectionsUseStrictTypesAndKeepPrivateFieldsOutOfRecordText() {
+    String body="{"+PREFIX+",\"phoneNumber\":\"9876543210\",\"dateOfBirth\":\"1990-01-01\",\"openingAmount\":\"2500.37\"}";
+    DetailsRequest retained=mapper.readValue(body,DetailsRequest.class);
+    assertTrue(validator.validate(retained).isEmpty());
+    assertTrue(retained.identityType()==null && retained.identityNumber()==null);
+    assertThrows(RuntimeException.class,()->mapper.readValue(body.replace("\"9876543210\"","9876543210"),DetailsRequest.class));
+    assertThrows(RuntimeException.class,()->mapper.readValue(body.replace("\"2500.37\"","2500.37"),DetailsRequest.class));
+    assertUnknown(body,DetailsRequest.class);
+    String changed=body.substring(0,body.length()-1)+",\"identityType\":\"PAN\",\"identityNumber\":\"ABCPD1234E\"}";
+    DetailsRequest replacement=mapper.readValue(changed,DetailsRequest.class);
+    assertTrue(validator.validate(replacement).isEmpty());
+    assertFalse(replacement.toString().contains("9876543210"));
+    assertFalse(replacement.toString().contains("ABCPD1234E"));
+    assertFalse(validator.validate(mapper.readValue(body.replace("\"9876543210\"","null"),DetailsRequest.class)).isEmpty());
   }
 
   private void assertUnknown(String json, Class<?> type) {

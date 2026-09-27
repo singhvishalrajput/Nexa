@@ -94,13 +94,27 @@ class OllamaInterpreterTest {
   void modelActionCannotReachDomainWriteOrPreparation() throws Exception {
     var ai = stub(plan("START_TRANSFER", null, null), 200);
     var router = mock(DomainRouter.class);
+    var classifier = mock(IntentClassifier.class);
+    var extractor = mock(EntityExtractor.class);
     var interpreter =
-        new ConversationInterpreter(
-            mock(IntentClassifier.class), mock(EntityExtractor.class), router, false);
+        new ConversationInterpreter(classifier, extractor, router, false);
     interpreter.setOllama(ai);
-    assertThat(interpreter.interpret("move some money").reply())
-        .isEqualTo("Who would you like to pay?");
-    verifyNoInteractions(router);
+    // Explicit transfer verbs now use deterministic routing. This paraphrase must still test
+    // an actual model-sourced action, which can request a workflow but cannot prepare a payment.
+    String text = "I'd like to settle up with Rahul";
+    var result = interpreter.interpret(text);
+    assertThat(result.intent()).isEqualTo("START_TRANSFER");
+    assertThat(result.reply()).isEqualTo("Who would you like to pay?");
+    assertThat(json.readTree(request.get()).path("messages").get(1).path("content").asText())
+        .isEqualTo(text);
+    verifyNoInteractions(router, classifier, extractor);
+  }
+
+  @Test
+  void modelCannotInventTheServerOnlyLoanApplicationEntry() throws Exception {
+    var ai = stub(plan("APPLY_LOAN", null, null), 200);
+    assertThat(ai.interpret("show my loans", List.of())).isNull();
+    assertThat(request.get()).isNotNull();
   }
 
   @Test

@@ -55,9 +55,24 @@ public final class BankingModels {
       String reference,
       String category,
       String customerNumberMasked,
-      List<Payment> paymentHistory) {
+      List<Payment> paymentHistory,
+      String paidAmount,
+      String outstandingAmount,
+      String payeeId,
+      String recipientName,
+      String recipientAccountMasked) {
+    public Bill(
+        String id, String billerName, String amount, String minimumAmount, String currencyCode,
+        String dueAt, String status, String accountId, String reference, String category,
+        String customerNumberMasked, List<Payment> paymentHistory) {
+      this(id, billerName, amount, minimumAmount, currencyCode, dueAt, status, accountId,
+          reference, category, customerNumberMasked, paymentHistory, "0.00",
+          "PAID".equals(status) ? "0.00" : amount, null, null, null);
+    }
+
     public Bill {
       customerNumberMasked = mask(customerNumberMasked);
+      recipientAccountMasked = mask(recipientAccountMasked);
     }
   }
 
@@ -81,9 +96,16 @@ public final class BankingModels {
   }
 
   public record Beneficiary(
-      String id, String displayName, String bankName, String accountNumberMasked, String status) {
+      String id, String displayName, String bankName, String accountNumberMasked, String status,
+      String transferType, String ifsc, String recipientName) {
+    public Beneficiary(String id, String displayName, String bankName, String accountNumberMasked, String status) {
+      this(id, displayName, bankName, accountNumberMasked, status, "INTERNAL", null, null);
+    }
     public Beneficiary {
-      accountNumberMasked = mask(accountNumberMasked);
+      if ("EXTERNAL_BANK".equals(transferType) && accountNumberMasked != null) {
+        String tail = accountNumberMasked.replaceAll("[^A-Za-z0-9]", "");
+        accountNumberMasked = "•••• " + tail.substring(Math.max(0, tail.length() - 4));
+      } else accountNumberMasked = mask(accountNumberMasked);
     }
   }
 

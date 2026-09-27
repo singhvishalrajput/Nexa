@@ -67,7 +67,8 @@ public class ChatFirstIntegrationTest {
             new ClassPathResource("six-table-chat.sql"),
             new ClassPathResource("db/migration/V8__add_structured_conversation_content.sql"),
             new ClassPathResource("db/migration/V12__conversation_workflows.sql"),
-            new ClassPathResource("db/migration/V13__conversation_action_audit.sql"))
+            new ClassPathResource("db/migration/V13__conversation_action_audit.sql"),
+            new ClassPathResource("db/migration/V27__bill_payment_attempts.sql"))
         .execute(db.getDataSource());
   }
 
@@ -103,9 +104,18 @@ public class ChatFirstIntegrationTest {
         owner,
         name,
         name,
-        "0".repeat(64));
+        destinationHash());
     db.update("UPDATE transactions SET destination_account_id=? WHERE id=?", destination, id);
     return id;
+  }
+
+  String destinationHash() {
+    try {
+      return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+          .digest(("NEXA:" + destination).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    } catch (java.security.NoSuchAlgorithmException ex) {
+      throw new IllegalStateException(ex);
+    }
   }
 
   @Test
@@ -185,13 +195,13 @@ public class ChatFirstIntegrationTest {
     var first = say("pay electricity bill").get("workflow");
     assertThat(first.get("targetId").asText()).isEqualTo(electricity);
     assertThat(first.get("field").asText()).isEqualTo("account");
-    assertThat(first.get("amount").asText()).isEqualTo("100");
+    assertThat(new java.math.BigDecimal(first.get("amount").asText())).isEqualByComparingTo("100");
     for (String followup : List.of("bill pay karo", "haan", "do it", "haan kar do")) {
       var continued = say(followup).get("workflow");
       assertThat(continued.get("id")).isEqualTo(first.get("id"));
       assertThat(continued.get("targetId").asText()).isEqualTo(electricity);
       assertThat(continued.get("message").asText()).contains("Electricity", "which account");
-      assertThat(continued.get("amount").asText()).isEqualTo("100");
+      assertThat(new java.math.BigDecimal(continued.get("amount").asText())).isEqualByComparingTo("100");
     }
     var review = say("Everyday se").get("workflow");
     assertThat(review.get("status").asText()).isEqualTo("REVIEW");
@@ -205,8 +215,14 @@ public class ChatFirstIntegrationTest {
         .isZero();
     var result = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString());
     assertThat(result.get("assistantText").asText())
-        .contains("100", "Electricity", "no money moved")
-        .doesNotContain("Open Payments", "COLLECTING");
+        .contains("100", "Electricity", "Bill payment posted", "Chat Customer")
+        .doesNotContain("simulation", "no money moved", "COLLECTING");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(9900);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, destination)).isEqualTo(100);
+    mvc.perform(get("/api/v1/bills/" + electricity).header("Authorization", auth))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PAID"))
+        .andExpect(jsonPath("$.outstandingAmount").value("0.00"));
+    assertThat(result.get("workflow").get("reference").asText()).startsWith("TX-");
     assertThat(say("do it").get("workflow").get("reference"))
         .isEqualTo(result.get("workflow").get("reference"));
   }
@@ -268,15 +284,12 @@ public class ChatFirstIntegrationTest {
   }
 
   @Test
-  void cardAndMandateActionsStayInConversation() throws Exception {
+  void legacyCardPaymentsAndMandateActionsStayInConversation() throws Exception {
     String card = namedProduct("CARD", "Travel");
     namedProduct("MANDATE", "Music");
     for (String request :
         List.of(
             "pay Travel card from Everyday",
-            "freeze Travel card",
-            "unfreeze Travel card",
-            "replace Travel card",
             "cancel Music mandate")) {
       var review = say(request).get("workflow");
       assertThat(review.get("status").asText()).as(request).isEqualTo("REVIEW");
@@ -297,6 +310,121 @@ public class ChatFirstIntegrationTest {
     var payment = say("pay it").get("workflow");
     assertThat(payment.get("targetId").asText()).isEqualTo(bill);
     assertThat(payment.get("field").asText()).isEqualTo("account");
+  }
+
+  @Test
+  void applyingForALoanReturnsTheApplicationFormWithoutCreatingOrDisbursingALoan() throws Exception {
+    assertThat(say("show loans").get("intent").asText()).isEqualTo("GET_LOANS");
+    int documentsBefore = db.queryForObject("SELECT COUNT(*) FROM loan_salary_slips", Integer.class);
+    for (String text : List.of("apply for loan", "I want to apply for a loan", "loan apply karo", "ऋण के लिए आवेदन")) {
+      var response = say(text);
+      assertThat(response.get("intent").asText()).as(text).isEqualTo("APPLY_LOAN");
+      assertThat(response.get("banking").get("type").asText()).isEqualTo("LOAN_APPLICATION");
+      assertThat(response.get("response").get("type").asText()).isEqualTo("LOAN_APPLICATION");
+      assertThat(response.get("workflow").isNull()).isTrue();
+      assertThat(response.get("assistantText").asText()).contains("salary slips", "when you submit");
+    }
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM accounts WHERE account_type='LOAN' AND customer_id="
+        + "(SELECT customer_id FROM accounts WHERE id=?)", Integer.class, source)).isZero();
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM loan_salary_slips", Integer.class)).isEqualTo(documentsBefore);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM conversation_workflows WHERE conversation_id=?", Integer.class, chat)).isZero();
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+    assertThat(say("show loans").get("intent").asText()).isEqualTo("GET_LOANS");
+    assertThat(say("repay loan").get("workflow").get("operation").asText()).isEqualTo("REPAY_LOAN");
+  }
+
+  @Test
+  void openingLoanApplicationPreservesAPendingTransferWithoutConfirmingIt() throws Exception {
+    String action = proposal();
+    String before = db.queryForObject("SELECT state FROM conversation_workflows WHERE id=?", String.class, action);
+    var response = say("apply for a loan");
+    assertThat(response.get("intent").asText()).isEqualTo("APPLY_LOAN");
+    assertThat(response.get("workflow").isNull()).isTrue();
+    assertThat(db.queryForObject("SELECT state FROM conversation_workflows WHERE id=?", String.class, action)).isEqualTo(before);
+    var continued = say("yes").get("workflow");
+    assertThat(continued.get("id").asText()).isEqualTo(action);
+    assertThat(continued.get("status").asText()).isEqualTo("REVIEW");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM transactions WHERE record_kind='PAYMENT' AND source_account_id=?", Integer.class, source)).isZero();
+  }
+
+  @Test
+  void loanApplicationInformationNegationAndCompoundRequestsDoNotOpenOrSubmitForms() throws Exception {
+    for (String text : List.of("How do I apply for a loan?", "Can I apply for a loan?", "don't apply for loan",
+        "apply for loan tomorrow", "apply for loan and transfer 500")) {
+      var response = say(text);
+      assertThat(response.get("intent").asText()).as(text).isNotEqualTo("APPLY_LOAN");
+      assertThat(response.path("banking").path("type").asText()).isNotEqualTo("LOAN_APPLICATION");
+    }
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM accounts WHERE account_type='LOAN' AND customer_id="
+        + "(SELECT customer_id FROM accounts WHERE id=?)", Integer.class, source)).isZero();
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+  }
+
+  @Test
+  void billCommandsStartANewBillSelectionAfterClosedWorkflowAndLoanHistory() throws Exception {
+    String water = namedProduct("BILL", "Water");
+    String electricity = namedProduct("BILL", "Electricity");
+    for (String text : List.of("pay bill", "paybill", "pay bills")) {
+      var previous = say("pay water bill").get("workflow");
+      assertThat(say("cancel").get("workflow").get("status").asText()).isEqualTo("CANCELLED");
+      assertThat(say("show loans").get("intent").asText()).isEqualTo("GET_LOANS");
+      var current = say(text);
+      assertThat(current.get("intent").asText()).as(text).isEqualTo("PAY_BILL");
+      var workflow = current.get("workflow");
+      assertThat(workflow.get("id").asText()).isNotEqualTo(previous.get("id").asText());
+      assertThat(workflow.get("operation").asText()).isEqualTo("PAY_BILL");
+      assertThat(workflow.get("status").asText()).isEqualTo("COLLECTING");
+      assertThat(workflow.get("field").asText()).isEqualTo("target");
+      var choices = new ArrayList<String>();
+      workflow.get("choices").forEach(choice -> choices.add(choice.get("id").asText()));
+      assertThat(choices).containsExactlyInAnyOrder(water, electricity);
+      assertThat(current.get("assistantText").asText()).doesNotContain("loans", "EMIs");
+      var selected = command(workflow.get("id").asText(), "SELECT", water, UUID.randomUUID().toString()).get("workflow");
+      assertThat(selected.get("targetId").asText()).isEqualTo(water);
+      assertThat(selected.get("field").asText()).isEqualTo("account");
+    }
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM transactions WHERE record_kind='PAYMENT' AND source_account_id=?", Integer.class, source)).isZero();
+  }
+
+  @Test
+  void balanceInterruptsBillSelectionWithoutLosingTheBillOrReusingLoanContext() throws Exception {
+    String water = namedProduct("BILL", "Water");
+    say("show loans");
+    var selection = say("paybill").get("workflow");
+    assertThat(selection.get("field").asText()).isEqualTo("target");
+    var initial = command(selection.get("id").asText(), "SELECT", water, UUID.randomUUID().toString()).get("workflow");
+    assertThat(initial.get("targetId").asText()).isEqualTo(water);
+    for (String text : List.of("balance", "show my balance", "balance batao")) {
+      var balance = say(text);
+      assertThat(balance.get("intent").asText()).as(text).isEqualTo("GET_BALANCE");
+      assertThat(balance.get("banking").get("type").asText()).isEqualTo("ACCOUNTS");
+      assertThat(balance.get("workflow").isNull()).isTrue();
+    }
+    var resumed = say("pay bill").get("workflow");
+    assertThat(resumed.get("id").asText()).isEqualTo(initial.get("id").asText());
+    assertThat(resumed.get("targetId").asText()).isEqualTo(water);
+    assertThat(resumed.get("field").asText()).isEqualTo("account");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+  }
+
+  @Test
+  void explicitBillCommandRestartsAnExpiredSelectionButCannotConfirmItsOldReview() throws Exception {
+    namedProduct("BILL", "Water");
+    var previous = say("pay water bill").get("workflow");
+    String id = previous.get("id").asText();
+    var state = (tools.jackson.databind.node.ObjectNode) json.readTree(
+        db.queryForObject("SELECT state FROM conversation_workflows WHERE id=?", String.class, id));
+    state.put("expiresAt", java.time.OffsetDateTime.now().minusMinutes(1).toString());
+    db.update("UPDATE conversation_workflows SET state=? WHERE id=?", json.writeValueAsString(state), id);
+    var restarted = say("paybill").get("workflow");
+    assertThat(restarted.get("operation").asText()).isEqualTo("PAY_BILL");
+    assertThat(restarted.get("status").asText()).isEqualTo("COLLECTING");
+    assertThat(restarted.get("id").asText()).isNotEqualTo(id);
+    postJson("/api/v1/conversations/" + chat + "/actions/" + id,
+        Map.of("clientId", UUID.randomUUID().toString(), "type", "CONFIRM"), 400);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
   }
 
   @Test
@@ -553,23 +681,123 @@ public class ChatFirstIntegrationTest {
     payload.put("minimumPayment", "10");
     V17__migrate_banking_products.importProduct(
         db, owner, kind, Long.parseLong(source), json.valueToTree(payload));
+    if (kind.equals("BILL")) {
+      String recipient = payee("Bill recipient " + id);
+      db.update("UPDATE transactions SET target_id=?,destination_account_id=?,due_at=? WHERE id=?",
+          recipient, Long.parseLong(destination), "2026-09-23", id);
+    }
     return id;
+  }
+
+  @Test
+  void billSimulationEndpointsCannotExecuteNewOrCachedReviews() throws Exception {
+    String bill = demoProduct("BILL");
+    postJson("/api/v1/demo/actions/prepare", Map.of("operation", "PAY_BILL",
+        "accountId", source, "targetId", bill, "amount", "100"), 400);
+    String cached = postJson("/api/v1/demo/actions/prepare", Map.of("operation", "PAY_CARD",
+        "accountId", source, "targetId", demoProduct("CARD"), "amount", "100"), 200).get("id").asText();
+    db.update("UPDATE transactions SET operation='PAY_BILL',target_id=? WHERE id=?", bill, cached);
+    postJson("/api/v1/demo/actions/" + cached + "/confirm", Map.of(), 400);
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(10000);
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM bill_payment_attempts WHERE bill_id=?", Integer.class, bill)).isZero();
+  }
+
+  @Test
+  void cardControlsDirectCustomersToPersistedControlsWithoutSimulation() throws Exception {
+    String card = namedProduct("CARD", "Travel");
+    String before = productSnapshot("CARD", card);
+    for (String request : List.of("freeze Travel card", "unfreeze Travel card", "replace Travel card")) {
+      var workflow = say(request).path("workflow");
+      assertThat(workflow.path("status").asText()).isEqualTo("UNAVAILABLE");
+      assertThat(workflow.path("operation").asText()).isEqualTo("CARD_CONTROL");
+      assertThat(workflow.path("executionAvailable").asBoolean()).isFalse();
+      assertThat(workflow.path("message").asText()).contains("Open Cards");
+    }
+    assertThat(productSnapshot("CARD", card)).isEqualTo(before);
+  }
+
+  @Test
+  void unlinkedBillChatExplainsHowToChooseARealRecipient() throws Exception {
+    String bill = namedProduct("BILL", "Electricity");
+    db.update("UPDATE transactions SET target_id=NULL,destination_account_id=NULL WHERE id=?", bill);
+    var result = say("pay electricity bill from Everyday").get("workflow");
+    assertThat(result.get("status").asText()).isEqualTo("UNAVAILABLE");
+    assertThat(result.get("message").asText()).contains("Pay now");
+    assertThat(db.queryForObject("SELECT COUNT(*) FROM bill_payment_attempts WHERE bill_id=?", Integer.class, bill)).isZero();
+  }
+
+  @Test
+  void invalidBillAmountAndInsufficientFundsRemainRecoverableChatPrompts() throws Exception {
+    namedProduct("BILL", "Electricity");
+    var invalid = say("pay 200 electricity bill from Everyday").get("workflow");
+    assertThat(invalid.get("status").asText()).isEqualTo("COLLECTING");
+    assertThat(say("100").get("workflow").get("status").asText()).isEqualTo("REVIEW");
+    say("cancel");
+    db.update("UPDATE accounts SET balance=0 WHERE id=?", source);
+    var insufficient = say("pay electricity bill from Everyday").get("workflow");
+    assertThat(insufficient.get("status").asText()).isEqualTo("COLLECTING");
+    assertThat(insufficient.get("message").asText()).containsIgnoringCase("not enough money");
+    db.update("UPDATE accounts SET balance=10000 WHERE id=?", source);
+    assertThat(say("Everyday").get("workflow").get("status").asText()).isEqualTo("REVIEW");
+  }
+
+  @Test
+  void concurrentBillChatConfirmationsPostOnePaymentAndOneJournal() throws Exception {
+    String bill = namedProduct("BILL", "Electricity");
+    var review = say("pay electricity bill from Everyday").get("workflow");
+    String id = review.get("id").asText();
+    assertThat(review.get("message").asText()).contains("Chat Customer", "Confirming transfers money");
+    var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+    try {
+      var first = pool.submit(() -> command(id, "CONFIRM", "", UUID.randomUUID().toString()));
+      var second = pool.submit(() -> command(id, "CONFIRM", "", UUID.randomUUID().toString()));
+      String reference = first.get().get("workflow").get("reference").asText();
+      assertThat(reference).startsWith("TX-");
+      assertThat(second.get().get("workflow").get("reference").asText()).isEqualTo(reference);
+      assertThat(db.queryForObject("SELECT COUNT(*) FROM transactions WHERE parent_id=? AND operation='BILL_PAYMENT'", Integer.class, bill)).isEqualTo(1);
+      assertThat(db.queryForObject("SELECT COUNT(*) FROM journal_entries WHERE transaction_id=? AND status='POSTED'", Integer.class, reference)).isEqualTo(1);
+      assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, source)).isEqualTo(9900);
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  @Test
+  void billFailureAfterReviewIsRecordedWithoutSettlingTheBill() throws Exception {
+    String bill = namedProduct("BILL", "Electricity");
+    var review = say("pay electricity bill from Everyday").get("workflow");
+    db.update("UPDATE accounts SET balance=0 WHERE id=?", source);
+    var result = command(review.get("id").asText(), "CONFIRM", "", UUID.randomUUID().toString()).get("workflow");
+    assertThat(result.get("status").asText()).isEqualTo("FAILED");
+    assertThat(db.queryForObject("SELECT status FROM bill_payment_attempts WHERE id=?", String.class, review.get("reference").asText())).isEqualTo("FAILED");
+    assertThat(db.queryForObject("SELECT balance FROM accounts WHERE id=?", Integer.class, destination)).isZero();
+    mvc.perform(get("/api/v1/bills/" + bill).header("Authorization", auth))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.outstandingAmount").value("100.00"));
+  }
+
+  @Test
+  void oldCardSimulationRequestsCannotPretendToChangeCards() throws Exception {
+    String target = demoProduct("CARD");
+    String before = productSnapshot("CARD", target);
+    String owner = db.queryForObject("SELECT c.user_id FROM customers c JOIN accounts a ON a.customer_id=c.id WHERE a.id=?", String.class, source);
+    for (String operation : List.of("FREEZE_CARD", "UNFREEZE_CARD", "REPLACE_CARD")) {
+      postJson("/api/v1/demo/actions/prepare",
+          Map.of("operation", operation, "targetId", target), 400);
+      String id = UUID.randomUUID().toString();
+      db.update("INSERT INTO transactions (record_kind,id,user_id,operation,source_account_id,target_id,status,expires_at) VALUES ('SIMULATION',?,?,?,?,?,'REVIEW',?)",
+          id, owner, operation, source, target, java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(600)));
+      postJson("/api/v1/demo/actions/" + id + "/confirm", Map.of(), 400);
+    }
+    assertThat(productSnapshot("CARD", target)).isEqualTo(before);
   }
 
   @Test
   void providerSimulationsHaveDurableReceiptsWithoutProductOrLedgerWrites() throws Exception {
     for (String operation :
         List.of(
-            "PAY_BILL",
             "PAY_CARD",
-            "CANCEL_MANDATE",
-            "FREEZE_CARD",
-            "UNFREEZE_CARD",
-            "REPLACE_CARD")) {
-      String kind =
-          operation.equals("PAY_BILL")
-              ? "BILL"
-              : operation.equals("CANCEL_MANDATE") ? "MANDATE" : "CARD";
+            "CANCEL_MANDATE")) {
+      String kind = operation.equals("CANCEL_MANDATE") ? "MANDATE" : "CARD";
       String target = demoProduct(kind);
       String before = productSnapshot(kind, target);
       var review =
@@ -602,9 +830,9 @@ public class ChatFirstIntegrationTest {
 
   @Test
   void demoReviewsEnforceOwnershipExpiryCancellationAndRevalidation() throws Exception {
-    String target = demoProduct("BILL");
+    String target = demoProduct("CARD");
     var request =
-        Map.of("operation", "PAY_BILL", "accountId", source, "targetId", target, "amount", "100");
+        Map.of("operation", "PAY_CARD", "accountId", source, "targetId", target, "amount", "100");
     String id = postJson("/api/v1/demo/actions/prepare", request, 200).get("id").asText();
     String path = "/api/v1/demo/actions/" + id;
     mvc.perform(get(path)).andExpect(status().isUnauthorized());

@@ -13,6 +13,11 @@ class BankingLanguageTest {
   void recognizesEnglishHindiAndMixedRequests() {
     for (String text :
         List.of(
+            "pay bill",
+            "paybill",
+            "PAYBILL!",
+            "pay bills",
+            "paybills",
             "pay electricity bill",
             "bill pay karo",
             "bijli ka bill pay karo",
@@ -20,7 +25,7 @@ class BankingLanguageTest {
       assertThat(BankingLanguage.operation(text)).as(text).isEqualTo("PAY_BILL");
     for (String text : List.of("balance batao", "मेरे खाते का बैलेंस बताइए", "show my balance"))
       assertThat(BankingLanguage.intent(text)).as(text).isEqualTo(Intent.GET_BALANCE);
-    for (String text : List.of("paisa bhejo", "पैसे भेजो", "send money", "Rahul ko 500 bhejo"))
+    for (String text : List.of("paisa bhejo", "पैसे भेजो", "पैसे भेजें", "send money", "Rahul ko 500 bhejo"))
       assertThat(BankingLanguage.operation(text)).as(text).isEqualTo("START_TRANSFER");
     assertThat(BankingLanguage.operation("show my bill payments")).isNull();
   }
@@ -35,6 +40,9 @@ class BankingLanguageTest {
     for (String text :
         List.of(
             "don't pay the bill",
+            "don't paybill",
+            "paybill tomorrow",
+            "paybill and transfer 500",
             "kal paisa bhejo",
             "bill pay nahi karo",
             "send 500 if salary arrives",

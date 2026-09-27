@@ -1,32 +1,48 @@
-# Nexa learning showcase
+# Nexa walkthrough and integration boundaries
 
-Nexa demonstrates banking architecture and user journeys. Use fictional identities and a dedicated local database. The interface uses concise request and status labels. Simulation boundaries are documented here rather than displayed as application banners.
+This document replaces the earlier card and payment simulation walkthrough. Customer-facing transfers, bills, cards and scheduled payments now use their dedicated application workflows. The configured database contains the actual records used by Nexa; it is not reset or replaced by a browser fixture.
 
-## Demonstration walkthrough
+## Payments
 
-Start the API and web client using the root README. Flyway applies `V15__showcase_actions.sql` on API startup. The existing local profile supplies fictional products and the demo login documented in the API README. Use an account with sufficient recorded balance for payment validation; an administrator can post a local deposit through Banking operations.
+Open **Payments** and choose **Nexa account** or **Other bank**. Nexa transfers use the existing review and confirmation flow and post balances and ledger entries. Own-account transfers are available inside the Nexa option. Bills, saved payees, scheduled payments, cards and direct debits remain available through payment shortcuts.
 
-1. **Payments:** choose a payee, bill, credit card or direct debit, select the linked source account and enter a valid amount when needed. Check payment details, choose **Continue**, then **Confirm request**. A receipt is saved and displayed with a `REQ-…` reference. Direct-debit cancellation requires its linked account.
-2. **Chat:** request a payee transfer or bill payment, select the target and source, and use **Confirm request**. Typing “yes” does not execute it. Receipts link to demo history. Own-account transfers retain their existing ledger-backed behavior.
-3. **Cards:** open a card and choose freeze, unfreeze or replacement. Review and confirm to see the simulated outcome and saved receipt. No PIN, full card number or identity document is requested.
-4. **Voice:** choose English or Hindi and select **Use suggested message**. A suggested message opens for editing, sending or cancellation without accessing the microphone. Normal speech input remains available.
-5. **Request history:** Payments and card details show the latest 30 demo reviews and receipts. Refresh to retrieve new results, reopen a pending request, or inspect a completed receipt after reloading or signing in again.
+Other-bank transfers use Cashfree's sandbox. Their form and result disclose that no real money moves and Nexa balances and bills remain unchanged. They are separate from a live bank network or utility-bill settlement service. See [external bank transfers](EXTERNAL_BANK_TRANSFERS.md).
 
-## Behavior and boundaries
+Bills use the dedicated bill-payment flow and derive status from recorded payments and due dates. They are not marked paid by a showcase receipt. See [bill payments](BILL_PAYMENTS.md).
 
-- Demo actions only write `showcase_actions`. They never post a ledger transaction, contact a payment provider, change a product projection, or send notifications. Card and mandate state changes are described in the receipt; the recorded product remains unchanged so demonstrations can be repeated.
-- Existing login, account opening, profile editing, conversations, internal transfers and administrator operations still persist to the application's configured database. This refactor does not turn that database into an in-memory sandbox. Use a dedicated fictional-data database.
-- Demo API routes require customer/admin authentication. Product and source ownership, active status, supported currency, amount precision, bill/card limits and available balance remain validated. Financial validation runs again at confirmation.
-- Reviews expire after ten minutes. Confirmation is bound to the saved review, locks its row and returns the same receipt on retries. Cancelled and expired reviews cannot be confirmed. Demo history is scoped to the signed-in user.
-- New simulation endpoints are `/api/v1/demo/actions/prepare`, `/{id}/confirm`, `/{id}/cancel`, `/{id}` and the collection GET for history. They cannot execute a real-provider action, even outside the local profile.
-- Oracle remains required to run the full application. H2 is used for backend regression tests. No migration was applied to your running Oracle database during this refactor.
+The old `#/send-money` and `#/external-transfers` links still open the unified Payments workspace. New links use `#/payments`, with `?destination=other-bank` and an optional `payee` parameter when needed.
 
-Earlier architecture documents describe provider actions as review-only or unavailable. The simulated provider journeys above supersede those limitations; the existing real-provider integration boundaries remain.
+## Cards
+
+**Cards → Request a card** offers debit and credit requests against an owned, active INR savings or current account.
+
+- A debit request creates an active local Nexa card record linked to the selected account. It adds no credit and does not change the account balance.
+- A credit request starts as **Pending approval** with no available credit limit. In **Administration → Card requests**, an administrator reviews it, approves a positive credit limit or rejects it with a reason. The persisted decision appears in the customer's card list and details.
+- **Block card** and **Unblock card** update the saved Nexa card state after confirmation. Unblocking cannot override a bank restriction, and an unapproved, rejected or closed request cannot use these controls.
+- The server prevents duplicate usable or pending cards of the same type for a funding account. Card creation uses a request UUID; uncertain submissions retry the same payload. Review decisions and status changes also support safe retries and status checks.
+
+These are local card records, not physical cards or card-network credentials. Nexa does not issue a real PAN, CVV, Visa/RuPay card, merchant-payment capability or replacement card through this workflow. Displayed local references identify records in Nexa. The interface keeps this boundary visible and does not show simulated card-payment or replacement controls.
+
+Card endpoints are:
+
+- `POST /api/v1/cards/applications`
+- `GET /api/v1/cards` and `GET /api/v1/cards/{id}`
+- `POST /api/v1/cards/{id}/block` and `/{id}/unblock`
+- `GET /api/v1/admin/card-applications` and `/{id}`
+- `POST /api/v1/admin/card-applications/{id}/approve` and `/{id}/reject`
+
+Card application metadata is introduced by `V31__local_card_applications.sql`. Normal backend startup applies pending Flyway migrations. Do not edit previously applied migrations or use Flyway repair to conceal a schema mismatch.
+
+## Legacy showcase records
+
+The `/api/v1/demo/actions` routes remain a compatibility boundary for older clients and saved history. They are not the current Cards or Payments screen. Old simulated card freeze, unfreeze and replacement requests cannot be newly prepared or confirmed; use the persisted card controls instead. Historical simulated receipts remain historical evidence of a demonstration, not proof that a card or payment changed.
+
+The compatibility transfer flow can delegate to the real internal Nexa transfer service, so a route containing `demo` does not imply that every operation is harmless or balance-neutral. Bill simulations are rejected and redirect users to the dedicated bill flow. Existing simulation records never become live payment or card-network transactions.
+
+Legacy `PAY_CARD` requests remain simulations in the compatibility API. The current customer card page exposes no payment action. Real credit-card billing, purchase settlement and repayment are separate work and are not implemented by the card application or block/unblock features.
 
 ## Verification
 
-Run `mvn verify` from `apps/api`; run `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` from `apps/web`. Backend regression coverage includes receipts, repeat confirmations, unchanged balances/products, ownership, cancellation, expiry and changed balances. Frontend coverage includes chat confirmation labels and microphone-free voice review.
+Use the repository's frontend and backend test commands, with isolated build copies when a local API or frontend is already running. Card regression tests cover owned active account eligibility, debit creation, credit review, duplicate requests, persisted block/unblock behavior, unchanged balances, authorization and uncertain-response recovery. Frontend tests cover the same customer and administrator interactions, including pending/rejected states and explicit confirmation.
 
-Verified for this refactor: 94 backend tests passed, one optional live-model test skipped; 53 frontend tests passed; lint, type checking and build passed. A browser walkthrough using the local fixture verified voice review, card confirmation and receipt, payee payment confirmation and receipt, and saved demo history. These browser fixtures supplement the database-backed backend tests.
-
-On this Windows machine the local-model HTTP tests needed a shorter Java temporary path. The successful Maven run used `-DargLine="-Djava.io.tmpdir=D:/Nexa/.tools/tmp -Djdk.net.unixdomain.tmpdir=D:/Nexa/.tools/tmp"` with the existing bundled JDK 17 and offline Maven cache. This is a test-runtime setting, not an application security change.
+Browser fixture data is synthetic and does not reach the banking database. Fixture walkthroughs supplement API tests; they do not verify Cashfree credentials, Oracle migrations or real card-network issuance. Current verification results belong in the completion report for the relevant change, rather than an outdated fixed test count in this document.

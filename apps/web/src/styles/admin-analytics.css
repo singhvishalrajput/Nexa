@@ -1,0 +1,83 @@
+.admin-analytics { min-width: 0; }
+.admin-analytics .analytics-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin: 0 0 28px; }
+.admin-analytics .analytics-period { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.bank-app.experience-admin .analytics-period .bank-button[aria-pressed="true"] { background: var(--nexa-action); border-color: var(--nexa-action); color: var(--nexa-on-action) !important; }
+.admin-analytics .analytics-refresh { margin: 0; color: var(--nexa-text-muted); font-size: 12px; line-height: 1.5; }
+.admin-analytics .analytics-section-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; margin: 30px 0 14px; }
+.admin-analytics .analytics-section-heading h2 { margin: 0; font: 650 18px/1.4 var(--nexa-heading-font); letter-spacing: -.025em; }
+.admin-analytics .analytics-section-heading p { margin: 0; color: var(--nexa-text-muted); font-size: 12px; line-height: 1.6; }
+.admin-analytics .analytics-section-heading a { margin-left: auto; font-size: 13px; color: var(--nexa-text-secondary); }
+.admin-analytics .analytics-kpis, .admin-analytics .analytics-activity-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+.admin-analytics .analytics-activity-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.admin-analytics .analytics-metric { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 20px; border: 1px solid var(--nexa-border); border-radius: var(--radius-lg); background: var(--nexa-surface); box-shadow: var(--nexa-shadow-card); }
+.admin-analytics .analytics-metric h3 { margin: 0 0 13px; color: var(--nexa-text-secondary); font-size: 13px; font-weight: 500; line-height: 1.5; }
+.admin-analytics .analytics-metric > strong { font: 650 clamp(26px, 2.5vw, 36px)/1.15 var(--nexa-heading-font); letter-spacing: -.04em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.admin-analytics .analytics-metric p { margin: 10px 0 0; color: var(--nexa-text-muted); font-size: 12px; line-height: 1.5; }
+.admin-analytics .analytics-metric a { display: inline-flex; gap: 8px; margin-top: 14px; padding-block: 3px; color: var(--nexa-text-secondary); font-size: 12px; }
+.admin-analytics .analytics-description, .admin-analytics .analytics-footnote, .admin-analytics .analytics-empty { margin: 0; padding: 0 24px 20px; color: var(--nexa-text-muted); font-size: 12px; line-height: 1.7; }
+.admin-analytics .analytics-currency-balances { display: flex; flex-wrap: wrap; gap: 22px 40px; padding: 0 24px 24px; }
+.admin-analytics .analytics-currency-balances > div { min-width: 140px; }
+.admin-analytics .analytics-currency-balances dt { margin: 0 0 7px; color: var(--nexa-text-muted); font-size: 12px; }
+.admin-analytics .analytics-currency-balances dd { margin: 0; font: 650 clamp(23px, 2.4vw, 30px)/1.3 var(--nexa-heading-font); letter-spacing: -.03em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.admin-analytics .analytics-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.bank-app.experience-admin .admin-analytics .analytics-columns .bank-panel { margin: 0; }
+.admin-analytics .analytics-queue-list, .admin-analytics .analytics-distribution { list-style: none; margin: 0; padding: 0 24px 20px; }
+.admin-analytics .analytics-queue-list li { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 12px 0; border-bottom: 1px solid var(--nexa-border); color: var(--nexa-text-secondary); font-size: 13px; }
+.admin-analytics .analytics-queue-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.admin-analytics .analytics-queue-list strong { color: var(--nexa-text); font-size: 16px; font-variant-numeric: tabular-nums; }
+.admin-analytics .analytics-loans { padding: 0 24px 24px; }
+.admin-analytics .analytics-loans > strong { display: block; margin: 7px 0 8px; font: 650 40px/1.2 var(--nexa-heading-font); letter-spacing: -.04em; }
+.admin-analytics .analytics-loans > span { color: var(--nexa-text-secondary); font-size: 13px; }
+.admin-analytics .analytics-loans p { margin: 22px 0 0; color: var(--nexa-text-muted); font-size: 12px; line-height: 1.7; }
+.admin-analytics .analytics-distribution li + li { margin-top: 20px; }
+.admin-analytics .analytics-distribution li > div:first-child { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 9px; color: var(--nexa-text-secondary); font-size: 13px; }
+.admin-analytics .analytics-bar-track { height: 8px; overflow: hidden; border-radius: 8px; background: var(--nexa-hover); }
+.admin-analytics .analytics-bar-track span { display: block; height: 100%; background: var(--nexa-focus); border-radius: inherit; }
+.admin-analytics .analytics-chart-toolbar { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 16px; padding: 0 24px 20px; }
+.admin-analytics .analytics-chart-controls { display: flex; flex-wrap: wrap; gap: 12px; }
+.admin-analytics .analytics-chart-controls label { display: grid; gap: 7px; color: var(--nexa-text-secondary); font-size: 12px; }
+.admin-analytics .analytics-chart-controls select { min-width: 100px; min-height: 38px; padding: 7px 30px 7px 10px; border: 1px solid var(--nexa-border-control); border-radius: 8px; background: var(--nexa-surface); color: var(--nexa-text); }
+.admin-analytics :is(button, select):focus-visible { outline: 2px solid var(--nexa-focus); outline-offset: 3px; }
+.admin-analytics .analytics-payment-totals { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 22px; padding: 0 24px 20px; }
+.admin-analytics .analytics-payment-totals > span { color: var(--nexa-text-muted); font-size: 12px; }
+.admin-analytics .analytics-payment-totals > strong { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.admin-analytics .analytics-payment-totals small { margin-left: 3px; color: var(--nexa-text-muted); font-size: 11px; font-weight: 400; }
+.admin-analytics .analytics-chart { margin: 0; padding: 0 20px 10px; }
+.admin-analytics .analytics-chart figcaption { padding: 0 4px 4px; color: var(--nexa-text-secondary); font-size: 12px; }
+.admin-analytics .analytics-chart-scroll { width: 100%; overflow-x: auto; }
+.admin-analytics .analytics-chart svg { display: block; width: 100%; min-width: 420px; height: auto; }
+.admin-analytics .analytics-chart-grid { stroke: var(--nexa-border); stroke-width: 1; }
+.admin-analytics .analytics-chart-axis { fill: var(--nexa-text-muted); font-family: var(--nexa-font); font-size: 11px; }
+.admin-analytics .analytics-chart-bar { fill: var(--nexa-focus); }
+.admin-analytics .analytics-chart-area { fill: var(--nexa-focus); opacity: .12; }
+.admin-analytics .analytics-chart-line { fill: none; stroke: var(--nexa-focus); stroke-width: 2.5; stroke-linejoin: round; }
+.admin-analytics .analytics-chart-point { fill: var(--nexa-surface); stroke: var(--nexa-focus); stroke-width: 2; }
+.admin-analytics .analytics-chart-point:hover { fill: var(--nexa-focus); stroke-width: 3; }
+.admin-analytics .analytics-interval-end { display: block; margin-top: 3px; color: var(--nexa-text-muted); font-size: 12px; }
+.admin-analytics .analytics-partial-hour { display: inline-block; margin-top: 5px; color: var(--nexa-text-muted); font-size: 11px; font-weight: 400; }
+.admin-analytics .analytics-data-table { border-top: 1px solid var(--nexa-border); }
+.admin-analytics .analytics-data-table caption { padding: 16px 24px; color: var(--nexa-text-muted); text-align: left; font-size: 12px; }
+.admin-analytics .analytics-data-table tbody th { text-align: left; font-weight: 500; white-space: nowrap; }
+.admin-analytics .analytics-data-table td { font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 1100px) {
+  .admin-analytics .analytics-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .admin-analytics .analytics-columns { grid-template-columns: minmax(0, 1fr); }
+  .admin-analytics .analytics-kpis, .admin-analytics .analytics-activity-kpis { gap: 10px; }
+  .admin-analytics .analytics-activity-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .admin-analytics .analytics-metric { padding: 16px; }
+  .admin-analytics .analytics-metric > strong { font-size: 27px; }
+  .admin-analytics .analytics-section-heading a { margin-left: 0; }
+}
+@media (max-width: 500px) {
+  .admin-analytics .analytics-activity-kpis { grid-template-columns: minmax(0, 1fr); }
+  .admin-analytics .analytics-activity-kpis .analytics-metric { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+  .admin-analytics .analytics-activity-kpis .analytics-metric h3 { margin: 0; }
+  .admin-analytics .analytics-activity-kpis .analytics-metric > strong { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+  .admin-analytics .analytics-activity-kpis .analytics-metric p { margin: 0; }
+  .admin-analytics .analytics-description, .admin-analytics .analytics-footnote, .admin-analytics .analytics-empty, .admin-analytics .analytics-currency-balances, .admin-analytics .analytics-queue-list, .admin-analytics .analytics-distribution, .admin-analytics .analytics-loans, .admin-analytics .analytics-chart-toolbar, .admin-analytics .analytics-payment-totals { padding-inline: 17px; }
+  .admin-analytics .analytics-chart { padding-inline: 10px; }
+  .admin-analytics .analytics-chart-controls select { font-size: 16px; }
+  .admin-analytics .analytics-chart-toolbar { align-items: start; }
+}

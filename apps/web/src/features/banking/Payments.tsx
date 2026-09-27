@@ -1,113 +1,57 @@
 import { t } from "../../services/locale";
-import { DemoAction, DemoHistory } from "./Showcase";
-import { useNavigationGuard } from "../../hooks/useNavigationGuard";
+import { confirmNavigation, useNavigationGuard } from "../../hooks/useNavigationGuard";
 import { useRef, useState } from "preact/hooks";
-import { bankApi, BankAccount, PreparedAction } from "./api";
+import { bankApi } from "./api";
 import { PageHeading, Panel, State, Status, Detail, Modal, useLoad } from "./ui";
-import { productTitle } from "./Products";
 import { formatMoney, safeMask } from "../../services/banking-content";
 import { validAmount } from "./utils";
-import { BankingIcon } from "../../components/BankingIcon";
-export function PaymentsPage({ token, accounts }: {
+import { BankingIcon, BankingIconName } from "../../components/BankingIcon";
+import { MoneyTransfer } from "./MoneyTransfer";
+import { ExternalTransfer } from "./ExternalTransfer";
+
+export type PaymentDestination = "nexa" | "other-bank";
+const paymentShortcuts: {href: string; label: string; description: string; icon: BankingIconName}[] = [
+    {href: "#/bills", label: "Bills", description: "View a bill and pay its outstanding amount.", icon: "transactions"},
+    {href: "#/beneficiaries", label: "Saved payees", description: "View and manage your recipients.", icon: "people"},
+    {href: "#/scheduled-payments", label: "Scheduled payments", description: "View your upcoming payments.", icon: "clock"},
+    {href: "#/cards", label: "Cards", description: "Review your card and payment details.", icon: "cards"},
+    {href: "#/mandates", label: "Direct debits", description: "View and manage your payment mandates.", icon: "repeat"}
+];
+
+export function PaymentsPage({ token, userId, initialDestination = "nexa", initialPayee }: {
     token: string;
-    accounts: BankAccount[];
+    userId: string;
+    initialDestination?: PaymentDestination;
+    initialPayee?: string;
 }) {
-    const [targetPage, setTargetPage] = useState(0);
-    const [operation, setOperation] = useState("START_TRANSFER");
-    const [account, setAccount] = useState(accounts.find(a => a.status === "ACTIVE")?.id || "");
-    const [target, setTarget] = useState("");
-    const [amount, setAmount] = useState("");
-    const [result, setResult] = useState<PreparedAction>();
-    const [busy, setBusy] = useState(false);
-    const [error, setError] = useState("");
-    const lock = useRef(false);
-    useNavigationGuard(!!(target || amount) && !result, busy);
-    const kind = operation === "START_TRANSFER" ? "beneficiaries" : operation === "PAY_BILL" ? "bills" : operation === "PAY_CARD" ? "cards" : "mandates";
-    const targets = useLoad(() => bankApi.products(token, kind, targetPage), [token, kind, targetPage]);
-    async function prepare(e: Event) { e.preventDefault(); if (lock.current || !account || !target || (operation !== "CANCEL_MANDATE" && !validAmount(amount)))
-        return; lock.current = true; setBusy(true); setError(""); try {
-        setResult(await bankApi.prepare(token, { operation, accountId: account, targetId: target, ...(operation !== "CANCEL_MANDATE" ? { amount } : {}) }));
+    const [destination, setDestination] = useState<PaymentDestination>(initialDestination);
+    function changeDestination(event: Event & {currentTarget: HTMLSelectElement}) {
+        const next = event.currentTarget.value as PaymentDestination;
+        if (next === destination) return;
+        if (!confirmNavigation()) { event.currentTarget.value = destination; return; }
+        setDestination(next);
     }
-    catch (e) {
-        setError(e instanceof Error ? e.message : "We could not review this payment.");
-    }
-    finally {
-        lock.current = false;
-        setBusy(false);
-    } }
-    const targetLabel = operation === "START_TRANSFER" ? "Payee" : operation === "PAY_BILL" ? "Bill" : operation === "PAY_CARD" ? "Card" : "Direct debit";
     return <div class="bank-service-page bank-payments-page">
-      <PageHeading title={t("Payments")} action={<a class="bank-button" href="#/send-money">{t("Send money")}</a>}/>
+      <PageHeading title={t("Payments")} description={t("Transfer money, pay bills and manage your upcoming payments.")}/>
+      <div class="bank-payment-destination">
+        <label>{t("Transfer destination")}<select value={destination} onChange={changeDestination} aria-describedby="payment-destination-help">
+          <option value="nexa">{t("Nexa account")}</option><option value="other-bank">{t("Other bank")}</option>
+        </select></label>
+        <p id="payment-destination-help">{destination === "nexa" ? t("Send to another Nexa customer or move money between your own accounts.") : t("Use a saved payee’s bank account number and IFSC.")}</p>
+      </div>
       <div class="bank-payments-layout">
-        <Panel title={t("Review a payment")} className="bank-payment-review">
-          <form class="bank-form" onSubmit={prepare}>
-            <div class="bank-fields-grid bank-payment-fields">
-              <label>{t("What would you like to review?")}
-                <select value={operation} disabled={busy} onChange={e => { setOperation(e.currentTarget.value); setTargetPage(0); setTarget(""); setResult(undefined); }}>
-                  <option value="START_TRANSFER">{t("Transfer to a payee")}</option>
-                  <option value="PAY_BILL">{t("Bill payment")}</option>
-                  <option value="PAY_CARD">{t("Credit card payment")}</option>
-                  <option value="CANCEL_MANDATE">{t("Cancel a direct debit")}</option>
-                </select>
-              </label>
-              <label>{t("From account")}
-                <select required disabled={busy} value={account} onChange={e => setAccount(e.currentTarget.value)}>
-                  <option value="">{t("Select an account")}</option>
-                  {accounts.filter(a => a.status === "ACTIVE").map(a => <option key={a.id} value={a.id}>{a.displayName} · {a.accountNumberMasked}</option>)}
-                </select>
-              </label>
-              <div class="bank-payment-target">
-                <State loading={targets.loading} error={targets.error} retry={targets.reload}>
-                  <label>{t(targetLabel)}
-                    <select required disabled={busy} value={target} onChange={e => setTarget(e.currentTarget.value)}>
-                      <option value="">{t("Select a record")}</option>
-                      {targets.data?.map(p => <option key={p.id} value={p.id}>{productTitle(p)} · {p.status.toLowerCase()}</option>)}
-                    </select>
-                  </label>
-                  {!targets.data?.length && <p>{t("There is nothing to choose here yet. Contact your bank if you expected to see an item.")}</p>}
-                  {kind !== "beneficiaries" && <div class="bank-pagination">
-                    <span>{t("Records page")} {targetPage + 1}</span>
-                    <button type="button" disabled={busy || targetPage === 0} onClick={() => { setTarget(""); setTargetPage(p => p - 1); }}>{t("Previous records")}</button>
-                    <button type="button" disabled={busy || (targets.data?.length || 0) < 12} onClick={() => { setTarget(""); setTargetPage(p => p + 1); }}>{t("Next records")}</button>
-                  </div>}
-                </State>
-              </div>
-              {operation !== "CANCEL_MANDATE" && <label>{t("Amount (INR)")}
-                <input required inputMode="decimal" pattern="(?:0|[1-9][0-9]{0,12})(?:\.[0-9]{1,2})?" placeholder="0.00" aria-describedby="payment-amount-hint" value={amount} disabled={busy} onInput={e => setAmount(e.currentTarget.value)}/>
-                <small id="payment-amount-hint">{t("Enter an amount above ₹0, for example 100 or 100.50.")}</small>
-              </label>}
-            </div>
-            {account && target && (operation === "CANCEL_MANDATE" || validAmount(amount)) && <section class="bank-confirm-summary" aria-label={t("Check these details")}>
-              <h3>{t("Check these details")}</h3>
-              <dl>
-                <Detail label={t("From account")}>{accounts.find(a => a.id === account)?.accountNumberMasked}</Detail>
-                <Detail label={t("Recipient")}>{targets.data?.find(p => p.id === target) && productTitle(targets.data.find(p => p.id === target)!)}</Detail>
-                {operation !== "CANCEL_MANDATE" && <Detail label={t("Amount")}>{formatMoney(amount)}</Detail>}
-              </dl>
-            </section>}
-            {error && <p role="alert" class="bank-error">{error}</p>}
-            <div class="bank-editor-actions">
-              <button class="bank-button" disabled={busy || !account || !target || (operation !== "CANCEL_MANDATE" && !validAmount(amount))}>{t(busy ? "Checking details…" : "Check payment details")}</button>
-            </div>
-          </form>
-        </Panel>
+        <div class="bank-payment-transfer">
+          {destination === "nexa" ? <MoneyTransfer token={token} userId={userId} embedded/>
+            : <ExternalTransfer token={token} userId={userId} initialPayee={initialPayee} embedded/>}
+        </div>
         <Panel title={t("Payment shortcuts")} className="bank-payment-shortcuts">
-          <nav class="bank-payment-links" aria-label={t("Payment shortcuts")}>
-            <a href="#/beneficiaries">
-              <span class="bank-payment-link-icon"><BankingIcon name="people"/></span>
-              <span class="bank-payment-link-copy"><strong>{t("Saved payees")}</strong><small>{t("View and manage your recipients.")}</small></span>
-              <BankingIcon name="arrow"/>
-            </a>
-            <a href="#/scheduled-payments">
-              <span class="bank-payment-link-icon"><BankingIcon name="clock"/></span>
-              <span class="bank-payment-link-copy"><strong>{t("Scheduled payments")}</strong><small>{t("View your upcoming payments.")}</small></span>
-              <BankingIcon name="arrow"/>
-            </a>
-          </nav>
+          <nav class="bank-payment-links" aria-label={t("Payment shortcuts")}>{paymentShortcuts.map(item => <a href={item.href} key={item.href}>
+            <span class="bank-payment-link-icon"><BankingIcon name={item.icon}/></span>
+            <span class="bank-payment-link-copy"><strong>{t(item.label)}</strong><small>{t(item.description)}</small></span>
+            <BankingIcon name="arrow"/>
+          </a>)}</nav>
         </Panel>
       </div>
-      {result && <Modal title={t("Payment details")} onClose={() => setResult(undefined)}><div class="bank-form"><Status value={result.status}/><dl><Detail label={t("From account")}>{accounts.find(a => a.id === result.accountId)?.accountNumberMasked}</Detail><Detail label={t("Recipient")}>{targets.data?.find(p => p.id === result.targetId) && productTitle(targets.data.find(p => p.id === result.targetId)!)}</Detail>{result.amount && <Detail label={t("Amount")}>{formatMoney(result.amount, result.currencyCode)}</Detail>}</dl><DemoAction token={token} request={{operation: result.operation, accountId: result.accountId, targetId: result.targetId, ...(result.amount ? {amount: result.amount} : {})}} label={t("Continue")}/><button class="bank-button" onClick={() => { setAmount(""); setTarget(""); setResult(undefined); }}>{t("Back to payments")}</button></div></Modal>}
-      <DemoHistory token={token}/>
     </div>;
 }
 export function OperationsPage({ token }: {

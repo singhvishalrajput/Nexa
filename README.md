@@ -2,7 +2,15 @@
 
 Banking uses six core domain tables plus supporting security, conversation, audit and account-opening tables. See [the banking core](docs/SIX_TABLE_BANKING.md) and [the account-opening upgrade and teammate setup](docs/ACCOUNT_OPENING_UPGRADE.md).
 
-This is a learning showcase. See [showcase flows and simulation boundaries](docs/SHOWCASE.md) for confirmed demo payments, card controls, saved receipts and microphone-free voice demonstrations.
+This is a learning showcase. See [supported workflows and integration boundaries](docs/SHOWCASE.md) for persisted card controls, payment workflows and the remaining provider limitations.
+
+Bill payments to linked Nexa payees use actual internal balance transfers; see [bill payments](docs/BILL_PAYMENTS.md). Other-bank transfers now have a [Cashfree Payouts sandbox integration and setup guide](docs/EXTERNAL_BANK_TRANSFERS.md). Sandbox tests leave Nexa balances and bill statuses unchanged; live external payouts are unavailable.
+
+Customer transfers now share one **Payments** page with a Nexa/Other bank destination selector. Bills can link an existing saved Nexa recipient when created. Follow the [payment and bill walkthrough](docs/PAYMENTS_WALKTHROUGH.md) for the required details and local provider settings.
+
+The [admin analytics dashboard](docs/ADMIN_ANALYTICS.md) shows customer/account totals, active deposit balances, posted payment trends and application queues using real database aggregates.
+
+See [scheduled payments, card applications and customer forms](docs/CUSTOMER_PRODUCT_FLOWS.md) for one-time internal scheduled transfers, debit/credit applications, saved-payee mandates, loan types and the current-account onboarding boundary.
 
 One banking application with an Oracle JET web client and a Java 17 / Spring Boot 4.1.1 API.
 

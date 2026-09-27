@@ -322,6 +322,70 @@ class OpeningCashPostingServiceTest {
     verifyNoInteractions(generic);
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"NEXA-BANK-FUNDING", " nexa-bank-funding ", "NEXA-LOAN-CONTROL", " nexa-loan-control "})
+  void genericPostingsCannotBypassBankFundingAndLoanSettlement(String number) {
+    holding.setAccountNumber(number);
+    holding.setBalance(new BigDecimal("5000"));
+    customer.setBalance(new BigDecimal("5000"));
+    var generic = new TransactionServiceImpl();
+    generic.accountDao = accounts;
+    generic.transactionDao = transactions;
+    generic.journalEntryDao = journals;
+    generic.ledgerEntryDao = ledgers;
+    generic.entities = entities;
+    for (String operation : List.of("deposit", "withdraw", "transfer-from", "transfer-to")) {
+      var request = new TransactionRequest();
+      request.setAmount(new BigDecimal("1000"));
+      request.setSourceAccountId(operation.equals("transfer-to") ? customer.getId() : holding.getId());
+      request.setDestinationAccountId(operation.equals("transfer-from") ? customer.getId() : holding.getId());
+      assertThatThrownBy(() -> {
+        switch (operation) {
+          case "deposit" -> generic.deposit(request);
+          case "withdraw" -> generic.withdraw(request);
+          default -> generic.transfer(request);
+        }
+      }).isInstanceOf(InvalidRequestException.class).hasMessageContaining("funding and loan workflows");
+    }
+    assertThat(holding.getBalance()).isEqualByComparingTo("5000");
+    assertThat(customer.getBalance()).isEqualByComparingTo("5000");
+    assertThat(cash.getBalance()).isZero();
+    verify(accounts, never()).save(any());
+    verifyNoInteractions(transactions, journals, ledgers);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"NEXA-BANK-FUNDING", " nexa-bank-funding ", "NEXA-LOAN-CONTROL", " nexa-loan-control "})
+  void accountManagementCannotCreateRenameCloseOrAdjustBankSettlementAccounts(String number) {
+    holding.setAccountNumber(number);
+    var legacy = new AccountServiceImpl();
+    legacy.accounts = accounts;
+    var creation = account(null, number, AccountType.CLEARING, AccountCategory.SYSTEM, "0");
+    assertThatThrownBy(() -> legacy.create(creation)).isInstanceOf(InvalidRequestException.class)
+        .hasMessageContaining("funding and loan workflows");
+    var input = new Account();
+    input.setAccountName("Reclassified");
+    input.setStatus(AccountStatus.CLOSED);
+    assertThatThrownBy(() -> legacy.update(holding.getId(), input)).isInstanceOf(InvalidRequestException.class)
+        .hasMessageContaining("funding and loan workflows");
+    var generic = mock(TransactionService.class);
+    var modern = new AdminAccountService(db, accounts, user, generic, entities);
+    assertThatThrownBy(() -> modern.edit(holding.getId(),
+        new AdminAccountService.Edit("Reclassified", AccountStatus.CLOSED, 0L, "test reason")))
+        .isInstanceOf(InvalidRequestException.class).hasMessageContaining("funding and loan workflows");
+    for (String direction : List.of("CREDIT", "DEBIT")) {
+      assertThatThrownBy(() -> modern.adjust(holding.getId(), new AdminAccountService.Adjustment(
+          direction, new BigDecimal("1000"), "test reason", APPLICATION)))
+          .isInstanceOf(InvalidRequestException.class).hasMessageContaining("funding and loan workflows");
+    }
+    assertThat(holding.getStatus()).isEqualTo(AccountStatus.ACTIVE);
+    assertThat(holding.getAccountName()).isEqualTo(OpeningCashPostingService.HOLDING_NUMBER);
+    assertThat(holding.getBalance()).isZero();
+    verify(accounts, never()).save(any());
+    verify(accounts, never()).saveAndFlush(any());
+    verifyNoInteractions(generic, transactions, journals, ledgers);
+  }
+
   @Test
   void readinessReadsConfigurationWithoutTakingPostingLocksOrWritingBalances() {
     var result = service.infrastructureReadiness();

@@ -94,21 +94,26 @@ public class AccountApplicationService {
     require(Boolean.TRUE.equals(r.consentAccepted()) && CONSENT_VERSION.equals(r.consentVersion()),"Read and accept the current review notice.");
     var owner=actor("CUSTOMER",true); long customerId=number(owner,"ID");
     String normalized=identities.normalize(r.identityType(),r.identityNumber());
-    String hash=identities.fingerprint(identities.currentKeyId(),"CREATE",text(owner,"USER_ID"),r.accountType(),r.currencyCode(),r.dateOfBirth(),amount,r.consentVersion(),true,r.identityType(),normalized);
+    String suppliedPhone=r.phoneNumber()==null?null:phone(r.phoneNumber());
+    String legacyHash=identities.fingerprint(identities.currentKeyId(),"CREATE",text(owner,"USER_ID"),r.accountType(),r.currencyCode(),r.dateOfBirth(),amount,r.consentVersion(),true,r.identityType(),normalized);
+    // Fingerprint explicit phone input; a profile fallback must stay replayable after profile edits.
+    String hash=identities.fingerprint(identities.currentKeyId(),"CREATE_WITH_PHONE",legacyHash,suppliedPhone);
     var prior=rows("SELECT * FROM account_applications WHERE customer_id=? AND request_key=?",customerId,key);
     if(!prior.isEmpty()) {
       var ctx=new Context(owner,owner,prior.get(0));
-      if(replayed(ctx,key,"APPLICATION_CREATED",hash)) return view(ctx.app());
+      if(replayed(ctx,key,"APPLICATION_CREATED",hash,suppliedPhone==null?legacyHash:hash)) return view(ctx.app());
       throw new ConflictException("The request key already exists without a matching audit event.");
     }
     eligibleOwner(owner,null);
     requireProfile(owner);
+    String applicationPhone=suppliedPhone==null?phone(text(owner,"PHONE_NUMBER")):suppliedPhone;
+    requireAvailablePhone(customerId,applicationPhone);
     if(count("SELECT COUNT(*) FROM account_applications WHERE customer_id=? AND status NOT IN ('REJECTED','CANCELLED','REFUNDED')",customerId)>0)
       throw new ConflictException("A live application or opened savings account already exists.");
     String id=UUID.randomUUID().toString(); OffsetDateTime now=now();
     var identity=identities.protect(id,text(owner,"USER_ID"),r.identityType(),normalized);
     db.update("INSERT INTO account_applications(id,customer_id,request_key,account_type,currency_code,full_name,email,phone_number,date_of_birth,business_date,requested_amount,consent_notice_version,consented_at,created_at,updated_at,identity_type,identity_ciphertext,identity_key_id,identity_last4) VALUES(?,?,?,'SAVINGS','INR',?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        id,customerId,key,text(owner,"FULL_NAME"),text(owner,"EMAIL"),text(owner,"PHONE_NUMBER"),r.dateOfBirth(),today(),amount,CONSENT_VERSION,now,now,now,identity.type(),identity.ciphertext(),identity.keyId(),identity.last4());
+        id,customerId,key,text(owner,"FULL_NAME"),text(owner,"EMAIL"),applicationPhone,r.dateOfBirth(),today(),amount,CONSENT_VERSION,now,now,now,identity.type(),identity.ciphertext(),identity.keyId(),identity.last4());
     var app=application(id,false);
     event(new Context(owner,owner,app),key,"APPLICATION_CREATED",hash,null,null,null,null,null,0);
     return view(app);
@@ -131,6 +136,32 @@ public class AccountApplicationService {
     enabled();var ctx=context(id,true,false);state(ctx,"PENDING_REVIEW");
     return Map.of("identityType",text(ctx.app(),"IDENTITY_TYPE"),"identityNumber",identityNumber(ctx),
         "verificationMethod",VERIFICATION_METHOD);
+  }
+
+  /** Changes remain private draft data until the customer submits them for a new review. */
+  public Map<String,Object> updateDetails(UUID id,DetailsRequest r) {
+    enabled();require(r!=null,"Application details are required.");var ctx=context(id,false,true);
+    String applicationPhone=phone(r.phoneNumber());adult(r.dateOfBirth());BigDecimal requested=amount(r.openingAmount());
+    boolean replaceIdentity=r.identityType()!=null || r.identityNumber()!=null;
+    require(!replaceIdentity || (r.identityType()!=null && r.identityNumber()!=null),
+        "To change identity details, provide both the identity type and number.");
+    String normalized=replaceIdentity?identities.normalize(r.identityType(),r.identityNumber()):null;
+    String hash=identities.fingerprint(identities.currentKeyId(),"APPLICATION_UPDATED",r.expectedVersion(),
+        applicationPhone,r.dateOfBirth(),requested,r.identityType(),normalized);
+    if(replayed(ctx,key(r.requestKey()),"APPLICATION_UPDATED",hash))return view(ctx.app());
+    version(ctx,r.expectedVersion());state(ctx,"DRAFT","CHANGES_REQUESTED");
+    eligibleOwner(ctx.owner(),null);requireProfile(ctx.owner());requireConsent(ctx.app());
+    requireAvailablePhone(number(ctx.owner(),"ID"),applicationPhone);
+    if(count("SELECT COUNT(*) FROM opening_cash_receipts WHERE application_id=?",id.toString())>0)
+      throw new ConflictException("Recorded opening cash prevents changes to application details.");
+    if(replaceIdentity) {
+      var identity=identities.protect(id.toString(),text(ctx.owner(),"USER_ID"),r.identityType(),normalized);
+      db.update("UPDATE account_applications SET identity_type=?,identity_ciphertext=?,identity_key_id=?,identity_last4=? WHERE id=?",
+          identity.type(),identity.ciphertext(),identity.keyId(),identity.last4(),id.toString());
+    }
+    db.update("UPDATE account_applications SET phone_number=?,date_of_birth=?,business_date=?,requested_amount=?,review_decision='PENDING',reviewed_by=NULL,reviewed_at=NULL,review_reason=NULL WHERE id=?",
+        applicationPhone,r.dateOfBirth(),today(),requested,id.toString());
+    return advance(ctx,key(r.requestKey()),"APPLICATION_UPDATED",hash,text(ctx.app(),"STATUS"),null,null,null,null);
   }
 
   public Map<String,Object> updateIdentity(UUID id,IdentityRequest r) {
@@ -242,7 +273,13 @@ public class AccountApplicationService {
     // Composite FK requires this OPENED link before the receipt allocation update.
     db.update("UPDATE account_applications SET status='OPENED',account_id=?,opened_at=? WHERE id=?",account.getId(),now,id.toString());
     db.update("UPDATE opening_cash_receipts SET status='APPLIED',allocation_transaction_id=?,allocated_account_id=?,allocated_at=?,version=version+1 WHERE id=?",transaction,account.getId(),now,text(receipt,"ID"));
-    db.update("UPDATE customers SET date_of_birth=?,updated_at=? WHERE id=?",birth(ctx.app()),LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC),number(ctx.owner(),"ID"));
+    try {
+      db.update("UPDATE customers SET date_of_birth=?,phone_number=?,updated_at=? WHERE id=?",birth(ctx.app()),phone(text(ctx.app(),"PHONE_NUMBER")),LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC),number(ctx.owner(),"ID"));
+    } catch (org.springframework.dao.DataIntegrityViolationException conflict) {
+      // A competing profile write can claim the number after the availability check.
+      // Throwing out of this transaction rolls back the account, allocation and receipt changes.
+      throw new ConflictException("The phone number became unavailable while opening the account. No account was opened. Ask an administrator to arrange a refund, then submit a corrected application.");
+    }
     return advance(ctx,key(r.requestKey()),"ACCOUNT_OPENED",hash,"OPENED",null,null,null,text(receipt,"ID"));
   }
 
@@ -299,10 +336,10 @@ public class AccountApplicationService {
   private void enabled(){if(!enabled)throw new ConflictException("Manual onboarding is not activated yet. No account or money movement was created.");}
   private void version(Context ctx,Long expected){require(expected!=null && expected>=0,"Supply the current application version.");if(number(ctx.app(),"VERSION")!=expected)throw new ConflictException("The application changed. Refresh before continuing.");}
   private void state(Context ctx,String... allowed){if(!Arrays.asList(allowed).contains(text(ctx.app(),"STATUS")))throw new ConflictException("This action is not allowed in the current application state.");}
-  private boolean replayed(Context ctx,String key,String type,String hash) {
+  private boolean replayed(Context ctx,String key,String type,String hash,String... previousHashes) {
     var result=rows("SELECT actor_user_id,event_type,request_fingerprint FROM application_events WHERE application_id=? AND event_key=?",text(ctx.app(),"ID"),key);
     if(result.isEmpty())return false;var prior=result.get(0);
-    if(!actorId(ctx).equals(text(prior,"ACTOR_USER_ID")) || !type.equals(text(prior,"EVENT_TYPE")) || !hash.equals(text(prior,"REQUEST_FINGERPRINT")))
+    if(!actorId(ctx).equals(text(prior,"ACTOR_USER_ID")) || !type.equals(text(prior,"EVENT_TYPE")) || (!hash.equals(text(prior,"REQUEST_FINGERPRINT")) && !Arrays.asList(previousHashes).contains(text(prior,"REQUEST_FINGERPRINT"))))
       throw new ConflictException("The request key was already used with different details or by another actor.");
     return true;
   }
@@ -321,8 +358,12 @@ public class AccountApplicationService {
   private void eligibleOwner(Map<String,Object> owner,Map<String,Object> app) {
     if(!"CUSTOMER".equals(text(owner,"ROLE")) || !"ACTIVE".equals(text(owner,"STATUS")))throw new ConflictException("The customer is no longer eligible.");
     if(hasSavings(number(owner,"ID")))throw new ConflictException("This customer already has a savings account, including closed accounts.");
-    if(app!=null){adult(birth(app));for(String field:List.of("FULL_NAME","EMAIL","PHONE_NUMBER"))
+    if(app!=null){adult(birth(app));requireAvailablePhone(number(owner,"ID"),phone(text(app,"PHONE_NUMBER")));for(String field:List.of("FULL_NAME","EMAIL"))
       if(!Objects.equals(text(owner,field),text(app,field)))throw new ConflictException("The profile has changed since submission. Cancel and submit a newly reviewed application, or arrange a refund if cash was received.");}
+  }
+  private void requireAvailablePhone(long owner,String normalizedPhone) {
+    if(count("SELECT COUNT(*) FROM customers WHERE id<>? AND phone_number IS NOT NULL AND REGEXP_REPLACE(phone_number,'[() -]','')=?",owner,normalizedPhone)>0)
+      throw new ConflictException("This phone number is already in use. Enter a different phone number or contact support.");
   }
   private boolean hasSavings(long owner){return count("SELECT COUNT(*) FROM accounts WHERE customer_id=? AND account_category='CUSTOMER' AND account_type='SAVINGS'",owner)>0;}
   private void requireConsent(Map<String,Object> app){if(app.get("CONSENT_WITHDRAWN_AT")!=null || !CONSENT_VERSION.equals(text(app,"CONSENT_NOTICE_VERSION")))throw new ConflictException("Current consent is required.");}
@@ -386,6 +427,15 @@ public class AccountApplicationService {
   private void adult(LocalDate birth){require(birth!=null && birth.getYear()>=1 && birth.getYear()<=9999 && birth.isBefore(today()) && !birth.isAfter(today().minusYears(18)),"Provide a valid date of birth; applicants must be at least 18.");}
   private static String key(UUID key){require(key!=null,"A UUID request key is required.");return key.toString();}
   private static BigDecimal amount(String input){require(input!=null && input.matches("(?:0|[1-9][0-9]{0,7})(?:\\.[0-9]{1,2})?"),"Enter an INR decimal amount with at most two decimal places.");BigDecimal value=new BigDecimal(input);require(value.compareTo(MINIMUM)>=0 && value.compareTo(MAXIMUM)<=0,"Opening cash must be between INR 1,000 and INR 1,00,00,000.");return value.setScale(2);}
+  private static String phone(String value) {
+    require(value!=null && !value.isBlank(),"Enter a phone number to open an account.");
+    require(value.length()<=32 && value.matches("[+0-9() -]+"),
+        "Enter a valid phone number with 10–15 digits and an optional leading +.");
+    String normalized=value.replaceAll("[() -]","");
+    require(normalized.matches("\\+?[0-9]{10,15}"),
+        "Enter a valid phone number with 10–15 digits and an optional leading +.");
+    return normalized;
+  }
   private static void reason(String reason){
     require(reason!=null && !reason.isBlank() && reason.getBytes(StandardCharsets.UTF_8).length<=500
         && reason.codePoints().noneMatch(Character::isISOControl),

@@ -6,7 +6,7 @@ import "oj-c/meter-bar";
 import { BankTransaction } from "./api";
 import { Status } from "./ui";
 import { t } from "../../services/locale";
-import { completedStatuses, dayLabel, formatDate, formatMoney, humanize, moneyInMinorUnits, statusPresentation, transactionDirection } from "../../services/banking-content";
+import { categoryLabel, completedStatuses, dayLabel, formatDate, formatMoney, humanize, moneyInMinorUnits, statusPresentation, transactionDirection } from "../../services/banking-content";
 import { minorUnitsDecimal, summarizeActivity } from "../../services/activity-summary";
 
 export function TransactionRow({item}: {item: BankTransaction}) {
@@ -19,7 +19,7 @@ export function TransactionRow({item}: {item: BankTransaction}) {
   const amount = formatMoney(!completed && units !== null ? minorUnitsDecimal(units < BigInt(0) ? -units : units) : item.amount, item.currencyCode, completed);
   return <a class="activity-row" href={"#/transactions/" + encodeURIComponent(item.id)} aria-label={`${merchant}, ${amount}, ${direction}, ${statusPresentation(item.status).label}, ${formatDate(item.occurredAt, true)}. ${t("View details")}`}>
     <span class={`activity-icon ${completed && incoming ? "activity-credit" : ""}`} aria-hidden="true">{["FAILED", "CANCELLED", "EXPIRED"].includes(item.status) ? "×" : incoming ? "↙" : "↗"}</span>
-    <span class="activity-identity"><strong dir="auto">{merchant}</strong><span><span dir="auto">{item.category ? humanize(item.category) : humanize(item.type)}</span><span aria-hidden="true"> · </span><time dateTime={item.occurredAt}>{dayLabel(item.occurredAt)}</time></span></span>
+    <span class="activity-identity"><strong dir="auto">{merchant}</strong><span><span dir="auto">{item.category ? categoryLabel(item.category) : humanize(item.type)}</span><span aria-hidden="true"> · </span><time dateTime={item.occurredAt}>{dayLabel(item.occurredAt)}</time></span></span>
     <span class="activity-value"><strong class={completed && incoming ? "activity-credit" : ""}>{amount}</strong><span class="activity-outcome">{completed ? direction : <Status value={item.status}/>}</span></span>
     <span class="activity-chevron" aria-hidden="true">›</span>
   </a>;
@@ -46,8 +46,8 @@ export function ActivitySummary({items, currency, accountName}: {items: BankTran
     </div>
     <div class="activity-category-heading"><h3>{t("Spending by category")}</h3><span>{t("Share of money out")}</span></div>
     {summary.categories.length ? <ul class="activity-categories" aria-label={t("Spending by category")}>{summary.categories.map(row => <li key={row.category}>
-      <div><span dir="auto">{humanize(row.category)}</span><strong>{formatMoney(minorUnitsDecimal(row.units), currency)}</strong><span class="activity-category-percent">{row.percent.toFixed(1)}%</span></div>
-      <oj-c-meter-bar value={row.percent} min={0} max={100} readonly size="sm" color="var(--nexa-accent-text)" plotArea={{color: "var(--nexa-hover)"}} aria-label={`${humanize(row.category)}: ${row.percent.toFixed(1)}%`}/>
+      <div><span dir="auto">{categoryLabel(row.category)}</span><strong>{formatMoney(minorUnitsDecimal(row.units), currency)}</strong><span class="activity-category-percent">{row.percent.toFixed(1)}%</span></div>
+      <oj-c-meter-bar value={row.percent} min={0} max={100} readonly size="sm" color="var(--nexa-accent-text)" plotArea={{color: "var(--nexa-hover)"}} aria-label={`${categoryLabel(row.category)}: ${row.percent.toFixed(1)}%`}/>
     </li>)}</ul> : <p class="activity-summary-empty">{t("No completed spending in these transactions.")}</p>}
     <p class="activity-summary-note">{t("Completed transactions only. Pending and failed payments are excluded.")}</p>
   </div>;

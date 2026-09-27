@@ -18,12 +18,12 @@ function nodes(vnode) {
 }
 const render = (page, admin = false) => nodes([SidebarNavigation({page, admin}), SidebarFooter({page, onLogout(){}})]);
 
-test('shared navigation preserves all routes once and gates administrator navigation', () => {
+test('shared navigation exposes one Payments destination and keeps legacy transfer URLs off the menu', () => {
   for (const admin of [false, true]) {
     const links = render('assistant', admin).filter(n => n.type === 'a');
     const destinations = links.map(n => n.props.href.slice(2));
     assert.equal(new Set(destinations).size, destinations.length);
-    assert.deepEqual(destinations.sort(), routes.filter(r => admin || r !== 'operations').slice().sort());
+    assert.deepEqual(destinations.sort(), routes.filter(r => !['send-money', 'external-transfers'].includes(r) && (admin || r !== 'operations')).slice().sort());
   }
 });
 
@@ -32,7 +32,7 @@ test('secondary destinations stay visible and exactly one current page is announ
     const tree = render(page, true);
     const current = tree.filter(n => n.props['aria-current'] === 'page');
     assert.equal(current.length, 1, page);
-    assert.equal(current[0].props.href, '#/' + page);
+    assert.equal(current[0].props.href, '#/' + (['send-money', 'external-transfers'].includes(page) ? 'payments' : page));
     assert.ok(!tree.some(n => n.type === 'details' || n.type === 'summary'));
   }
 });
@@ -54,6 +54,12 @@ test('customer workspace branding opens overview while banking routes remain ava
     const links = nodes(WorkspaceRail({page: admin ? 'admin' : 'assistant', name: 'Test Customer', admin})).filter(n => n.type === 'a');
     assert.ok(links.some(n => n.props.href === (admin ? '#home' : '#/overview') && n.props['aria-label'] === (admin ? 'Nexa home' : 'Overview')));
     assert.ok(links.some(n => n.props.href === (admin ? '#/admin' : '#/assistant')));
+  }
+  for (const page of ['payments', 'send-money', 'external-transfers']) {
+    const links = nodes(WorkspaceRail({page, name: 'Test Customer'})).filter(n => n.type === 'a');
+    assert.equal(links.filter(n => n.props.href === '#/payments').length, 1);
+    assert.equal(links.find(n => n.props['aria-current'] === 'page').props.href, '#/payments');
+    assert.equal(links.some(n => ['#/send-money', '#/external-transfers'].includes(n.props.href)), false);
   }
 });
 

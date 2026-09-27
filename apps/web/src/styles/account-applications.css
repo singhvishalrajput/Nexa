@@ -36,6 +36,13 @@
 .application-consent { display: flex !important; flex-direction: row !important; align-items: flex-start; gap: .75rem !important; line-height: 1.65; margin: .75rem 0; }
 .application-consent input, .application-check input { width: 1.15rem !important; min-height: 1.15rem !important; height: 1.15rem; margin: .25rem 0 0; flex-shrink: 0; }
 .application-consent input { accent-color: var(--nexa-action); }
+.application-required { color: var(--nexa-text-secondary); font-size: .8rem; font-weight: 400; }
+.application-validation-summary { padding: 1rem; border: 1px solid var(--nexa-error); border-left-width: 4px; border-radius: 10px; color: var(--nexa-text); background: var(--nexa-surface); scroll-margin-block: 6rem; }
+.application-validation-summary:focus { outline: 3px solid var(--nexa-focus); outline-offset: 3px; }
+.application-validation-summary p { margin: .6rem 0; line-height: 1.6; }
+.application-validation-summary ul { margin: .5rem 0 0; padding-left: 1.25rem; }
+.application-validation-summary li + li { margin-top: .5rem; }
+.application-validation-summary .application-validation-link { border: 0; padding: .15rem 0; background: transparent; color: var(--nexa-error); font: inherit; text-align: left; text-decoration: underline; text-underline-offset: .15em; line-height: 1.6; cursor: pointer; }
 .application-next-step { margin: 0; padding: 1rem; border-left: 3px solid var(--nexa-focus); background: var(--nexa-hover); line-height: 1.65; }
 .application-help { font-size: .875rem; line-height: 1.7; color: var(--nexa-text-secondary); }
 .application-document-review + .application-document-review { margin-top: 1.25rem; }
@@ -115,3 +122,6 @@
 @media (prefers-reduced-motion: reduce) {
   .application-page *, .application-record * { scroll-behavior: auto !important; transition: none !important; }
 }
+
+.application-queue-row { cursor: pointer; }
+.application-queue-row:focus-within { background: var(--nexa-hover); }

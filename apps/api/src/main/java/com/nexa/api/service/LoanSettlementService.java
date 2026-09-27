@@ -34,7 +34,10 @@ public class LoanSettlementService {
             "SELECT balance FROM accounts WHERE account_number='NEXA-BANK-FUNDING'",
             BigDecimal.class);
     if (balance.compareTo(amount) < 0)
-      throw new InvalidRequestException("The bank funding account has insufficient funds");
+      throw new InvalidRequestException(
+          "The bank funding account has insufficient funds. Your loan remains approved and no funds"
+              + " have been released. Ask the bank administrator to check Admin → Bank funding and"
+              + " record received bank capital before you retry accepting the loan.");
   }
 
   public void settle(String transaction, BigDecimal principal, boolean disbursement) {

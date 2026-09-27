@@ -8,7 +8,7 @@ class FormDataFixture {
   get(key){return this.entries.find(([k])=>k===key)?.[1] ?? null;}
   getAll(key){return this.entries.filter(([k])=>k===key).map(([,v])=>v);}
 }
-function setup(api=async()=>({}), download=async()=>new Blob(['%PDF-data'])){
+function setup(api=async()=>({}), download=async()=>new Blob(['%PDF-data']), payees=[]){
   let cursor=0; const slots=[], clicks=[];
   const hooks={
     useState(v){const i=cursor++;if(!(i in slots))slots[i]=typeof v==='function'?v():v;return[slots[i],v=>slots[i]=typeof v==='function'?v(slots[i]):v];},
@@ -19,7 +19,9 @@ function setup(api=async()=>({}), download=async()=>new Blob(['%PDF-data'])){
   const dependencies=n=>n==='preact/hooks'?hooks:n==='preact/jsx-runtime'?{jsx,jsxs:jsx}:
     n==='../../services/auth'?{authenticatedRequest:api,authenticatedBlobRequest:download}:
     n==='./LoanSalarySlips'?slips:n==='./api'?{bankApi:{accounts:async()=>[]}}:
-    n==='./ui'?{Panel:'panel',State:'state',useLoad:fn=>({data:fn.toString().includes('salary-slip-requirements')?months:[],reload(){}})}:{};
+    n==='../../services/loan-applications'?{verifiedLoanApplication:value=>value}:
+    n==='../../hooks/useNavigationGuard'?{useNavigationGuard(){}}:
+    n==='./ui'?{Panel:'panel',State:'state',useLoad:fn=>({data:fn.toString().includes('salary-slip-requirements')?months:fn.toString().includes('/beneficiaries')?payees:[{id:'12',status:'ACTIVE',accountType:'SAVINGS',currencyCode:'INR'}],reload(){}})}:{};
   for(const [file,exports] of [['LoanSalarySlips',slips],['ProductOperations',products]]){
     vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/features/banking/'+file+'.tsx','utf8'),{
       compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2021,jsx:ts.JsxEmit.ReactJSX,jsxImportSource:'preact'}
@@ -32,7 +34,7 @@ function setup(api=async()=>({}), download=async()=>new Blob(['%PDF-data'])){
   return{slips,products,clicks,render(component,props){cursor=0;return nodes(component(props));}};
 }
 const form=()=>new FormDataFixture({entries:[
-  ['name','Education'],['account','12'],['amount','100000'],['tenure','12'],
+  ['name','Education loan'],['account','12'],['amount','100000'],['tenure','12'],
   ...months.map(month=>['slip-'+month,{name:month+'.pdf',type:'application/pdf',size:100}])
 ]});
 
@@ -80,6 +82,28 @@ test('loan form submits application JSON and all three salary files in one multi
   assert.equal(calls[0].body.getAll('files').length,3);
   const application=JSON.parse(await calls[0].body.get('application').text());
   assert.equal(application.accountId,12);assert.equal(application.applicationKey,'application-key');
+  assert.equal(application.purpose,'Education loan');
+});
+
+test('loan types are selected from a required dropdown',()=>{
+  const app=setup(),tree=app.render(app.products.ProductCreate,{token:'owner',kind:'loans',initiallyOpen:true,reload(){}});
+  const select=tree.find(n=>n.type==='select'&&n.props.name==='name');
+  assert.equal(select.props.required,true);
+  assert.deepEqual(nodes(select).filter(n=>n.type==='option'&&n.props.value).map(n=>n.props.value),['Personal loan','Car loan','Home loan','Education loan','Business loan','Other loan']);
+  assert.equal(tree.some(n=>n.type==='input'&&n.props.name==='name'),false);
+});
+
+test('mandates submit the saved payee reference without requesting or trusting an entered account number',async()=>{
+  const calls=[],payees=[{id:'saved',displayName:'Electricity',bankName:'Nexa',status:'ACTIVE',accountNumberMasked:'•••• 1234'},
+    {id:'external',bankName:'HDFC',status:'ACTIVE',transferType:'EXTERNAL_BANK'},{id:'inactive',bankName:'Nexa',status:'CLOSED'}];
+  const app=setup(async(path,token,request)=>{calls.push({path,body:JSON.parse(request.body)});return{};},undefined,payees);
+  const props={token:'owner',kind:'mandates',initiallyOpen:true,reload(){}};
+  const tree=app.render(app.products.ProductCreate,props),select=tree.find(n=>n.type==='select'&&n.props.name==='payeeId');
+  assert.deepEqual(nodes(select).filter(n=>n.type==='option').map(n=>n.props.value),['','saved']);
+  assert.equal(tree.some(n=>n.type==='input'&&n.props.name==='beneficiary'),false);
+  const data=new FormDataFixture({entries:[['account','12'],['payeeId','saved'],['amount','500'],['start','2026-09-27'],['beneficiary','tampered']]});
+  await tree.find(n=>n.type==='form').props.onSubmit({preventDefault(){},currentTarget:data});
+  assert.deepEqual(calls,[{path:'/mandates',body:{sourceAccountId:12,payeeId:'saved',limit:'500',startDate:'2026-09-27',endDate:null}}]);
 });
 test('admin must download a slip before its verification checkbox is enabled',async()=>{
   const verified=[],app=setup(),props={token:'admin',loanId:'L-1',bundle:{requiredMonths:months,documents:[{id:'D-1',month:months[0],fileName:'June.pdf',size:100}]},verified:[],onVerify:ids=>verified.push(...ids)};

@@ -3,7 +3,7 @@ import { accountDisplayName } from "../../services/reply-localization";
 import { SpendingSummary } from "./SpendingSummary";
 import { h } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { AccountSnapshot, BankingContent, Money, TransactionSnapshot, dayLabel, dueLabel, formatDate, formatMoney, humanize, safeMask, transactionDirection, statusPresentation, completedStatuses } from "../../services/banking-content";
+import { AccountSnapshot, BankingContent, Money, TransactionSnapshot, categoryLabel, dayLabel, dueLabel, formatDate, formatMoney, humanize, safeMask, transactionDirection, statusPresentation, completedStatuses } from "../../services/banking-content";
 import { BankingCollection, collectionNotice } from "./BankingCollection";
 import { Status, Detail } from "../../features/banking/ui";
 import { getTransactionPage } from "../../services/banking";
@@ -46,7 +46,7 @@ export function TransactionDetails({ transaction, account, onBack }: { transacti
       <Detail label={completedStatuses.includes(transaction.status) ? incoming ? t("Received in") : t("Paid from") : t("Account")}><AccountLabel account={account} /></Detail>
       <Detail label={t("Date & time")}>{formatDate(transaction.occurredAt, true)}</Detail>
       <Detail label={t("Transaction type")}>{humanize(transaction.type)}</Detail>
-      {transaction.category && <Detail label={t("Category")}>{humanize(transaction.category)}</Detail>}
+      {transaction.category && <Detail label={t("Category")}>{categoryLabel(transaction.category)}</Detail>}
     </dl>
     {transaction.reference && <details class="bank-reference"><summary>{t("Transaction reference")}</summary><code>{transaction.reference}</code><button type="button" class="bank-inline-action" onClick={async () => {
       try { await navigator.clipboard.writeText(transaction.reference); setCopied("Reference copied."); }
@@ -70,7 +70,7 @@ export function TransactionList({ items, onSelect }: { items: TransactionSnapsho
       const direction = transactionDirection(item);
       const merchant = item.merchantName || humanize(item.type);
       return <li key={item.id}><button type="button" class="bank-transaction-row" onClick={() => onSelect(item)} aria-label={`${merchant}, ${direction.toLowerCase()}, ${formatMoney(item.amount, item.currencyCode)}, ${formatDate(item.occurredAt, true)}, ${statusPresentation(item.status).label}. ${t("View details")}`}>
-        <span class="bank-transaction-name"><strong dir="auto">{merchant}</strong><small>{item.category ? humanize(item.category) : humanize(item.type)}</small><Status value={item.status} /></span>
+        <span class="bank-transaction-name"><strong dir="auto">{merchant}</strong><small>{item.category ? categoryLabel(item.category) : humanize(item.type)}</small><Status value={item.status} /></span>
         <span class="bank-transaction-amount"><MoneyAmount amount={item.amount} currency={item.currencyCode} signed /><small key={getLocale()} lang={getLocale()} translate={false}><span>{direction}</span><span aria-hidden="true"> · </span><time dateTime={item.occurredAt}>{new Date(item.occurredAt).toLocaleTimeString(getLocale(), { hour: "numeric", minute: "2-digit" })}</time></small></span>
       </button></li>;
     })}</ul>
@@ -161,7 +161,7 @@ export function BillList({ content }: { content: Extract<BankingContent, { type:
  <div class="bank-item-heading"><h4 dir="auto">{bill.billerName}</h4><MoneyAmount amount={bill.amount} currency={bill.currencyCode} /></div>
  <div class="bank-item-heading"><span class="bank-secondary">{bill.dueAt ? dueLabel(bill.dueAt) : t("No due date")}</span><Status value={bill.status} /></div>
  <p class="bank-secondary">{t("Reference")} {bill.id}</p>
- {bill.category && <p class="bank-secondary">{humanize(bill.category)}</p>}
+ {bill.category && <p class="bank-secondary">{categoryLabel(bill.category)}</p>}
  {bill.customerNumberMasked && <p class="bank-secondary">{t("Customer")} {safeMask(bill.customerNumberMasked)}</p>}
  </section>)}</BankingCollection></>;
 }
@@ -171,8 +171,9 @@ function BalancesResponse({ content, accessToken }: RendererProps<"ACCOUNTS">) {
  : content.accounts.length ? <><SectionHeader title={t("Account balances")} /><AccountSummary accounts={content.accounts} onTransactions={setAccount} /></> : <EmptySummary title="Account balances" />;
 }
 type RendererProps<K extends BankingContent["type"]> = { content: Extract<BankingContent, { type: K }>; accessToken: string };
-// Register new data variants here without changing the conversation timeline.
-const bankingRenderers: { [K in BankingContent["type"]]: (props: RendererProps<K>) => h.JSX.Element } = {
+// Interactive loan application forms use LoanApplicationCard and the turn's stable request key.
+type SummaryContent = Exclude<BankingContent, { type: "LOAN_APPLICATION" }>;
+const bankingRenderers: { [K in SummaryContent["type"]]: (props: RendererProps<K>) => h.JSX.Element } = {
  INSIGHTS: ({ content }) => <SpendingSummary content={content} />,
  ACCOUNTS: BalancesResponse,
  TRANSACTIONS: ({ content, accessToken }) => <TransactionPanel account={content.account} items={content.transactions} total={content.totalElements} accessToken={accessToken} />,
@@ -192,7 +193,7 @@ const bankingRenderers: { [K in BankingContent["type"]]: (props: RendererProps<K
  </dl><p class="bank-secondary">Details checked.</p></>}</>,
  TRANSFER_STATUS: ({ content }) => <><SectionHeader title={t("Transfer status")} /><MoneyAmount amount={content.transfer.amount} currency={content.transfer.currencyCode} /><Status value={content.transfer.status} /><dl><Detail label={t("Reference")}>{content.transfer.reference}</Detail></dl></>
 };
-export function supportsBankingContent(content: BankingContent): boolean {
+export function supportsBankingContent(content: BankingContent): content is SummaryContent {
  return content.version === 1 && Object.prototype.hasOwnProperty.call(bankingRenderers, content.type);
 }
 export function BankingResponse({ content, accessToken, capturedAt }: { content: BankingContent; accessToken: string; capturedAt: string }) {

@@ -56,6 +56,40 @@ class ConversationInterpreterTest {
   }
 
   @Test
+  void loanApplicationRequestsCannotBeReclassifiedAsLoanSummariesByTheModel() {
+    var ollama = mock(OllamaInterpreter.class);
+    interpreter.setOllama(ollama);
+    when(ollama.interpret(anyString(), anyList())).thenReturn(
+        new OllamaInterpreter.Plan("GET_LOANS", null, null, null, null, null, null, null, null, null));
+    var history = List.of(new OllamaInterpreter.Message("user", "show loans"),
+        new OllamaInterpreter.Message("assistant", "Here are your loans and EMIs."));
+    for (String text : List.of("apply for loan", "I want to apply for a loan", "loan apply karo")) {
+      var result = interpreter.interpret(text, history);
+      assertThat(result.intent()).as(text).isEqualTo("APPLY_LOAN");
+      assertThat(result.banking().envelopeType()).isEqualTo("LOAN_APPLICATION");
+      assertThat(result.reply()).doesNotContain("No loans", "Here are your loans");
+    }
+    verifyNoInteractions(ollama, accounts, transactions);
+  }
+
+  @Test
+  void explicitBillCommandsNeverInheritLoanIntentFromTheLocalModel() {
+    var ollama = mock(OllamaInterpreter.class);
+    interpreter.setOllama(ollama);
+    when(ollama.interpret(anyString(), anyList())).thenReturn(
+        new OllamaInterpreter.Plan("GET_LOANS", null, null, null, null, null, null, null, null, null));
+    var history = List.of(new OllamaInterpreter.Message("user", "show loans"),
+        new OllamaInterpreter.Message("assistant", "Here are your loans and EMIs."));
+    for (String text : List.of("pay bill", "paybill", "pay bills", "Please paybill!")) {
+      var result = interpreter.interpret(text, history);
+      assertThat(result.intent()).as(text).isEqualTo("PAY_BILL");
+      assertThat(result.banking().envelopeType()).as(text).isEqualTo("ACTION_REQUIRED");
+      assertThat(result.reply()).doesNotContain("loan", "EMI");
+    }
+    verifyNoInteractions(ollama, accounts, transactions);
+  }
+
+  @Test
   void filteredAmbiguousAndFollowupRequestsStillReachOllama() {
     var ollama = mock(com.nexa.api.service.OllamaInterpreter.class);
     interpreter.setOllama(ollama);

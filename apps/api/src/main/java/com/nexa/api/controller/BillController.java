@@ -31,13 +31,14 @@ public class BillController {
   }
 
   @PostMapping
-  public java.util.Map<String, Object> create(@RequestBody com.nexa.api.service.PaymentItemService.BillRequest request) {
-    return operations.createBill(request);
+  public BankingModels.Bill create(@RequestBody com.nexa.api.service.PaymentItemService.BillRequest request) {
+    return service.detail(operations.createBill(request));
   }
 
   @PostMapping("/{id}/status")
-  public java.util.Map<String, Object> status(@PathVariable String id, @RequestBody com.nexa.api.service.PaymentItemService.StatusRequest request) {
-    return operations.setBillStatus(id, request);
+  public BankingModels.Bill status(@PathVariable String id, @RequestBody com.nexa.api.service.PaymentItemService.StatusRequest request) {
+    operations.setBillStatus(id, request);
+    return service.detail(id);
   }
 
   @GetMapping("/{id}/payments")

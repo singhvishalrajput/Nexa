@@ -21,6 +21,7 @@ public class WorkflowService {
   private final AccountQueryService accounts;
   private final BeneficiaryQueryService beneficiaries;
   private final BillQueryService bills;
+  private final BillPaymentService billPayments;
   private final ActionPreparationService preparation;
   private final CustomerTransferService transfers;
   private final ShowcaseService showcase;
@@ -38,6 +39,7 @@ public class WorkflowService {
       AccountQueryService accounts,
       BeneficiaryQueryService beneficiaries,
       BillQueryService bills,
+      BillPaymentService billPayments,
       ActionPreparationService preparation,
       CustomerTransferService transfers,
       ShowcaseService showcase,
@@ -53,6 +55,7 @@ public class WorkflowService {
     this.accounts = accounts;
     this.beneficiaries = beneficiaries;
     this.bills = bills;
+    this.billPayments = billPayments;
     this.preparation = preparation;
     this.transfers = transfers;
     this.showcase = showcase;
@@ -102,7 +105,7 @@ public class WorkflowService {
                 "The confirmation time has passed. Please review the payment again.",
                 List.of(),
                 null));
-        if (command != null || BankingLanguage.continuation(text))
+        if (command != null || BankingLanguage.operation(text) == null && BankingLanguage.continuation(text))
           return copy(
               old,
               "EXPIRED",
@@ -127,6 +130,22 @@ public class WorkflowService {
         if (command != null && "CONFIRM".equals(command.type())) {
           if (!old.status().equals("REVIEW") || !old.executionAvailable())
             throw new InvalidRequestException("Please complete the payment details first.");
+          if (old.operation().equals("PAY_BILL")) {
+            if (old.reference() == null || !old.reference().startsWith("BP-"))
+              return save(conversation, copy(old, "UNAVAILABLE", null,
+                  "This old bill review cannot move money. Open Bills and use Pay now to review a new payment.",
+                  List.of(), null));
+            var payment = billPayments.confirm(old.reference());
+            if (!"COMPLETED".equals(payment.status()))
+              return save(conversation, copy(old, payment.status(), null,
+                  payment.failureReason() == null ? "The bill payment did not complete. Open the bill to review another payment."
+                      : payment.failureReason(), List.of(), payment.id()));
+            return save(conversation, copy(old, "COMPLETED", null,
+                "Bill payment posted: " + payment.currencyCode() + " " + payment.amount()
+                    + " for " + payment.billerName() + " to " + payment.recipientName()
+                    + " · " + payment.destinationMasked() + ". Reference: " + payment.reference() + ".",
+                List.of(), payment.reference()));
+          }
           String reference =
               old.operation().equals("OWN_TRANSFER")
                   ? transfers.execute(old.accountId(), old.targetId(), new BigDecimal(old.amount()))
@@ -225,7 +244,11 @@ public class WorkflowService {
         return old;
       throw new InvalidRequestException("This payment is closed. Start a new payment to continue.");
     }
-    if (old != null && (BankingLanguage.continuation(text) || BankingLanguage.cancel(text))) {
+    // An explicit action starts a new review after a closed workflow. Only context-dependent
+    // continuations ("do it", "yes") may replay the closed result or refer to the latest read.
+    // In particular, "pay bill" must never inherit an earlier loan summary.
+    if (old != null && BankingLanguage.operation(text) == null
+        && (BankingLanguage.continuation(text) || BankingLanguage.cancel(text))) {
       var latestRead =
           db.queryForList(
               "SELECT banking_content FROM conversation_turns WHERE conversation_id=? ORDER BY"
@@ -279,6 +302,11 @@ public class WorkflowService {
             true,
             true,
             null);
+    if (cardControl(w))
+      return save(conversation, new Workflow(1, w.id(), "CARD_CONTROL", "UNAVAILABLE", null,
+          null, null, null, null, null, null,
+          "Open Cards to block or unblock a card using the saved card controls. Card replacement is not available.",
+          List.of(), w.expiresAt(), false, false, null));
     w = prompt(w, "target", targets(w));
     save(conversation, w);
     if (w.status().equals("UNAVAILABLE")) return w;
@@ -305,11 +333,17 @@ public class WorkflowService {
   }
 
   private void closeProviderReview(Workflow w) {
+    if (w.operation().equals("PAY_BILL") && w.reference() != null && w.reference().startsWith("BP-")) {
+      billPayments.cancel(w.reference());
+      return;
+    }
     if (w.reference() != null && !Set.of("OWN_TRANSFER", "REPAY_LOAN").contains(w.operation()))
       showcase.cancel(w.reference());
   }
 
   private Workflow confirmationPrompt(Workflow w) {
+    // Keep the actual recipient and account visible when text asks to confirm a bill.
+    if (w.operation().equals("PAY_BILL") && w.reference() != null && w.reference().startsWith("BP-")) return w;
     return copy(
         w,
         "REVIEW",
@@ -367,7 +401,7 @@ public class WorkflowService {
               .map(
                   b ->
                       new Workflow.Choice(
-                          b.id(), b.billerName() + " · " + b.currencyCode() + " " + b.amount()))
+                          b.id(), b.billerName() + " · " + b.currencyCode() + " " + b.outstandingAmount()))
               .toList();
       default ->
           beneficiaries.list().stream()
@@ -700,6 +734,14 @@ public class WorkflowService {
 
   private Workflow progress(String conversation, Workflow w) {
     if (w.targetId() == null) return save(conversation, prompt(w, "target", targets(w)));
+    if (w.operation().equals("PAY_BILL")) {
+      var bill = bills.detail(w.targetId());
+      if (bill.payeeId() == null || bill.recipientAccountMasked() == null)
+        return save(conversation, copy(w, "UNAVAILABLE", null,
+            "Open Bills, choose " + bill.billerName()
+                + " and use Pay now to select its Nexa recipient. Review the recipient before confirming payment.",
+            List.of(), null));
+    }
     String account = w.accountId(), accountLabel = w.accountLabel(), amount = w.amount();
     if (w.operation().equals("REPAY_LOAN")) {
       var loan = loans.detail(w.targetId());
@@ -712,7 +754,7 @@ public class WorkflowService {
       account = mandates.detail(w.targetId()).accountId();
     if (cardControl(w) && account == null) account = cards.detail(w.targetId()).accountId();
     if (amount == null && !"amount".equals(w.field()) && w.operation().equals("PAY_BILL"))
-      amount = bills.detail(w.targetId()).amount();
+      amount = bills.detail(w.targetId()).outstandingAmount();
     if (amount == null && !"amount".equals(w.field()) && w.operation().equals("PAY_CARD"))
       amount = cards.detail(w.targetId()).outstanding();
     if (account != null && accountLabel == null) {
@@ -724,6 +766,7 @@ public class WorkflowService {
     if (amount == null && !cardControl(w) && !w.operation().equals("CANCEL_MANDATE"))
       return save(conversation, prompt(next, "amount", List.of()));
     String reference = null;
+    BillPaymentService.Receipt billReview = null;
     try {
       if (w.operation().equals("OWN_TRANSFER"))
         transfers.validate(account, w.targetId(), new BigDecimal(amount));
@@ -742,6 +785,10 @@ public class WorkflowService {
               "Enter a positive repayment within the loan outstanding and available funds.");
         if (!"ACTIVE".equals(funding.status()))
           throw new InvalidRequestException("The linked account must be active.");
+      } else if (w.operation().equals("PAY_BILL")) {
+        billReview = billPayments.prepare(new BillPaymentService.PrepareRequest(
+            UUID.fromString(w.id()), w.targetId(), account, null, new BigDecimal(amount)));
+        reference = billReview.id();
       } else
         reference =
             showcase
@@ -794,6 +841,11 @@ public class WorkflowService {
                     + " from "
                     + name(accountLabel)
                     + "?";
+    if (billReview != null)
+      summary = "Pay " + billReview.currencyCode() + " " + billReview.amount() + " for "
+          + billReview.billerName() + " to " + billReview.recipientName() + " · "
+          + billReview.destinationMasked() + " from " + billReview.sourceName() + " · "
+          + billReview.sourceMasked() + "? Confirming transfers money between these Nexa accounts.";
     return save(
         conversation,
         new Workflow(
@@ -810,7 +862,7 @@ public class WorkflowService {
             accounts.requireOwnedAccount(account).currencyCode(),
             summary,
             List.of(),
-            next.expiresAt(),
+            billReview == null ? next.expiresAt() : OffsetDateTime.parse(billReview.expiresAt()),
             true,
             true,
             reference));

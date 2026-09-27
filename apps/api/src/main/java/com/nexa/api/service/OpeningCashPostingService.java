@@ -149,11 +149,15 @@ public class OpeningCashPostingService {
         "OPENING_CASH_REFUND", applicationId, actor);
   }
 
-  /** All ordinary account-management/posting paths must reject the workflow-owned account. */
+  /** Ordinary account-management/posting paths must reject workflow-owned clearing accounts. */
   static void rejectReservedAccount(Account account) {
-    if (account != null && account.getAccountNumber() != null
-        && HOLDING_NUMBER.equalsIgnoreCase(account.getAccountNumber().strip()))
+    if (account == null || account.getAccountNumber() == null) return;
+    String number = account.getAccountNumber().strip();
+    if (HOLDING_NUMBER.equalsIgnoreCase(number))
       throw new InvalidRequestException("The opening holding account is managed only by the account-opening workflow.");
+    if ("NEXA-BANK-FUNDING".equalsIgnoreCase(number)
+        || "NEXA-LOAN-CONTROL".equalsIgnoreCase(number))
+      throw new InvalidRequestException("Bank funding and loan control accounts are managed only by the funding and loan workflows.");
   }
 
   static void rejectManagedAccountEdit(Account account) {

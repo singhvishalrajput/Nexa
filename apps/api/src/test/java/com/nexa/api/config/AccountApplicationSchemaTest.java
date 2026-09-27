@@ -93,6 +93,20 @@ class AccountApplicationSchemaTest {
     }
   }
 
+  @Test
+  void detailEventsRequireCustomerEditsWithinTheSameEditableState() throws Exception {
+    try(Connection db=AccountApplicationTestDatabase.initializedDatabase()) {
+      customer(db);application(db);
+      String event="INSERT INTO application_events(id,application_id,event_key,application_version,event_type,actor_user_id,actor_role,from_status,to_status,correlation_id,request_fingerprint) VALUES "
+          +"('details-event','application-1','details-request',1,'APPLICATION_UPDATED','application-owner','CUSTOMER','DRAFT','DRAFT','correlation','"+"b".repeat(64)+"')";
+      assertThatThrownBy(()->execute(db,event.replace("'CUSTOMER'","'ADMIN'"))).isInstanceOf(SQLException.class);
+      assertThatThrownBy(()->execute(db,event.replace("'DRAFT','DRAFT'","'PENDING_REVIEW','PENDING_REVIEW'"))).isInstanceOf(SQLException.class);
+      assertThatThrownBy(()->execute(db,event.replace("'DRAFT','DRAFT'","'DRAFT','PENDING_REVIEW'"))).isInstanceOf(SQLException.class);
+      execute(db,event);
+      assertThat(number(db,"SELECT COUNT(*) FROM application_events WHERE event_type='APPLICATION_UPDATED'")).isOne();
+    }
+  }
+
   private static void customer(Connection db) throws SQLException {
     execute(db, "INSERT INTO customers(id,user_id,full_name,email,created_at,updated_at) VALUES"
         + "(101,'application-owner','Synthetic applicant','applicant@example.test',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");

@@ -41,6 +41,16 @@ test('plain and historical replies retain standard message bubbles', () => {
   assert.equal(result.type, MessageBubble);
   assert.equal(result.props.text, turn.assistantText);
 });
+test('supported loan application responses mount the inline form card independently of payment workflow activity', () => {
+  const {LoanApplicationCard} = require('../src/components/chat/LoanApplicationCard.tsx');
+  const result = AssistantResponse({turn:{...turn,clientId:'loan-client',banking:{version:1,type:'LOAN_APPLICATION'}},accessToken:'owner-token',applicationActive:true,active:false,busy:true});
+  assert.equal(result.type,LoanApplicationCard); assert.equal(result.props.clientId,'loan-client');
+  assert.equal(result.props.active,true); assert.equal(result.props.busy,true); assert.equal(result.props.accessToken,'owner-token');
+});
+test('unknown loan application versions remain readable messages without mounting a form', () => {
+  const result = AssistantResponse({turn:{...turn,clientId:'loan-client',banking:{version:2,type:'LOAN_APPLICATION'}},accessToken:'owner-token',applicationActive:true});
+  assert.equal(result.type,MessageBubble); assert.equal(result.props.text,turn.assistantText);
+});
 test('structured data renders outside the message bubble', () => {
   const result = AssistantResponse({ turn: { ...turn, banking: { version: 1, type: 'ACCOUNTS', accounts: [] } }, accessToken: 'test' });
   assert.equal(result.type, 'article');

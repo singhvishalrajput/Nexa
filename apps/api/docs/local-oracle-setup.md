@@ -54,6 +54,7 @@ This asks only for the current application password, validates migration checksu
 
 ## Troubleshooting
 
+- `ORA-01408` on the last statement of `V31__local_card_applications.sql`: use the [verified V31 recovery procedure](../../../docs/V31_ORACLE_RECOVERY.md). The fixed migration reuses the existing V21 index; the dedicated recovery verifies the partially committed schema before reconciling only the known failed V31 history entry.
 - Connection/service errors: check Oracle, the listener and the requested PDB. `CDB$ROOT` and `PDB$SEED` are deliberately refused.
 - `ORA-01017`: check the password and PDB service. Existing passwords are never reset.
 - A generic setup failure is preceded by the captured Java/Oracle diagnostic, including the failing connection/setup stage. Report that diagnostic with passwords omitted. Maven `BUILD SUCCESS` only means the helper compiled and dependencies resolved; it does not mean Oracle setup succeeded.
@@ -62,6 +63,8 @@ This asks only for the current application password, validates migration checksu
 - Flyway/cutover errors: do not repair or delete history to bypass them. Oracle DDL can commit partially. Inspect the failed migration and follow the [cutover notes](../../../docs/BANKING_INTEGRATION.md) for existing data.
 
 This is a local development workflow. Do not target an unrelated populated schema. Production credentials, privileges and backups need a separate deployment process.
+
+Setup compiles in an isolated temporary `.tools/db-setup-*` directory so the build does not restart an already-running API through DevTools. Stop the API before migrating or recovering its schema.
 
 ## Validation
 

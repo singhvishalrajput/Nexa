@@ -488,11 +488,15 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 .experience-workspace .bank-filters > label { min-width:0; grid-row:1; }
 .experience-workspace .bank-filters > button { grid-row:1; }
 .experience-workspace .bank-filters > .bank-error { grid-column:1/-1; }
+.experience-workspace .transaction-filters > #transaction-search-help { grid-column:2; grid-row:2; margin-top:-6px; }
 .activity-advanced-filters { grid-column:1/-1; border:0; padding:0; }
 .activity-advanced-filters > .oj-collapsible-header { border-top:1px solid var(--nexa-border); padding:12px 0 0; color:var(--nexa-text-secondary); font-size:13px; }
 .activity-filter-count { margin-left:10px; padding:2px 7px; background:var(--nexa-soft); color:var(--nexa-accent-text); border-radius:6px; font-size:11px; }
 .activity-filter-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; padding-top:14px; }
 .activity-filter-fields > label { min-width:0; }
+.activity-filter-help { margin:0; font-size:12px; font-weight:400; line-height:1.5; color:var(--nexa-text-secondary); }
+.activity-advanced-filters .activity-category-error { margin:8px 0 0; font-size:12px; color:var(--nexa-text-secondary); }
+.activity-category-error button { margin-left:6px; font:inherit; text-decoration:underline; }
 /* History tools live inside the same padded header as the card title. */
 .experience-workspace .bank-request-history { margin-top:24px; }
 .experience-workspace .bank-request-history .bank-button { min-height:36px; padding:8px 12px; font-size:12px!important; }
@@ -501,6 +505,8 @@ html:has(.experience-workspace), body:has(.experience-workspace) { background:va
 @media(max-width:700px) {
   .experience-workspace .bank-filters { grid-template-columns:repeat(2,minmax(0,1fr)); padding:14px; gap:12px; }
   .experience-workspace .bank-filters > button { grid-row:2; }
+  .experience-workspace .transaction-filters > #transaction-search-help { grid-column:1/-1; grid-row:2; margin-top:0; }
+  .experience-workspace .transaction-filters > button { grid-row:3; }
   .activity-filter-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 

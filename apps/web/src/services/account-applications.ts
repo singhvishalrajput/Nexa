@@ -61,11 +61,12 @@ export type AccountApplication = ApplicationSummary & {
 export type ApplicationPage = {items: ApplicationSummary[]; total: number; page: number; size: number};
 export type CreateApplicationRequest = {
   requestKey: string; accountType: "SAVINGS"; currencyCode: "INR"; dateOfBirth: string;
-  openingAmount: string; consentVersion: string; consentAccepted: true;
+  openingAmount: string; phoneNumber: string; consentVersion: string; consentAccepted: true;
   identityType: IdentityType; identityNumber: string;
 };
 export type ActionRequest = {requestKey: string; expectedVersion: number};
 export type UpdateIdentityRequest = ActionRequest & IdentityDetails;
+export type UpdateApplicationDetailsRequest = ActionRequest & {phoneNumber: string; dateOfBirth: string; openingAmount: string; identityType?: IdentityType; identityNumber?: string};
 export type ReviewApplicationRequest = ActionRequest & {decision: "APPROVED" | "REJECTED" | "CHANGES_REQUESTED"; reason: string; inPersonChecked: boolean};
 export type CashReceiptRequest = ActionRequest & {cashReceivedConfirmed: true};
 export type ReasonRequest = ActionRequest & {reason: string};
@@ -76,7 +77,7 @@ const ADMIN = "/admin/account-applications";
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const MEDIA_TYPES: readonly string[] = ["application/pdf", "image/jpeg", "image/png"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const EVENT_TYPES = ["APPLICATION_CREATED", "IDENTITY_UPDATED", "SUBMITTED", "CHANGES_REQUESTED", "APPROVED", "REJECTED", "CANCELLED", "DOCUMENT_ADDED", "DOCUMENT_REVIEWED", "CASH_RECEIVED", "ACCOUNT_OPENED", "REFUND_REQUESTED", "CASH_REFUNDED"];
+const EVENT_TYPES = ["APPLICATION_CREATED", "APPLICATION_UPDATED", "IDENTITY_UPDATED", "SUBMITTED", "CHANGES_REQUESTED", "APPROVED", "REJECTED", "CANCELLED", "DOCUMENT_ADDED", "DOCUMENT_REVIEWED", "CASH_RECEIVED", "ACCOUNT_OPENED", "REFUND_REQUESTED", "CASH_REFUNDED"];
 const own = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 const integer = (value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= min && value <= max;
 const text = (value: unknown, max: number, min = 1): value is string => typeof value === "string" && value.length >= min && value.length <= max && !/[\u0000-\u001f\u007f-\u009f]/.test(value);
@@ -110,6 +111,13 @@ export function normalizeOpeningAmount(raw: string, requirements?: Pick<Applicat
   const max = requirements ? minorUnits(requirements.maximumOpeningAmount) : 1000000000;
   if (value === null || min === null || max === null || min < 100000 || max > 1000000000 || min > max || value < min || value > max) return null;
   return `${Math.floor(value / 100)}.${String(value % 100).padStart(2, "0")}`;
+}
+
+/** Accepts a contact number, not proof that the number is verified. */
+export function normalizeApplicationPhone(raw: string): string | null {
+  if (typeof raw !== "string") return null;
+  const value = raw.trim().replace(/[\s()-]/g, "");
+  return /^\+?[0-9]{10,15}$/.test(value) ? value : null;
 }
 
 /** Uses the bank's date/cutoff, not the browser clock or UTC Date coercion. */
@@ -153,7 +161,7 @@ export function validReceiptNumber(raw: string): boolean {
 export function applicationStatusLabel(status: string): string {
   const labels: Record<ApplicationStatus, string> = {
     DRAFT: "Draft", PENDING_REVIEW: "Awaiting admin review", CHANGES_REQUESTED: "Changes requested",
-    APPROVED_AWAITING_CASH: "Approved — cash deposit required", CASH_RECEIVED: "Cash received — opening pending",
+    APPROVED_AWAITING_CASH: "Approved — cash deposit required", CASH_RECEIVED: "Cash received",
     OPENED: "Account opened", REJECTED: "Rejected", CANCELLED: "Cancelled", REFUND_PENDING: "Cash refund pending", REFUNDED: "Cash refunded"
   };
   return oneOf(status, APPLICATION_STATUSES) ? labels[status] : "Unknown status";
@@ -285,9 +293,16 @@ export const applicationApi = {
   async getMine(token: string, id: string): Promise<AccountApplication> { return detail(await read(`${CUSTOMER}/${pathId(id)}`, token), id); },
   async create(token: string, body: CreateApplicationRequest): Promise<AccountApplication> {
     requireInput(!!body && idValid(body.requestKey) && body.accountType === "SAVINGS" && body.currencyCode === "INR" && validDate(body.dateOfBirth)
-      && normalizeOpeningAmount(body.openingAmount) !== null && text(body.consentVersion, 40) && /^[A-Za-z0-9._-]+$/.test(body.consentVersion) && body.consentAccepted === true, "Check the application details and accept the review notice.");
+      && normalizeOpeningAmount(body.openingAmount) !== null && normalizeApplicationPhone(body.phoneNumber) !== null && text(body.consentVersion, 40) && /^[A-Za-z0-9._-]+$/.test(body.consentVersion) && body.consentAccepted === true, "Check the application details and accept the review notice.");
     return post(CUSTOMER, token, {requestKey: body.requestKey, accountType: body.accountType, currencyCode: body.currencyCode,
-      dateOfBirth: body.dateOfBirth, openingAmount: body.openingAmount, consentVersion: body.consentVersion, consentAccepted: true, ...identity(body)});
+      dateOfBirth: body.dateOfBirth, openingAmount: body.openingAmount, phoneNumber: normalizeApplicationPhone(body.phoneNumber), consentVersion: body.consentVersion, consentAccepted: true, ...identity(body)});
+  },
+  async updateDetails(token: string, id: string, body: UpdateApplicationDetailsRequest): Promise<AccountApplication> {
+    const phoneNumber = normalizeApplicationPhone(body.phoneNumber), openingAmount = normalizeOpeningAmount(body.openingAmount);
+    requireInput(phoneNumber !== null && openingAmount !== null && validDate(body.dateOfBirth), "Check the phone number, date of birth and opening deposit.");
+    const replacing = body.identityType !== undefined || body.identityNumber !== undefined;
+    const replacement = replacing ? identity({identityType: body.identityType!, identityNumber: body.identityNumber!}) : {};
+    return post(`${CUSTOMER}/${pathId(id)}/details`, token, {...action(body), phoneNumber, dateOfBirth: body.dateOfBirth, openingAmount, ...replacement}, id);
   },
   async updateIdentity(token: string, id: string, body: UpdateIdentityRequest): Promise<AccountApplication> {
     return post(`${CUSTOMER}/${pathId(id)}/identity`, token, {...action(body), ...identity(body)}, id);

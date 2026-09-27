@@ -14,7 +14,9 @@ export function WorkflowCard({ workflow: w, active, busy, onAction }: {workflow:
   if (w.version !== 1) return <p>{t("This proposal requires a newer version of Nexa.")}</p>;
   const message = localizeReply(w.message);
   if (!active && ["COLLECTING", "REVIEW"].includes(w.status)) return <details class="conversation-proposal-history"><summary>{t("Earlier step")} · {w.operation === "OWN_TRANSFER" ? t("Transfer between accounts") : t("Payment review")}</summary><p lang={/[\u0900-\u097f]/.test(message) ? "hi-IN" : "en-IN"}>{message}</p>{w.accountLabel && <p>{t("From")}: {w.accountLabel}</p>}{w.targetLabel && <p>{t("To")}: {w.targetLabel}</p>}{w.amount && <p>{t("Amount")}: {w.currency ? formatMoney(w.amount,w.currency) : w.amount}</p>}</details>;
-  const simulated = w.operation !== "OWN_TRANSFER" && w.operation !== "CARD_CONTROL";
+  const simulated = !w.reference?.startsWith("TX-");
+  const internalBill = w.operation === "PAY_BILL" && !!w.reference?.startsWith("BP-");
+  const billHref = "#/bills" + (w.targetId ? "/" + encodeURIComponent(w.targetId) : "");
   const expired = Date.parse(w.expiresAt) <= Date.now() && ["COLLECTING", "REVIEW"].includes(w.status);
   const enabled = active && !busy && !expired;
   const action = (type: ActionCommand["type"], value?: string) => { if (enabled && Date.parse(w.expiresAt) > Date.now()) onAction({actionId: w.id, type, value}); };
@@ -27,7 +29,7 @@ export function WorkflowCard({ workflow: w, active, busy, onAction }: {workflow:
       {w.targetLabel && <><dt>{t("To")}</dt><dd>{w.targetLabel}</dd></>}
       {w.amount && <><dt>{t("Amount")}</dt><dd class="conversation-proposal-amount">{w.currency ? formatMoney(w.amount,w.currency) : w.amount}</dd></>}
       {w.reference && <><dt>{t("Reference")}</dt><dd>{w.reference.replace(/^DEMO-/, "REQ-")}</dd></>}
-      {w.status === "REVIEW" && w.amount && <><dt>{t("Payment method")}</dt><dd>{w.operation === "OWN_TRANSFER" ? "Nexa" : t("Not provided by the bank")}</dd><dt>{t("Fees")}</dt><dd>{t("Not provided by the bank")}</dd><dt>{t("Completion")}</dt><dd>{w.operation === "OWN_TRANSFER" ? t("On confirmation") : t("Not provided by the bank")}</dd></>}
+      {w.status === "REVIEW" && w.amount && <><dt>{t("Payment method")}</dt><dd>{w.operation === "OWN_TRANSFER" || internalBill ? "Nexa" : t("Not provided by the bank")}</dd><dt>{t("Fees")}</dt><dd>{internalBill ? formatMoney("0.00", w.currency) : t("Not provided by the bank")}</dd><dt>{t("Completion")}</dt><dd>{w.operation === "OWN_TRANSFER" || internalBill ? t("On confirmation") : t("Not provided by the bank")}</dd></>}
     </dl>}
     {active && w.status === "COLLECTING" && <div class="conversation-choices">{w.choices.map(c => <button key={c.id} type="button" disabled={!enabled} onClick={() => action("SELECT",c.id)}>{c.label}<span aria-hidden="true">↗</span></button>)}</div>}
     {active && ["COLLECTING", "REVIEW"].includes(w.status) && <div class="messenger-inline-actions">
@@ -37,6 +39,7 @@ export function WorkflowCard({ workflow: w, active, busy, onAction }: {workflow:
     {w.status === "REVIEW" && <small>{t("Confirm by")} {new Date(w.expiresAt).toLocaleTimeString(getLocale(), {hour: "2-digit", minute: "2-digit"})}.</small>}
     {!active && ["COLLECTING", "REVIEW"].includes(w.status) && <small>Earlier proposal. Use the latest action in this conversation.</small>}
     {w.status === "COMPLETED" && w.reference && <a href={simulated ? "#/payments" : "#/transactions/"+encodeURIComponent(w.reference)}>{simulated ? t("View receipt ↗") : t("View transaction ↗")}</a>}
-    {w.status === "UNAVAILABLE" && <a href={w.operation === "CARD_CONTROL" ? "#/cards" : "#/payments"}>{t("Open banking details ↗")}</a>}
+    {w.status === "UNAVAILABLE" && <a href={w.operation === "PAY_BILL" ? billHref : w.operation === "CARD_CONTROL" ? "#/cards" : "#/payments"}>{t("Open banking details ↗")}</a>}
+    {w.operation === "PAY_BILL" && ["FAILED", "EXPIRED", "CANCELLED"].includes(w.status) && <a href={billHref}>{t("View bill ↗")}</a>}
   </article>;
 }

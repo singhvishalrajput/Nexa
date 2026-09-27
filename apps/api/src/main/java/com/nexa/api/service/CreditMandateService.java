@@ -42,7 +42,14 @@ public class CreditMandateService {
       String payee,
       BigDecimal limit,
       LocalDate startDate,
-      LocalDate endDate) {}
+      LocalDate endDate,
+      String payeeId) {
+    public MandateRequest(long sourceAccountId, Long beneficiaryAccountId,
+        String beneficiaryAccountNumber, String payee, BigDecimal limit,
+        LocalDate startDate, LocalDate endDate) {
+      this(sourceAccountId, beneficiaryAccountId, beneficiaryAccountNumber, payee, limit, startDate, endDate, null);
+    }
+  }
 
   public record LoanRequest(
       long accountId,
@@ -139,34 +146,77 @@ public class CreditMandateService {
     return ids.get(0);
   }
 
+  private record SavedMandatePayee(long destination, String name) {}
+
+  private SavedMandatePayee savedMandatePayee(String payeeId) {
+    if (payeeId == null || payeeId.isBlank() || payeeId.length() > 40 || payeeId.startsWith("EP-"))
+      throw new InvalidRequestException("Choose an active saved Nexa payee.");
+    var rows = db.queryForList("SELECT destination_account_id,destination_hash,display_name,status FROM transactions"
+        + " WHERE record_kind='BENEFICIARY' AND id=? AND user_id=? FOR UPDATE", payeeId, user.userId());
+    if (rows.isEmpty() || !"ACTIVE".equals(rows.get(0).get("STATUS"))
+        || rows.get(0).get("DESTINATION_ACCOUNT_ID") == null)
+      throw new InvalidRequestException("Choose an active saved payee linked to a Nexa account.");
+    var row = rows.get(0);
+    long destination = ((Number) row.get("DESTINATION_ACCOUNT_ID")).longValue();
+    String expected;
+    try {
+      expected = HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+          .digest(("NEXA:" + destination).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    } catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
+    if (!expected.equals(row.get("DESTINATION_HASH")))
+      throw new InvalidRequestException("This payee's Nexa account needs verification. Save their full account number in Payees first.");
+    Integer linked = db.queryForObject("SELECT COUNT(*) FROM accounts WHERE id=? AND account_category='CUSTOMER'"
+        + " AND account_type IN ('SAVINGS','CURRENT') AND status='ACTIVE' AND currency_code='INR'", Integer.class, destination);
+    if (linked == null || linked != 1) throw new InvalidRequestException("The payee must have an active Nexa INR deposit account.");
+    String name = Objects.toString(row.get("DISPLAY_NAME"), "Saved Nexa payee");
+    return new SavedMandatePayee(destination, name);
+  }
+
+  private void recheckSavedMandatePayee(Map<String, Object> mandate) {
+    String payeeId = value(mandate, "TARGET_ID");
+    if (payeeId == null) return; // Existing manual authorizations retain their destination checks.
+    var payee = savedMandatePayee(payeeId);
+    if (mandate.get("DESTINATION_ACCOUNT_ID") == null
+        || payee.destination() != ((Number) mandate.get("DESTINATION_ACCOUNT_ID")).longValue())
+      throw new ConflictException("The saved payee changed. Create a new mandate for the intended recipient.");
+  }
+
   public Map<String, Object> createMandate(MandateRequest r) {
+    if (r == null) throw new InvalidRequestException("Enter the mandate details.");
     money(r.limit);
-    A source = account(r.sourceAccountId, false), destination = account(beneficiary(r), false);
+    if (r.payeeId != null && (r.beneficiaryAccountId != null || r.beneficiaryAccountNumber != null))
+      throw new InvalidRequestException("Choose a saved payee or enter one beneficiary account, not both.");
+    A source = account(r.sourceAccountId, false);
     owned(source);
     depositAccount(source);
+    SavedMandatePayee saved = r.payeeId == null ? null : savedMandatePayee(r.payeeId);
+    A destination = account(saved == null ? beneficiary(r) : saved.destination(), false);
     depositAccount(destination);
+    String payee = saved == null ? r.payee : saved.name();
     if (source.id == destination.id
         || r.startDate == null
         || r.endDate != null && r.endDate.isBefore(r.startDate)
-        || r.payee == null
-        || r.payee.isBlank()
-        || r.payee.length() > 160)
+        || payee == null
+        || payee.isBlank()
+        || payee.length() > 160
+        || payee.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 200)
       throw new InvalidRequestException(
           "Specify distinct accounts, a payee and valid effective dates");
     String id = id("M-");
     db.update(
         "INSERT INTO"
-            + " transactions(id,record_kind,user_id,source_account_id,destination_account_id,display_name,amount,currency_code,status,operation,effective_date,end_date,transaction_reference)"
-            + " VALUES(?,'MANDATE',?,?,?,?,?,'INR','PENDING','TRANSFER',?,?,?)",
+            + " transactions(id,record_kind,user_id,source_account_id,destination_account_id,display_name,amount,currency_code,status,operation,effective_date,end_date,transaction_reference,target_id)"
+            + " VALUES(?,'MANDATE',?,?,?,?,?,'INR','PENDING','TRANSFER',?,?,?,?)",
         id,
         user.userId(),
         source.id,
         destination.id,
-        r.payee,
+        payee,
         r.limit,
         r.startDate.toString(),
         r.endDate == null ? null : r.endDate.toString(),
-        id);
+        id,
+        r.payeeId);
     event(id, "CREATED");
     return mandate(id, false);
   }
@@ -197,6 +247,7 @@ public class CreditMandateService {
       throw new InvalidRequestException(
           "Legacy mandate has no verified beneficiary. Create a new authorization.");
     checkDates(m, false);
+    recheckSavedMandatePayee(m);
     depositAccount(account(((Number) m.get("SOURCE_ACCOUNT_ID")).longValue(), false));
     depositAccount(account(((Number) m.get("DESTINATION_ACCOUNT_ID")).longValue(), false));
     db.update(
@@ -216,7 +267,7 @@ public class CreditMandateService {
   }
 
   private void checkDates(Map<String, Object> m, boolean executing) {
-    LocalDate now = LocalDate.now(ZoneOffset.UTC);
+    LocalDate now = LocalDate.now(clock.withZone(dates.zone()));
     String start = value(m, "EFFECTIVE_DATE"), end = value(m, "END_DATE");
     if (start == null
         || executing && now.isBefore(LocalDate.parse(start))
@@ -235,6 +286,7 @@ public class CreditMandateService {
       throw new InvalidRequestException(
           "An active mandate with a verified beneficiary is required");
     checkDates(m, true);
+    recheckSavedMandatePayee(m);
     if (r.amount.compareTo((BigDecimal) m.get("AMOUNT")) > 0)
       throw new InvalidRequestException("Mandate limit exceeded");
     long from = ((Number) m.get("SOURCE_ACCOUNT_ID")).longValue(),
@@ -422,6 +474,19 @@ public class CreditMandateService {
 
   private LocalDate loanDate() {
     return LocalDate.now(clock.withZone(dates.zone()));
+  }
+
+  /** Recover only the signed-in customer's submitted application; never creates a loan. */
+  @Transactional(readOnly = true)
+  public String loanApplicationId(String applicationKey) {
+    if (applicationKey == null || !applicationKey.matches("[A-Za-z0-9_-]{1,80}"))
+      throw new InvalidRequestException("Supply a valid loan application request reference.");
+    var ids = db.queryForList(
+        "SELECT a.product_id FROM accounts a JOIN customers c ON c.id=a.customer_id"
+            + " WHERE c.user_id=? AND a.application_key=? AND a.account_type='LOAN'",
+        String.class, user.userId(), applicationKey);
+    if (ids.isEmpty()) throw new ResourceNotFoundException("Loan application not found.");
+    return ids.get(0);
   }
 
   private Map<String, Object> applyLoan(LoanRequest r) {

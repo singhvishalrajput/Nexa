@@ -3,12 +3,14 @@ export function validAmount(value: string): boolean {
     return /^(?:0|[1-9]\d{0,12})(?:\.\d{1,2})?$/.test(value) && Number(value) > 0;
 }
 export function initials(name: string): string { return name.trim().split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase(); }
-export const routes = ["send-money", "overview", "accounts", "transactions", "payments", "beneficiaries", "cards", "bills", "mandates", "scheduled-payments", "loans", "settings", "security", "assistant", "operations"] as const;
+export const routes = ["send-money", "external-transfers", "overview", "accounts", "transactions", "payments", "beneficiaries", "cards", "bills", "mandates", "scheduled-payments", "loans", "settings", "security", "assistant", "operations"] as const;
 export type Route = typeof routes[number];
 export function parseRoute(hash: string): {
     page: Route | "admin" | "login" | "register" | "not-found";
     id?: string;
     account?: string;
+    payee?: string;
+    destination?: "nexa" | "other-bank";
     section?: string;
 } {
     const [pathname, query] = hash.replace(/^#\/?/, "").split("?");
@@ -21,6 +23,10 @@ export function parseRoute(hash: string): {
         return {page: "admin", section: "applications", id: parts[2]};
     }
     if (pathname === "admin/loans") return {page:"admin",section:"loans"};
+    if (pathname === "admin/cards") return {page:"admin",section:"cards"};
+    if (pathname === "admin/bank-funding") return {page:"admin",section:"bank-funding"};
+    if (pathname === "admin/accounts") return {page:"admin",section:"accounts"};
+    if (pathname === "admin/analytics") return {page:"admin",section:"analytics"};
     if (page === "admin" && parts.length > 1) {
         if (parts[1] !== "accounts" || !/^[1-9]\d*$/.test(parts[2] || "") || parts.length > 4 ||
             (parts[3] && !["overview", "transactions", "related", "audit"].includes(parts[3]))) return { page: "not-found" };
@@ -31,7 +37,9 @@ export function parseRoute(hash: string): {
     const detailPages = ["accounts", "transactions", "cards", "bills", "beneficiaries", "mandates", "loans", "scheduled-payments"];
     if (parts.length > 2 || (parts[1] && !detailPages.includes(page))) return { page: "not-found" };
     try {
-        return { page: page as Route, id: parts[1] ? decodeURIComponent(parts[1]) : undefined, account: new URLSearchParams(query || "").get("account") || undefined };
+        return { page: page as Route, id: parts[1] ? decodeURIComponent(parts[1]) : undefined, account: new URLSearchParams(query || "").get("account") || undefined,
+            ...(["external-transfers", "payments"].includes(page) ? {payee: new URLSearchParams(query || "").get("payee") || undefined} : {}),
+            ...(page === "payments" ? {destination: new URLSearchParams(query || "").get("destination") === "other-bank" ? "other-bank" : "nexa"} : {}) };
     }
     catch {
         return { page: "not-found" };

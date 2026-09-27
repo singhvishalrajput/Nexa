@@ -41,6 +41,7 @@ public final class AccountApplicationDtos {
           @JsonDeserialize(using = StrictString.class) String accountType,
       @NotBlank @Pattern(regexp = "INR")
           @JsonDeserialize(using = StrictString.class) String currencyCode,
+      @Size(max = 32) @JsonDeserialize(using = StrictString.class) String phoneNumber,
       @NotNull @JsonDeserialize(using = StrictDate.class) LocalDate dateOfBirth,
       @NotBlank @Pattern(regexp = MONEY) @DecimalMin("1000.00") @DecimalMax("10000000.00")
           @JsonDeserialize(using = StrictString.class) String openingAmount,
@@ -53,6 +54,21 @@ public final class AccountApplicationDtos {
       @NotNull @AssertTrue @JsonDeserialize(using = StrictBoolean.class)
           Boolean consentAccepted) implements StrictRequest {
     @Override public String toString() { return "CreateRequest[private applicant details redacted]"; }
+  }
+
+  public record DetailsRequest(
+      @NotNull @JsonDeserialize(using = StrictUuid.class) UUID requestKey,
+      @NotNull @PositiveOrZero @JsonDeserialize(using = StrictLong.class) Long expectedVersion,
+      @NotBlank(message = "Enter a phone number to open an account.") @Size(max = 32)
+          @JsonDeserialize(using = StrictString.class) String phoneNumber,
+      @NotNull @JsonDeserialize(using = StrictDate.class) LocalDate dateOfBirth,
+      @NotBlank @Pattern(regexp = MONEY) @DecimalMin("1000.00") @DecimalMax("10000000.00")
+          @JsonDeserialize(using = StrictString.class) String openingAmount,
+      @Pattern(regexp = "AADHAAR|PAN|PASSPORT")
+          @JsonDeserialize(using = StrictString.class) String identityType,
+      @Size(min = 1, max = 10)
+          @JsonDeserialize(using = StrictString.class) String identityNumber) implements StrictRequest {
+    @Override public String toString() { return "DetailsRequest[private applicant details redacted]"; }
   }
 
   public record IdentityRequest(

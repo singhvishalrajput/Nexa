@@ -11,6 +11,16 @@ export function setLocale(value: Locale) {
 }
 
 const hindi: Record<string, string> = {
+  "Dashboard": "डैशबोर्ड",
+  "Card requests": "कार्ड अनुरोध",
+  "Transfer destination": "ट्रांसफ़र का गंतव्य", "Nexa account": "Nexa खाता", "Other bank": "दूसरा बैंक",
+  "Transfer money, pay bills and manage your upcoming payments.": "पैसे भेजें, बिल भरें और आगामी भुगतान प्रबंधित करें।",
+  "Send to another Nexa customer or move money between your own accounts.": "दूसरे Nexa ग्राहक को भेजें या अपने खातों के बीच पैसे ट्रांसफ़र करें।",
+  "Use a saved payee’s bank account number and IFSC.": "सहेजे गए प्राप्तकर्ता का बैंक खाता नंबर और IFSC इस्तेमाल करें।",
+  "Nexa transfers move money immediately after you confirm the recipient and amount.": "प्राप्तकर्ता और राशि की पुष्टि के बाद Nexa ट्रांसफ़र में पैसे तुरंत भेजे जाते हैं।",
+  "View a bill and pay its outstanding amount.": "बिल देखें और उसकी बकाया राशि भरें।",
+  "Review your card and payment details.": "अपने कार्ड और भुगतान का विवरण देखें।",
+  "View and manage your payment mandates.": "अपने भुगतान के स्थायी निर्देश देखें और प्रबंधित करें।",
   "Home": "होम", "Accounts": "खाते", "Payments": "भुगतान", "Cards": "कार्ड", "Transactions": "लेन-देन", "Insights": "खर्च का विश्लेषण", "Support": "सहायता",
   "Personal banking": "व्यक्तिगत बैंकिंग", "Your banking": "आपकी बैंकिंग", "Your money, in conversation.": "आपके पैसे की बात, आपकी भाषा में।",
   "A little clarity. A lot more possibility.": "पैसों की जानकारी, अब और आसान।", "Ask a question, make a plan, or get something done.": "सवाल पूछें, योजना बनाएँ या अपना बैंकिंग काम पूरा करें।",
@@ -113,6 +123,12 @@ Object.assign(hindi, {
 Object.assign(hindi, {
   "Transaction": "लेन-देन", "Amount / status": "राशि / स्थिति", "Latest": "नवीनतम", "transaction": "लेन-देन", "transactions": "लेन-देन",
   "More filters": "और फ़िल्टर", "active": "लागू",
+  "All categories": "सभी श्रेणियाँ", "Search transactions": "लेन-देन खोजें",
+  "Business name or transaction reference": "व्यवसाय का नाम या लेन-देन संदर्भ",
+  "Enter a shop or biller's name, or paste the reference shown in transaction details.": "दुकान या बिल भेजने वाले का नाम लिखें, या लेन-देन के विवरण में दिखा संदर्भ पेस्ट करें।",
+  "Categories recorded for this account.": "इस खाते के लेन-देन में दर्ज श्रेणियाँ।",
+  "Loading categories…": "श्रेणियाँ लोड हो रही हैं…", "Categories could not be loaded.": "श्रेणियाँ लोड नहीं हो सकीं।",
+  "Retry categories": "श्रेणियाँ फिर से लोड करें",
   "Spending by category": "श्रेणी के अनुसार खर्च", "Share of money out": "कुल खर्च में हिस्सा", "Uncategorized": "बिना श्रेणी", "Other categories": "अन्य श्रेणियाँ",
   "Completed transactions only. Pending and failed payments are excluded.": "केवल पूरे हुए लेन-देन। लंबित और असफल भुगतान शामिल नहीं हैं।",
   "No completed spending in these transactions.": "इन लेन-देन में कोई खर्च पूरा नहीं हुआ है।",

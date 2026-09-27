@@ -48,14 +48,18 @@ public class ActionPreparationService {
       }
       case "PAY_BILL" -> {
         var bill = bills.detail(targetId);
-        if (!java.util.Set.of("UPCOMING", "DUE", "OVERDUE", "FAILED").contains(bill.status()))
+        if (!java.util.Set.of("UPCOMING", "DUE", "OVERDUE").contains(bill.status())
+            || new BigDecimal(bill.outstandingAmount()).signum() <= 0)
           throw new InvalidRequestException("This bill is not payable.");
+        if (bill.payeeId() == null || bill.recipientAccountMasked() == null)
+          throw new InvalidRequestException("Open this bill and use Pay now to select its Nexa recipient.");
         if (!currency.equals(bill.currencyCode()))
           throw new InvalidRequestException("Currencies do not match.");
-        if (amount == null) amount = new BigDecimal(bill.amount());
-        if (amount.compareTo(new BigDecimal(bill.amount())) > 0
+        BigDecimal outstanding = new BigDecimal(bill.outstandingAmount());
+        if (amount == null) amount = outstanding;
+        if (amount.compareTo(outstanding) > 0
             || bill.minimumAmount() != null
-                && amount.compareTo(new BigDecimal(bill.minimumAmount())) < 0)
+                && amount.compareTo(new BigDecimal(bill.minimumAmount()).min(outstanding)) < 0)
           throw new InvalidRequestException("The amount is outside the bill payment range.");
       }
       case "PAY_CARD" -> {
@@ -88,6 +92,6 @@ public class ActionPreparationService {
     if (amount.compareTo(account.availableBalance()) > 0)
       throw new InvalidRequestException("The available balance is insufficient.");
     return new PreparedAction(
-        operation, "PREPARED", accountId, targetId, amount.toPlainString(), currency, true, false);
+        operation, "PREPARED", accountId, targetId, amount.toPlainString(), currency, true, "PAY_BILL".equals(operation));
   }
 }

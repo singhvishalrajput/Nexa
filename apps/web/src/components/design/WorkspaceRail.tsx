@@ -6,20 +6,24 @@ const destinations: { page: string; label: string; icon: BankingIconName }[] = [
   {page: "assistant", label: "Your conversation", icon: "chat"},
   {page: "overview", label: "Overview", icon: "home"},
   {page: "accounts", label: "Accounts", icon: "accounts"},
-  {page: "send-money", label: "Send money", icon: "payments"},
+  {page: "payments", label: "Payments", icon: "payments"},
   {page: "transactions", label: "Transactions", icon: "transactions"}
 ];
 const adminDestinations: { page: string; label: string; icon: BankingIconName }[] = [
-  {page: "admin", label: "Accounts", icon: "accounts"},
+  {page: "admin", label: "Dashboard", icon: "insights"},
+  {page: "admin/accounts", label: "Accounts", icon: "accounts"},
   {page: "admin/applications", label: "Account applications", icon: "profile"},
-  {page: "admin/loans", label: "Loan requests", icon: "transactions"}
+  {page: "admin/loans", label: "Loan requests", icon: "transactions"},
+  {page: "admin/cards", label: "Card requests", icon: "cards"},
+  {page: "admin/bank-funding", label: "Bank funding", icon: "payments"}
 ];
 
 export function WorkspaceRail({ page, name, email, admin = false, onLogout }: { page: string; name: string; email?: string; admin?: boolean; onLogout?: () => void | Promise<void> }) {
   const links = admin ? adminDestinations : destinations;
+  const currentPage = !admin && ["send-money", "external-transfers"].includes(page) ? "payments" : page;
   return <nav class="experience-rail" aria-label={t("Nexa workspace")}>
     <a class="experience-brand" href={admin ? "#home" : "#/overview"} aria-label={t(admin ? "Nexa home" : "Overview")}><img src="styles/images/nexa.svg" width="28" height="28" alt=""/></a>
-    {links.map(item => <a key={item.page} href={`#/${item.page}`} title={t(item.label)} aria-label={t(item.label)} aria-current={page === item.page ? "page" : undefined}><BankingIcon name={item.icon}/></a>)}
+    {links.map(item => <a key={item.page} href={`#/${item.page}`} title={t(item.label)} aria-label={t(item.label)} aria-current={currentPage === item.page ? "page" : undefined}><BankingIcon name={item.icon}/></a>)}
     <div class="experience-rail-bottom">
       {!admin && !onLogout && <a href="#/settings" title={t("Profile & settings")} aria-label={t("Profile & settings")} aria-current={page === "settings" ? "page" : undefined}><BankingIcon name="profile"/></a>}
       {onLogout ? <details class="experience-profile-menu">

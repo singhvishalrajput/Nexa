@@ -37,3 +37,23 @@ test('a review expiring after render cannot emit a financial confirmation',()=>{
  try { Date.now=()=>Date.parse(proposal.expiresAt)+1;buttons(card).find(b=>b.props.children==='Confirm transfer').props.onClick();assert.equal(sent,undefined); }
  finally { Date.now=original; }
 });
+
+test('real bill review shows Nexa confirmation and completion opens the transaction',()=>{
+ const workflow={...proposal,operation:'PAY_BILL',targetId:'bill-1',reference:'BP-123',message:'Pay INR 100 to Acme Utilities · 1234? Confirming transfers money between these Nexa accounts.'};
+ const review=render({workflow});
+ const visible=JSON.stringify(nodes(review).filter(n=>typeof n.type==='string').map(n=>n.props.children));
+ assert.match(visible,/Acme Utilities/);
+ assert.match(visible,/On confirmation/);
+ assert.doesNotMatch(visible,/Not provided by the bank/);
+ const completed=render({workflow:{...workflow,status:'COMPLETED',reference:'TX-bill'}});
+ assert.equal(buttons(completed).length,0);
+ assert.ok(nodes(completed).some(n=>n.type==='a'&&n.props.href==='#/transactions/TX-bill'));
+});
+
+test('unavailable and failed bill workflows link back to the selected bill without confirmation',()=>{
+ for(const status of ['UNAVAILABLE','FAILED','EXPIRED','CANCELLED']){
+  const card=render({workflow:{...proposal,operation:'PAY_BILL',targetId:'bill 1',status,reference:'BP-123'}});
+  assert.equal(buttons(card).length,0);
+  assert.ok(nodes(card).some(n=>n.type==='a'&&n.props.href==='#/bills/bill%201'));
+ }
+});

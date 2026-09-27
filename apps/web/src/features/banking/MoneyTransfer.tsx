@@ -12,7 +12,7 @@ import { moneyTransfers, TransferReceipt } from "./money-transfers";
 import { validAmount } from "./utils";
 import { Detail, PageHeading, Panel, State, useLoad } from "./ui";
 
-export function MoneyTransfer({token, userId}: {token: string; userId: string}) {
+export function MoneyTransfer({token, userId, embedded = false}: {token: string; userId: string; embedded?: boolean}) {
   const storageKey = "nexa-transfer-review:" + userId;
   const initialId = useRef((() => { try { return window.sessionStorage.getItem(storageKey); } catch { return null; } })());
   const accounts = useLoad(() => bankApi.accounts(token), [token]);
@@ -35,7 +35,7 @@ export function MoneyTransfer({token, userId}: {token: string; userId: string}) 
   const valid = !!from && validAmount(amount) && !tooMuch && (own
     ? active.some(a => a.id === destination && a.id !== source)
     : /^[0-9]{6,30}$/.test(destination));
-  useNavigationGuard(!receipt && !!(destination || amount), busy);
+  useNavigationGuard(restoring || uncertain || receipt?.status === "READY" || (!receipt && !!(destination || amount)), busy);
   useEffect(() => { if (!source && active.length) setSource(active[0].id); }, [accounts.data]);
   useEffect(() => { title.current?.querySelector<HTMLElement>("h2")?.focus(); }, [receipt?.status, receipt?.id]);
   useEffect(() => { if (initialId.current) void restore(); }, []);
@@ -84,7 +84,7 @@ export function MoneyTransfer({token, userId}: {token: string; userId: string}) 
     finally { lock.current = false; setBusy(false); }
   }
   function reset() { remember(null); setReceipt(undefined); setUncertain(false); setError(""); setAmount(""); setDestination(""); }
-  return <section class="bank-service-page bank-transfer-page"><PageHeading title={t("Send money")} description={t("Transfer Indian rupees to another Nexa account.")}/>
+  return <section class="bank-service-page bank-transfer-page">{!embedded && <PageHeading title={t("Payments")} description={t("Transfer Indian rupees to another Nexa account.")}/>}
     {restoring ? <Panel title={t("Checking your previous transfer")}><div class="bank-form" aria-busy={busy}><p>{t("We’ll check the saved request before you send money again.")}</p>{error && <p role="alert" class="bank-error">{error}</p>}<oj-button chroming="callToAction" class="nexa-action transfer-action" disabled={busy} onojAction={restore}>{busy ? "Checking transfer…" : "Check previous transfer"}</oj-button></div></Panel>
     : receipt ? <div ref={title} class="bank-narrow transfer-workflow"><Panel><div class="bank-form" aria-busy={busy}>
       <h2 tabIndex={-1}>{receipt.status === "COMPLETED" ? t("✓ Money sent") : receipt.status === "EXPIRED" ? t("This review has expired") : t("Check before you send")}</h2>
@@ -113,10 +113,10 @@ export function MoneyTransfer({token, userId}: {token: string; userId: string}) 
       </fieldset>
         {error && <p role="alert" class="bank-error">{error}</p>}
         <div class="transfer-form-footer">
-          <p class="bank-form-note">{t("Transfers are currently available between Nexa accounts. Other-bank and UPI transfers are not supported.")}</p>
+          <p class="bank-form-note">{t("Nexa transfers move money immediately after you confirm the recipient and amount.")}</p>
           <oj-button chroming="callToAction" class="nexa-action transfer-action" disabled={busy || !valid} onojAction={() => void review()}>{busy ? t("Checking recipient…") : t("Review transfer")}</oj-button>
         </div>
       </form>
-    </State></Panel><a href="#/payments">{t("Review bills and other payments →")}</a></div>}
+    </State></Panel></div>}
   </section>;
 }

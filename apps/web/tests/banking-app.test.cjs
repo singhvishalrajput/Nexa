@@ -31,6 +31,37 @@ const session={accessToken:'old',refreshToken:'refresh',user:{id:'owner',email:'
 const ok=value=>new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});
 test('money validation and totals preserve paise',()=>{const {api}=load('src/features/banking/utils.ts');for(const value of ['0','-1','1e3','1.001','01','NaN',''])assert.equal(api.validAmount(value),false,value);for(const value of ['0.01','12','999.99'])assert.equal(api.validAmount(value),true,value);assert.equal(api.sumMoney(['0.10','0.20','-0.01']),'0.29');});
 test('routes preserve account filters and reject invalid paths',()=>{const {api}=load('src/features/banking/utils.ts');assert.equal(api.parseRoute('#/transactions?account=12').account,'12');assert.equal(api.parseRoute('#/transactions/TX-123').id,'TX-123');assert.equal(api.parseRoute('#/unknown').page,'not-found');assert.equal(api.parseRoute('#/accounts/%E0').page,'not-found');});
+
+test('external transfers preserve a selected payee without inventing an account detail route', () => {
+  const {api} = load('src/features/banking/utils.ts');
+  const route = api.parseRoute('#/external-transfers?payee=EP-123');
+  assert.equal(route.page, 'external-transfers'); assert.equal(route.payee, 'EP-123');
+  assert.equal(api.parseRoute('#/external-transfers/EP-123').page, 'not-found');
+});
+
+test('unified Payments accepts other-bank payee links while old transfer routes remain valid', () => {
+  const {api} = load('src/features/banking/utils.ts');
+  const route = api.parseRoute('#/payments?destination=other-bank&payee=EP-123');
+  assert.equal(route.page, 'payments'); assert.equal(route.destination, 'other-bank'); assert.equal(route.payee, 'EP-123');
+  assert.equal(api.parseRoute('#/payments').destination, 'nexa');
+  assert.equal(api.parseRoute('#/payments?destination=unexpected').destination, 'nexa');
+  assert.equal(api.parseRoute('#/send-money').page, 'send-money');
+  assert.equal(api.parseRoute('#/external-transfers').page, 'external-transfers');
+});
+
+test('card review has its own admin route without accepting unsupported detail paths', () => {
+  const {api} = load('src/features/banking/utils.ts');
+  const route = api.parseRoute('#/admin/cards'); assert.equal(route.page, 'admin'); assert.equal(route.section, 'cards');
+  assert.equal(api.parseRoute('#/admin/cards/C-123').page, 'not-found');
+  assert.equal(api.parseRoute('#/admin/loans').section, 'loans'); assert.equal(api.parseRoute('#/admin/analytics').section, 'analytics');
+});
+
+test('bank funding has a dedicated admin route and rejects unsupported receipt paths', () => {
+  const {api} = load('src/features/banking/utils.ts');
+  assert.equal(api.parseRoute('#/admin/bank-funding').section, 'bank-funding');
+  assert.equal(api.parseRoute('#/admin/bank-funding').page, 'admin');
+  assert.equal(api.parseRoute('#/admin/bank-funding/receipts').page, 'not-found');
+});
 test('concurrent unauthorized reads share one rotating refresh request',async()=>{let rotations=0;const {api,map}=load(authFile,async(url,init)=>{if(url.endsWith('/auth/refresh')){rotations++;await new Promise(r=>setTimeout(r,15));return ok({...session,accessToken:'new',refreshToken:'rotated'});}return init.headers.get('Authorization')==='Bearer new'?ok({balance:12}):new Response('{}',{status:401});},session);const results=await Promise.all([api.authenticatedRequest('/accounts','old'),api.authenticatedRequest('/accounts','old')]);assert.equal(rotations,1);assert.equal(results[0].balance,12);assert.equal(JSON.parse(map.get('nexa-auth-session')).refreshToken,'rotated');});
 test('network errors never automatically replay a financial action',async()=>{let calls=0;const {api}=load(authFile,async()=>{calls++;throw new Error('network');},session);await assert.rejects(api.authenticatedCoreRequest('/transactions/transfer','old',{method:'POST',body:'{}'}),/could not be confirmed/);assert.equal(calls,1);});
 test('management requests use the existing core API and preserve its errors',async()=>{let seen;const {api}=load(authFile,async(url)=>{seen=url;return new Response(JSON.stringify({error:'Insufficient balance'}),{status:400});},session);await assert.rejects(api.authenticatedCoreRequest('/transactions/transfer','old',{method:'POST',body:'{}'}),/Insufficient balance/);assert.equal(seen,'http://localhost:8088/api/transactions/transfer');});
@@ -86,5 +117,8 @@ test('admin account deep links preserve sections and reject malformed routes',()
   assert.equal(r.page,'admin');assert.equal(r.id,'42');assert.equal(r.section,section);
  }
  assert.equal(api.parseRoute('#/admin/accounts/42').section,'overview');
+ assert.equal(api.parseRoute('#/admin/accounts').section,'accounts');
+ assert.equal(api.parseRoute('#/admin/analytics').section,'analytics');
+ assert.equal(api.parseRoute('#/admin').page,'admin');
  for(const route of ['#/admin/accounts/0','#/admin/accounts/nope','#/admin/accounts/42/unknown','#/admin/accounts/42/audit/extra'])assert.equal(api.parseRoute(route).page,'not-found');
 });

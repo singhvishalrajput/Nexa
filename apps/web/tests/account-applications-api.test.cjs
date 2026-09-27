@@ -34,7 +34,7 @@ const event = {id: EVENT, eventType: 'APPLICATION_CREATED', applicationVersion: 
   fromStatus: null, toStatus: 'DRAFT', reasonCode: null, reviewReason: null, documentId: null, receiptId: null, createdAt: WHEN};
 const receipt = {id: KEY, receiptNumber: 'TEST-1', currencyCode: 'INR', amount: '1000.00', status: 'RECEIVED',
   cashReceivedAt: WHEN, recordedAt: WHEN, allocatedAt: null, refundReason: null, refundedAt: null};
-const createBody = {requestKey: KEY, accountType: 'SAVINGS', currencyCode: 'INR', dateOfBirth: '2000-01-01',
+const createBody = {phoneNumber:'9876543210', requestKey: KEY, accountType: 'SAVINGS', currencyCode: 'INR', dateOfBirth: '2000-01-01',
   openingAmount: '1000.00', consentVersion: 'in-person-identity-v1', consentAccepted: true, identityType: 'PAN', identityNumber: 'ABCPD1234F'};
 const ok = value => new Response(JSON.stringify(value), {status: 200, headers: {'Content-Type': 'application/json'}});
 
@@ -367,4 +367,28 @@ test('review reasons reject both accepted passport shapes without echoing them',
   const h=load();for(const value of ['A1234567','AB123456']){
     const error=h.api.validateReviewReason('Compared '+value+' in person');assert.ok(error);assert.ok(!error.includes(value));
   }
+});
+
+
+test('phone normalization requires ten to fifteen digits and preserves optional country prefix',()=>{
+  const {api}=load();
+  for(const [raw,value] of [['9876543210','9876543210'],['+91 (98765) 43210','+919876543210'],['123456789012345','123456789012345']])assert.equal(api.normalizeApplicationPhone(raw),value);
+  for(const raw of ['',null,'123456789','1234567890123456','+91abc9876543210','123.456.7890','++919876543210'])assert.equal(api.normalizeApplicationPhone(raw),null);
+});
+
+test('details update normalizes editable values, excludes profile identity, and can retain saved identity',async()=>{
+  const h=load();const body={...action,phoneNumber:'9876543210',dateOfBirth:'1991-02-03',openingAmount:'4500.25'};
+  await h.api.applicationApi.updateDetails('token',ID,{...body,phoneNumber:'98765 43210',fullName:'forged',email:'forged@example.invalid',status:'OPENED'});
+  assert.ok(h.requests[0].url.endsWith('/'+ID+'/details'));
+  assert.deepEqual(JSON.parse(h.requests[0].init.body),body);
+  await h.api.applicationApi.updateDetails('token',ID,{...body,identityType:'PAN',identityNumber:' abcpd1234f '});
+  assert.deepEqual(JSON.parse(h.requests[1].init.body),{...body,identityType:'PAN',identityNumber:'ABCPD1234F'});
+  for(const change of [{phoneNumber:''},{dateOfBirth:'1991-02-30'},{openingAmount:'999.99'},{identityType:'PAN'},{identityNumber:'ABCPD1234F'}])await assert.rejects(h.api.applicationApi.updateDetails('token',ID,{...body,...change}),error=>error.status===400);
+  assert.equal(h.requests.length,2);
+});
+
+test('an application update event is accepted and cash status has its concise display label',async()=>{
+  const h=load(async()=>ok({...application,events:[{...event,eventType:'APPLICATION_UPDATED'}]}));
+  assert.equal((await h.api.applicationApi.getMine('token',ID)).events[0].eventType,'APPLICATION_UPDATED');
+  assert.equal(h.api.applicationStatusLabel('CASH_RECEIVED'),'Cash received');
 });

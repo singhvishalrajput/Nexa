@@ -57,6 +57,12 @@ public class TransactionQueryService {
     return transactions(id, category, from, to, page, size, null, null);
   }
 
+  public List<String> categories(String accountId) {
+    // Resolve ownership before returning even category names from an account's history.
+    Account account = accounts.requireOwnedEntity(accountId);
+    return transactions.findCategoriesForAccount(account.getId());
+  }
+
   /**
    * Shared execution path for conversational and API filtering. Boundaries are converted to UTC
    * only here.
@@ -198,7 +204,7 @@ public class TransactionQueryService {
       spec =
           spec.and(
               (r, q, b) ->
-                  b.equal(b.lower(r.get("category")), category.trim().toLowerCase(Locale.ROOT)));
+                  b.equal(b.lower(b.trim(r.get("category"))), category.trim().toLowerCase(Locale.ROOT)));
     if (from != null)
       spec = spec.and((r, q, b) -> b.greaterThanOrEqualTo(r.get("createdAt"), from.atStartOfDay()));
     if (to != null)
@@ -215,6 +221,7 @@ public class TransactionQueryService {
       String term =
           "%"
               + search
+                  .trim()
                   .toLowerCase(Locale.ROOT)
                   .replace("!", "!!")
                   .replace("%", "!%")

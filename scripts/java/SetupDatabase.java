@@ -1,6 +1,7 @@
 import java.nio.file.Path;
 import java.sql.*;
 import com.nexa.api.config.MigrationLocations;
+import com.nexa.api.config.CardMigrationRecovery;
 import org.flywaydb.core.Flyway;
 
 /** Source-launched by setup-db.ps1; intentionally outside the application build. */
@@ -62,6 +63,12 @@ public class SetupDatabase {
       String app = schema(required("NEXA_SETUP_SCHEMA"));
       String secret = required("NEXA_SETUP_PASSWORD");
       password(secret, false);
+      boolean inspectCards = Boolean.parseBoolean(System.getenv("NEXA_SETUP_INSPECT_CARD_MIGRATION"));
+      boolean recoverCards = Boolean.parseBoolean(System.getenv("NEXA_SETUP_RECOVER_CARD_MIGRATION"));
+      if ((inspectCards || recoverCards) && !Boolean.parseBoolean(System.getenv("NEXA_SETUP_EXISTING")))
+        throw new IllegalArgumentException("V31 maintenance requires an existing schema.");
+      if (inspectCards && recoverCards)
+        throw new IllegalArgumentException("Choose V31 inspection or recovery, not both.");
       DriverManager.setLoginTimeout(20);
       if (!Boolean.parseBoolean(System.getenv("NEXA_SETUP_EXISTING"))) {
         String admin = identifier(required("NEXA_SETUP_ADMIN"));
@@ -130,6 +137,15 @@ public class SetupDatabase {
               .baselineOnMigrate(false)
               .validateOnMigrate(true)
               .load();
+      if (inspectCards || recoverCards) {
+        stage = "verified V31 card migration " + (recoverCards ? "recovery" : "inspection");
+        try (var connection = DriverManager.getConnection(url, app, secret)) {
+          checkContainer(connection);
+          CardMigrationRecovery.run(connection, flyway, app, recoverCards);
+        }
+        // Maintenance is scoped to V31; never apply other pending migrations here.
+        return;
+      }
       var result = flyway.migrate();
       System.out.println(
           "Database ready. Applied "

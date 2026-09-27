@@ -26,7 +26,7 @@ export function AdminLoanQueue({ token, requests, loading, error, reload }: {
     reload: () => void;
 }) {
     const [selected, setSelected] = useState<LoanRequest>(), [receipt, setReceipt] = useState("");
-    return <><PageHeading eyebrow="" title="Loan requests" description="Review customer applications. Approval allows the customer to accept and receive the loan." action={<button class="bank-button secondary" onClick={reload}>Refresh requests</button>}/>
+    return <><PageHeading eyebrow="" title="Loan requests" description="Review customer applications. Approved loans can be paid out when the customer accepts and the lending reserve covers the amount." action={<div class="admin-actions"><a class="bank-button secondary" href="#/admin/bank-funding">Bank funding</a><button class="bank-button secondary" onClick={reload}>Refresh requests</button></div>}/>
  {receipt && <p class="bank-notice" role="status">{receipt}</p>}
  <Panel title={`${requests.length} awaiting approval`}><State loading={loading} error={error} retry={reload} empty={!loading && !error && !requests.length ? "No loan requests awaiting approval" : undefined}>
  {requests.map(r => <article class="admin-mandate admin-loan-request" key={r.PRODUCT_ID}>
@@ -52,7 +52,7 @@ export function LoanDecision({ token, request, close, done }: {
     async function submit() { if (lock.current || !review || !canReview)
         return; lock.current = true; setBusy(true); setError(""); try {
         await authenticatedRequest(`/admin/loans/${request.PRODUCT_ID}/${decision}`, token, { method: "POST", body: JSON.stringify({ reason, ...(decision === "approve" ? { verifiedSalarySlipIds: verified } : {}) }) });
-        done(decision === "approve" ? "Loan approved. The customer can now accept and receive the funds." : "Loan rejected. The decision is recorded in the account audit.");
+        done(decision === "approve" ? "Loan approved. Check Bank funding before the customer accepts: the lending reserve must cover the loan amount." : "Loan rejected. The decision is recorded in the account audit.");
     }
     catch (e) {
         setError(e instanceof Error ? e.message : "Unable to record decision. Refresh the queue to check its status.");

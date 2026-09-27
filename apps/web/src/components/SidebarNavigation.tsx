@@ -13,7 +13,6 @@ export const primaryNavigation: NavigationItem[] = [
 ];
 export const secondaryNavigation: NavigationItem[] = [
   { page: "overview", label: "Overview", icon: "overview" },
-  { page: "send-money", label: "Send money", icon: "arrow" },
   { page: "beneficiaries", label: "Payees", icon: "people" },
   { page: "bills", label: "Bills", icon: "transactions" },
   { page: "mandates", label: "Direct debits", icon: "repeat" },
@@ -33,7 +32,8 @@ export function SidebarNavigation({ page, admin = false, children }: {
   page: string; admin?: boolean; children?: ComponentChildren;
 }) {
   const secondary = admin ? [...secondaryNavigation, { page: "operations", label: "Banking operations", icon: "shield" } as NavigationItem] : secondaryNavigation;
-  const link = (item: NavigationItem) => <a key={item.page} class={item.page === "assistant" ? "sidebar-link sidebar-chat-link" : "sidebar-link"} href={"#/" + item.page} aria-current={page === item.page ? "page" : undefined}>
+  const currentPage = ["send-money", "external-transfers"].includes(page) ? "payments" : page;
+  const link = (item: NavigationItem) => <a key={item.page} class={item.page === "assistant" ? "sidebar-link sidebar-chat-link" : "sidebar-link"} href={"#/" + item.page} aria-current={currentPage === item.page ? "page" : undefined}>
     <BankingIcon name={item.icon}/><span>{t(item.label)}</span>
   </a>;
   return <nav class="sidebar-navigation" aria-label={t("Main navigation")}>
